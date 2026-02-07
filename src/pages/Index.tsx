@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DemoScenario } from '@/types/clinical';
 import { demoPatient, scenarioData, peOrderBundle, progressNoteTemplate } from '@/data/demoData';
 import { useDemoConversation } from '@/hooks/useDemoConversation';
+import { useALISChat } from '@/hooks/useALISChat';
 import { TopBar } from '@/components/virtualis/TopBar';
 import { PatientDashboard } from '@/components/virtualis/PatientDashboard';
 import { ALISPanel } from '@/components/virtualis/ALISPanel';
@@ -14,27 +15,51 @@ const Index = () => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
-  const {
-    messages,
-    isTyping,
-    initializeConversation,
-    handleAction,
-    handleDemoMessage,
-    handleOrdersApproved,
-    handleNoteSigned,
-  } = useDemoConversation(scenario);
+  // Demo mode conversation
+  const demoConversation = useDemoConversation(scenario);
 
-  // Initialize conversation when scenario changes
+  // AI mode conversation
+  const aiChat = useALISChat({
+    patientContext: {
+      patient: demoPatient,
+      currentScenario: scenario,
+      insights: scenarioData[scenario]?.insights,
+      trends: scenarioData[scenario]?.trends,
+    },
+  });
+
+  // Initialize demo conversation when scenario changes
   useEffect(() => {
-    initializeConversation();
-  }, [scenario, initializeConversation]);
+    if (!isAIMode) {
+      demoConversation.initializeConversation();
+    }
+  }, [scenario, isAIMode]);
+
+  // Switch AI mode with initial message
+  const handleAIModeToggle = useCallback(() => {
+    const newMode = !isAIMode;
+    setIsAIMode(newMode);
+    
+    if (newMode) {
+      aiChat.clearMessages();
+      aiChat.addInitialMessage(
+        `I'm ALIS, your ambient clinical intelligence assistant. I have access to ${demoPatient.name}'s current clinical data and can help you analyze patterns, prepare orders, or assist with documentation.\n\nWhat would you like to explore?`
+      );
+    }
+  }, [isAIMode, aiChat]);
+
+  // Get current conversation state
+  const messages = isAIMode ? aiChat.messages : demoConversation.messages;
+  const isTyping = isAIMode ? aiChat.isStreaming : demoConversation.isTyping;
 
   // Get current scenario data
   const currentData = scenarioData[scenario];
 
-  // Handle ALIS actions
+  // Handle ALIS actions (demo mode only)
   const onAction = async (action: string) => {
-    const result = await handleAction(action);
+    if (isAIMode) return;
+    
+    const result = await demoConversation.handleAction(action);
     if (result === 'openOrderModal') {
       setIsOrderModalOpen(true);
     } else if (result === 'openNoteModal') {
@@ -45,35 +70,34 @@ const Index = () => {
   // Handle sending messages
   const onSendMessage = (message: string) => {
     if (isAIMode) {
-      // TODO: Implement AI chat
-      console.log('AI mode message:', message);
+      aiChat.sendMessage(message);
     } else {
-      handleDemoMessage(message);
+      demoConversation.handleDemoMessage(message);
     }
   };
 
   // Handle order approval
   const onOrderApprove = () => {
     setIsOrderModalOpen(false);
-    handleOrdersApproved();
+    demoConversation.handleOrdersApproved();
   };
 
   // Handle note signing
   const onNoteSign = () => {
     setIsNoteModalOpen(false);
-    handleNoteSigned();
+    demoConversation.handleNoteSigned();
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col noise">
       <TopBar
         scenario={scenario}
         onScenarioChange={setScenario}
         isAIMode={isAIMode}
-        onAIModeToggle={() => setIsAIMode(!isAIMode)}
+        onAIModeToggle={handleAIModeToggle}
       />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_400px] min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_420px] min-h-0">
         {/* Patient Dashboard */}
         <PatientDashboard
           patient={demoPatient}

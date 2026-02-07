@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useState, useEffect } from 'react';
+import { Activity, Zap } from 'lucide-react';
 
 interface TopBarProps {
   scenario: DemoScenario;
@@ -37,16 +38,19 @@ export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }:
   }, []);
 
   return (
-    <header className="bg-card border-b border-border px-6 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-xl">
+    <header className="glass-strong border-b border-border/50 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
       {/* Logo */}
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center text-primary-foreground font-semibold text-sm">
-          V
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-info flex items-center justify-center glow-primary">
+            <Activity className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-success rounded-full animate-pulse-glow" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold tracking-tight">Virtualis</span>
-          <span className="text-[10px] font-normal text-muted-foreground uppercase tracking-wider">
-            Universal Clinical Layer
+          <span className="text-base font-semibold tracking-tight text-gradient">Virtualis</span>
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.15em]">
+            Clinical Intelligence
           </span>
         </div>
       </div>
@@ -55,10 +59,10 @@ export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }:
       <div className="flex items-center gap-3">
         {/* Scenario Selector */}
         <Select value={scenario} onValueChange={(v) => onScenarioChange(v as DemoScenario)}>
-          <SelectTrigger className="w-[200px] h-9 bg-secondary border-border text-sm">
+          <SelectTrigger className="w-[220px] h-9 bg-secondary/50 border-border/50 text-sm backdrop-blur-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="glass-strong border-border/50">
             <SelectItem value="day1">Day 1 – Admission</SelectItem>
             <SelectItem value="day2">Day 2 – Trajectory Shift</SelectItem>
             <SelectItem value="prevention">Prevention – Action Bundle</SelectItem>
@@ -68,17 +72,18 @@ export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }:
         {/* AI Mode Toggle */}
         <button
           onClick={onAIModeToggle}
-          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-2 ${
             isAIMode
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-muted-foreground hover:text-foreground'
+              ? 'bg-gradient-to-r from-primary to-info text-primary-foreground glow-primary'
+              : 'bg-secondary/50 text-muted-foreground hover:text-foreground border border-border/50'
           }`}
         >
-          {isAIMode ? 'AI Mode' : 'Demo Mode'}
+          <Zap className={`w-3.5 h-3.5 ${isAIMode ? 'animate-pulse' : ''}`} />
+          {isAIMode ? 'AI Live' : 'Demo Mode'}
         </button>
 
         {/* Time Display */}
-        <div className="font-mono text-xs text-muted-foreground px-3 py-2 bg-secondary rounded-md">
+        <div className="font-mono text-xs text-muted-foreground px-4 py-2 bg-secondary/30 border border-border/30 rounded-lg">
           {currentTime}
         </div>
       </div>
