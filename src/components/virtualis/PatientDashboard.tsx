@@ -12,20 +12,20 @@ interface PatientDashboardProps {
 
 export function PatientDashboard({ patient, insights, trends }: PatientDashboardProps) {
   return (
-    <div className="bg-card/30 backdrop-blur-sm p-8 border-r border-border/20 overflow-y-auto relative">
+    <div className="bg-background p-8 overflow-y-auto relative">
       {/* Subtle background pattern */}
       <div className="absolute inset-0 grid-pattern pointer-events-none opacity-50" />
       
-      <div className="relative">
+      <div className="relative max-w-4xl">
         <PatientHeader patient={patient} />
 
         {/* What Matters Now */}
         <section className="mb-8">
           <div className="flex items-center gap-3 mb-5">
-            <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 shadow-soft">
               <Brain className="w-4 h-4 text-primary" />
             </div>
-            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               What Matters Now
             </h2>
           </div>
@@ -39,10 +39,10 @@ export function PatientDashboard({ patient, insights, trends }: PatientDashboard
         {/* Clinical Trends */}
         <section>
           <div className="flex items-center gap-3 mb-5">
-            <div className="p-2 rounded-lg bg-info/10 border border-info/20">
+            <div className="p-2.5 rounded-xl bg-info/10 border border-info/20 shadow-soft">
               <TrendingUp className="w-4 h-4 text-info" />
             </div>
-            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Clinical Trends
             </h2>
           </div>

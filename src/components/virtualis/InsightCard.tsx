@@ -6,92 +6,71 @@ interface InsightCardProps {
   insight: ClinicalInsight;
 }
 
-export function InsightCard({ insight }: InsightCardProps) {
-  const severityConfig = {
-    critical: {
-      border: 'border-critical/50',
-      bg: 'bg-critical/5',
-      glow: 'glow-critical',
-      badge: 'bg-critical text-critical-foreground',
-      icon: AlertCircle,
-    },
-    warning: {
-      border: 'border-warning/50',
-      bg: 'bg-warning/5',
-      glow: 'glow-warning',
-      badge: 'bg-warning text-warning-foreground',
-      icon: AlertTriangle,
-    },
-    info: {
-      border: 'border-info/50',
-      bg: 'bg-info/5',
-      glow: '',
-      badge: 'bg-info text-info-foreground',
-      icon: Info,
-    },
-    success: {
-      border: 'border-success/50',
-      bg: 'bg-success/5',
-      glow: '',
-      badge: 'bg-success text-success-foreground',
-      icon: CheckCircle,
-    },
-  };
+const severityConfig = {
+  critical: {
+    icon: AlertTriangle,
+    cardClass: 'border-critical/30 bg-critical/5',
+    iconClass: 'text-critical',
+    badgeClass: 'bg-critical/10 text-critical border-critical/20',
+  },
+  warning: {
+    icon: AlertCircle,
+    cardClass: 'border-warning/30 bg-warning/5',
+    iconClass: 'text-warning',
+    badgeClass: 'bg-warning/10 text-warning border-warning/20',
+  },
+  info: {
+    icon: Info,
+    cardClass: 'border-info/30 bg-info/5',
+    iconClass: 'text-info',
+    badgeClass: 'bg-info/10 text-info border-info/20',
+  },
+  success: {
+    icon: CheckCircle,
+    cardClass: 'border-success/30 bg-success/5',
+    iconClass: 'text-success',
+    badgeClass: 'bg-success/10 text-success border-success/20',
+  },
+};
 
+export function InsightCard({ insight }: InsightCardProps) {
   const config = insight.severity ? severityConfig[insight.severity] : null;
   const Icon = config?.icon || Info;
 
   return (
-    <div
-      className={cn(
-        'relative rounded-2xl p-5 transition-all duration-300 border overflow-hidden group',
-        config ? `${config.border} ${config.bg}` : 'border-border/30 bg-secondary/20',
-        config?.glow && 'hover:' + config.glow
-      )}
-    >
-      {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-      
-      <div className="relative">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-start gap-3">
-            {config && (
-              <div className={cn('p-2 rounded-lg', config.bg)}>
-                <Icon className={cn('w-4 h-4', insight.severity === 'critical' ? 'text-critical' : insight.severity === 'warning' ? 'text-warning' : 'text-muted-foreground')} />
-              </div>
-            )}
-            <div>
-              <h3 className="text-sm font-semibold">{insight.title}</h3>
-              <span className="text-[11px] text-muted-foreground font-mono">
-                {insight.timestamp}
-              </span>
-            </div>
+    <div className={cn(
+      'p-4 rounded-xl border transition-all hover:shadow-soft',
+      config ? config.cardClass : 'border-border bg-secondary/30'
+    )}>
+      <div className="flex gap-3">
+        {config && (
+          <div className={cn('mt-0.5 flex-shrink-0', config.iconClass)}>
+            <Icon className="w-5 h-5" />
           </div>
-          {insight.severity && (
-            <span
-              className={cn(
-                'text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wide',
-                config?.badge
-              )}
-            >
-              {insight.severity}
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-sm font-semibold text-foreground">{insight.title}</h3>
+            {insight.severity && config && (
+              <span className={cn(
+                'text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase tracking-wider',
+                config.badgeClass
+              )}>
+                {insight.severity}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">{insight.description}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            {insight.sources.map((source, idx) => (
+              <span key={idx} className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded border border-border">
+                {source}
+              </span>
+            ))}
+            <span className="text-xs text-muted-foreground/60">
+              {insight.timestamp}
             </span>
-          )}
-        </div>
-        
-        <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-          {insight.description}
-        </p>
-        
-        <div className="flex flex-wrap gap-1.5">
-          {insight.sources.map((source, index) => (
-            <span
-              key={index}
-              className="text-[10px] px-2.5 py-1 bg-background/50 border border-border/50 rounded-full font-mono text-muted-foreground"
-            >
-              {source}
-            </span>
-          ))}
+          </div>
         </div>
       </div>
     </div>

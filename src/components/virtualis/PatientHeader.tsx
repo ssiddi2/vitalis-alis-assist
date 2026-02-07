@@ -1,5 +1,5 @@
 import { Patient } from '@/types/clinical';
-import { User, Hash, Calendar, MapPin, Clock } from 'lucide-react';
+import { Clock, MapPin, Calendar, User } from 'lucide-react';
 
 interface PatientHeaderProps {
   patient: Patient;
@@ -7,49 +7,65 @@ interface PatientHeaderProps {
 
 export function PatientHeader({ patient }: PatientHeaderProps) {
   return (
-    <div className="mb-8 pb-6 border-b border-border/30">
+    <div className="card-apple p-6 mb-6">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-info/20 border border-primary/30 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-info/10 border border-primary/20 flex items-center justify-center shadow-soft">
             <User className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{patient.name}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">{patient.admissionDiagnosis}</p>
+            <h1 className="text-xl font-semibold text-foreground">{patient.name}</h1>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-sm text-muted-foreground">
+                {patient.age}yo {patient.sex === 'M' ? 'Male' : 'Female'}
+              </span>
+              <span className="text-muted-foreground/30">|</span>
+              <span className="font-mono text-sm text-muted-foreground">
+                MRN: {patient.mrn}
+              </span>
+            </div>
           </div>
         </div>
         <div className="px-3 py-1.5 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold">
           Active
         </div>
       </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetaItem icon={Hash} label="MRN" value={patient.mrn} />
-        <MetaItem icon={Calendar} label="Age" value={`${patient.age}${patient.sex}`} />
-        <MetaItem icon={MapPin} label="Location" value={`${patient.location}, ${patient.bed}`} />
-        <MetaItem icon={Clock} label="LOS" value={`Day ${patient.admissionDay} of ${patient.expectedLOS}`} />
-      </div>
-    </div>
-  );
-}
 
-function MetaItem({ 
-  icon: Icon, 
-  label, 
-  value 
-}: { 
-  icon: React.ElementType; 
-  label: string; 
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 border border-border/30">
-      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-        <Icon className="w-4 h-4 text-primary" />
-      </div>
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className="text-sm font-medium">{value}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <MapPin className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Location</div>
+            <div className="text-sm font-medium text-foreground">{patient.location} • {patient.bed}</div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border">
+          <div className="p-2 rounded-lg bg-info/10">
+            <Calendar className="w-4 h-4 text-info" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Admission Day</div>
+            <div className="text-sm font-medium text-foreground">Day {patient.admissionDay}</div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border">
+          <div className="p-2 rounded-lg bg-warning/10">
+            <Clock className="w-4 h-4 text-warning" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Expected LOS</div>
+            <div className="text-sm font-medium text-foreground">{patient.expectedLOS} days</div>
+          </div>
+        </div>
+
+        <div className="col-span-2 lg:col-span-1 p-3 rounded-xl bg-secondary/50 border border-border">
+          <div className="text-xs text-muted-foreground mb-1">Admission Diagnosis</div>
+          <div className="text-sm font-medium text-foreground">{patient.admissionDiagnosis}</div>
+        </div>
       </div>
     </div>
   );

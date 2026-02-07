@@ -89,7 +89,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col noise">
+    <div className="min-h-screen bg-background flex flex-col">
       <TopBar
         scenario={scenario}
         onScenarioChange={setScenario}
