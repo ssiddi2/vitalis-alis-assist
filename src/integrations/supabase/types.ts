@@ -14,9 +14,210 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_events: {
+        Row: {
+          cpt_codes: string[] | null
+          created_at: string
+          estimated_revenue: number | null
+          icd10_codes: string[] | null
+          id: string
+          note_id: string | null
+          patient_id: string
+          status: Database["public"]["Enums"]["billing_status"]
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cpt_codes?: string[] | null
+          created_at?: string
+          estimated_revenue?: number | null
+          icd10_codes?: string[] | null
+          id?: string
+          note_id?: string | null
+          patient_id: string
+          status?: Database["public"]["Enums"]["billing_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cpt_codes?: string[] | null
+          created_at?: string
+          estimated_revenue?: number | null
+          icd10_codes?: string[] | null
+          id?: string
+          note_id?: string | null
+          patient_id?: string
+          status?: Database["public"]["Enums"]["billing_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_events_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          consultant_id: string | null
+          conversation_id: string
+          id: string
+          is_active: boolean | null
+          joined_at: string
+          role: Database["public"]["Enums"]["chat_role"]
+          user_id: string | null
+        }
+        Insert: {
+          consultant_id?: string | null
+          conversation_id: string
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string
+          role: Database["public"]["Enums"]["chat_role"]
+          user_id?: string | null
+        }
+        Update: {
+          consultant_id?: string | null
+          conversation_id?: string
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string
+          role?: Database["public"]["Enums"]["chat_role"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinical_notes: {
+        Row: {
+          author_id: string | null
+          content: Json
+          conversation_id: string | null
+          created_at: string
+          id: string
+          note_type: Database["public"]["Enums"]["note_type"]
+          patient_id: string
+          signed_at: string | null
+          status: Database["public"]["Enums"]["note_status"]
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          content?: Json
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          note_type?: Database["public"]["Enums"]["note_type"]
+          patient_id: string
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["note_status"]
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: Json
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          note_type?: Database["public"]["Enums"]["note_type"]
+          patient_id?: string
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["note_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_notes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultants: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          hospital_id: string
+          id: string
+          name: string
+          on_call_status: boolean | null
+          pager: string | null
+          phone: string | null
+          specialty: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          hospital_id: string
+          id?: string
+          name: string
+          on_call_status?: boolean | null
+          pager?: string | null
+          phone?: string | null
+          specialty: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          name?: string
+          on_call_status?: boolean | null
+          pager?: string | null
+          phone?: string | null
+          specialty?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultants_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
+          hospital_id: string | null
           id: string
           is_ai_mode: boolean | null
           patient_id: string | null
@@ -26,6 +227,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          hospital_id?: string | null
           id?: string
           is_ai_mode?: boolean | null
           patient_id?: string | null
@@ -35,6 +237,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          hospital_id?: string | null
           id?: string
           is_ai_mode?: boolean | null
           patient_id?: string | null
@@ -44,6 +247,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "conversations_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conversations_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
@@ -51,6 +261,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hospital_users: {
+        Row: {
+          access_level: string
+          created_at: string
+          hospital_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          hospital_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hospital_users_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hospitals: {
+        Row: {
+          address: string | null
+          code: string
+          connection_status: string | null
+          created_at: string
+          emr_system: Database["public"]["Enums"]["emr_system"]
+          id: string
+          logo_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          connection_status?: string | null
+          created_at?: string
+          emr_system: Database["public"]["Enums"]["emr_system"]
+          id?: string
+          logo_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          connection_status?: string | null
+          created_at?: string
+          emr_system?: Database["public"]["Enums"]["emr_system"]
+          id?: string
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -89,48 +367,68 @@ export type Database = {
           admission_day: number
           admission_diagnosis: string | null
           age: number
+          attending_physician: string | null
           bed: string
+          care_team: Json | null
           created_at: string
           expected_los: number
+          hospital_id: string | null
           id: string
           location: string
           mrn: string
           name: string
           sex: string
           status: string | null
+          unit: string | null
           updated_at: string
         }
         Insert: {
           admission_day?: number
           admission_diagnosis?: string | null
           age: number
+          attending_physician?: string | null
           bed: string
+          care_team?: Json | null
           created_at?: string
           expected_los?: number
+          hospital_id?: string | null
           id?: string
           location: string
           mrn: string
           name: string
           sex: string
           status?: string | null
+          unit?: string | null
           updated_at?: string
         }
         Update: {
           admission_day?: number
           admission_diagnosis?: string | null
           age?: number
+          attending_physician?: string | null
           bed?: string
+          care_team?: Json | null
           created_at?: string
           expected_los?: number
+          hospital_id?: string | null
           id?: string
           location?: string
           mrn?: string
           name?: string
           sex?: string
           status?: string | null
+          unit?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patients_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -158,6 +456,60 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      staged_orders: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          order_data: Json
+          order_type: string
+          patient_id: string
+          rationale: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_data?: Json
+          order_type: string
+          patient_id: string
+          rationale?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_data?: Json
+          order_type?: string
+          patient_id?: string
+          rationale?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staged_orders_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staged_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -199,6 +551,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "clinician" | "viewer"
+      billing_status: "pending" | "submitted" | "accepted" | "rejected"
+      chat_role: "clinician" | "consultant" | "alis"
+      emr_system: "epic" | "meditech" | "cerner"
+      note_status: "draft" | "pending_signature" | "signed" | "amended"
+      note_type: "progress" | "consult" | "discharge" | "procedure"
+      order_status: "staged" | "approved" | "sent" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -327,6 +685,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "clinician", "viewer"],
+      billing_status: ["pending", "submitted", "accepted", "rejected"],
+      chat_role: ["clinician", "consultant", "alis"],
+      emr_system: ["epic", "meditech", "cerner"],
+      note_status: ["draft", "pending_signature", "signed", "amended"],
+      note_type: ["progress", "consult", "discharge", "procedure"],
+      order_status: ["staged", "approved", "sent", "cancelled"],
     },
   },
 } as const
