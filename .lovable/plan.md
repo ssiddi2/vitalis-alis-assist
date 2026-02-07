@@ -262,16 +262,16 @@ billing_events (new)
 
 ## Implementation Order
 
-1. **Database migration** - Create all new tables with RLS
-2. **Synthetic data seeding** - 3 hospitals, 35 patients, specialties
-3. **Hospital selection page** - Post-login routing
-4. **Patient list by hospital** - Filtered views
-5. **Enhanced ALIS panel** - Two-column layout
-6. **Staged orders component** - Real-time order staging
-7. **Clinical notes panel** - SOAP note generation/editing
-8. **Consultant integration** - Chat participants, notifications
-9. **Billing tracker** - CPT/revenue display
-10. **Logo and UI polish** - Sizing, animations, backgrounds
+1. ✅ **Database migration** - Create all new tables with RLS
+2. ✅ **Synthetic data seeding** - 3 hospitals, 35 patients, specialties
+3. ✅ **Hospital selection page** - Post-login routing
+4. ✅ **Patient list by hospital** - Filtered views (context ready)
+5. ✅ **Enhanced ALIS panel** - Two-column layout
+6. ✅ **Staged orders component** - Real-time order staging panel
+7. ✅ **Clinical notes panel** - SOAP note display/editing
+8. ⏳ **Consultant integration** - Chat participants, notifications (next)
+9. ✅ **Billing tracker** - CPT/revenue display
+10. ✅ **Logo and UI polish** - Sizing, animations, backgrounds
 
 ---
 

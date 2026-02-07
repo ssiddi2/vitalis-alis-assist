@@ -1,28 +1,46 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DemoScenario } from '@/types/clinical';
 import { demoPatient, scenarioData, peOrderBundle, progressNoteTemplate } from '@/data/demoData';
 import { useDemoConversation } from '@/hooks/useDemoConversation';
 import { useALISChat } from '@/hooks/useALISChat';
+import { useHospital } from '@/contexts/HospitalContext';
+import { useAuth } from '@/hooks/useAuth';
 import { TopBar } from '@/components/virtualis/TopBar';
 import { PatientDashboard } from '@/components/virtualis/PatientDashboard';
 import { ALISPanel } from '@/components/virtualis/ALISPanel';
 import { OrderReviewModal } from '@/components/virtualis/OrderReviewModal';
 import { ProgressNoteModal } from '@/components/virtualis/ProgressNoteModal';
+import { Loader2 } from 'lucide-react';
 
-const Index = () => {
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { selectedHospital } = useHospital();
+  
   const [scenario, setScenario] = useState<DemoScenario>('day1');
   const [isAIMode, setIsAIMode] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
+  // Redirect if no hospital selected or not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    } else if (!authLoading && user && !selectedHospital) {
+      navigate('/');
+    }
+  }, [user, authLoading, selectedHospital, navigate]);
+
   // Demo mode conversation
   const demoConversation = useDemoConversation(scenario);
 
-  // AI mode conversation
+  // AI mode conversation - include hospital context
   const aiChat = useALISChat({
     patientContext: {
       patient: demoPatient,
       currentScenario: scenario,
+      hospital: selectedHospital,
       insights: scenarioData[scenario]?.insights,
       trends: scenarioData[scenario]?.trends,
     },
@@ -43,10 +61,10 @@ const Index = () => {
     if (newMode) {
       aiChat.clearMessages();
       aiChat.addInitialMessage(
-        `I'm ALIS, your ambient clinical intelligence assistant. I have access to ${demoPatient.name}'s current clinical data and can help you analyze patterns, prepare orders, or assist with documentation.\n\nWhat would you like to explore?`
+        `I'm ALIS, your ambient clinical intelligence assistant at ${selectedHospital?.name || 'this facility'}. I have access to ${demoPatient.name}'s current clinical data and can help you analyze patterns, prepare orders, or assist with documentation.\n\nWhat would you like to explore?`
       );
     }
-  }, [isAIMode, aiChat]);
+  }, [isAIMode, aiChat, selectedHospital]);
 
   // Get current conversation state
   const messages = isAIMode ? aiChat.messages : demoConversation.messages;
@@ -87,6 +105,18 @@ const Index = () => {
     setIsNoteModalOpen(false);
     demoConversation.handleNoteSigned();
   };
+
+  // Loading state
+  if (authLoading || (!selectedHospital && user)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -136,4 +166,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Dashboard;

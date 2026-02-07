@@ -71,7 +71,7 @@ export default function Auth() {
               <img 
                 src={virtualisLogo} 
                 alt="Virtualis" 
-                className="h-20 mx-auto relative z-10 drop-shadow-lg"
+                className="h-24 mx-auto relative z-10 drop-shadow-lg"
               />
             </div>
             
@@ -107,7 +107,7 @@ export default function Auth() {
               <img 
                 src={virtualisLogo} 
                 alt="Virtualis" 
-                className="h-14 mx-auto drop-shadow-lg"
+                className="h-16 mx-auto drop-shadow-lg"
               />
             </div>
 

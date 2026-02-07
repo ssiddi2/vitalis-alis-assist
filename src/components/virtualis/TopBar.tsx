@@ -15,8 +15,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useState, useEffect } from 'react';
-import { Zap, User, LogOut, Shield } from 'lucide-react';
+import { Zap, User, LogOut, Shield, Building2, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
 import virtualisLogo from '@/assets/virtualis-logo.png';
 
@@ -30,6 +31,7 @@ interface TopBarProps {
 export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }: TopBarProps) {
   const [currentTime, setCurrentTime] = useState('');
   const { user, role, signOut, isAdmin } = useAuth();
+  const { selectedHospital, setSelectedHospital } = useHospital();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,7 +54,13 @@ export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }:
 
   const handleSignOut = async () => {
     await signOut();
+    setSelectedHospital(null);
     navigate('/auth');
+  };
+
+  const handleBackToHospitals = () => {
+    setSelectedHospital(null);
+    navigate('/');
   };
 
   const getRoleBadge = () => {
@@ -69,15 +77,43 @@ export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }:
     );
   };
 
+  const getEmrColor = () => {
+    switch (selectedHospital?.emr_system) {
+      case 'epic': return 'text-red-500';
+      case 'cerner': return 'text-blue-500';
+      case 'meditech': return 'text-green-500';
+      default: return 'text-muted-foreground';
+    }
+  };
+
   return (
     <header className="glass-strong border-b border-border px-6 py-3 flex items-center justify-between sticky top-0 z-50">
-      {/* Logo */}
+      {/* Logo and Hospital */}
       <div className="flex items-center gap-4">
         <img 
           src={virtualisLogo} 
           alt="Virtualis" 
-          className="h-10"
+          className="h-12"
         />
+        
+        {selectedHospital && (
+          <>
+            <div className="w-px h-8 bg-border" />
+            <button
+              onClick={handleBackToHospitals}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/50 border border-border hover:bg-secondary transition-colors group"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              <Building2 className={`w-4 h-4 ${getEmrColor()}`} />
+              <span className="text-sm font-medium text-foreground">
+                {selectedHospital.name}
+              </span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-secondary font-semibold uppercase ${getEmrColor()}`}>
+                {selectedHospital.emr_system}
+              </span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Controls */}
