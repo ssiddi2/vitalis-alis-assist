@@ -6,53 +6,58 @@ interface ClinicalTrendsProps {
   trends: ClinicalTrend[];
 }
 
-export function ClinicalTrends({ trends }: ClinicalTrendsProps) {
-  const directionConfig = {
-    up: { 
-      icon: TrendingUp, 
-      color: 'text-critical',
-      bg: 'bg-critical/10',
-    },
-    down: { 
-      icon: TrendingDown, 
-      color: 'text-warning',
-      bg: 'bg-warning/10',
-    },
-    stable: { 
-      icon: Minus, 
-      color: 'text-muted-foreground',
-      bg: 'bg-muted/30',
-    },
-  };
+const trendIcons = {
+  up: TrendingUp,
+  down: TrendingDown,
+  stable: Minus,
+};
 
+export function ClinicalTrends({ trends }: ClinicalTrendsProps) {
   return (
-    <div className="grid gap-2">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {trends.map((trend) => {
-        const config = directionConfig[trend.direction];
-        const Icon = config.icon;
+        const TrendIcon = trendIcons[trend.direction];
+        const isUp = trend.direction === 'up';
+        const isDown = trend.direction === 'down';
         
         return (
-          <div
+          <div 
             key={trend.id}
-            className="flex justify-between items-center py-3.5 px-4 rounded-xl bg-secondary/20 border border-border/20 hover:border-border/40 transition-colors group"
+            className="card-apple p-4 hover:shadow-soft transition-all"
           >
-            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-              {trend.label}
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold font-mono">{trend.value}</span>
-              {trend.change && (
-                <div className={cn('flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', config.bg, config.color)}>
-                  <Icon className="w-3 h-3" />
-                  <span>{trend.change}</span>
-                </div>
-              )}
-              {!trend.change && trend.direction !== 'stable' && (
-                <div className={cn('p-1 rounded-full', config.bg)}>
-                  <Icon className={cn('w-3.5 h-3.5', config.color)} />
-                </div>
-              )}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                {trend.label}
+              </span>
+              <div className={cn(
+                'p-1.5 rounded-lg border',
+                isUp && 'bg-warning/10 border-warning/20',
+                isDown && 'bg-critical/10 border-critical/20',
+                !isUp && !isDown && 'bg-muted border-border'
+              )}>
+                <TrendIcon className={cn(
+                  'w-3 h-3',
+                  isUp && 'text-warning',
+                  isDown && 'text-critical',
+                  !isUp && !isDown && 'text-muted-foreground'
+                )} />
+              </div>
             </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-semibold text-foreground">
+                {trend.value}
+              </span>
+            </div>
+            {trend.change && (
+              <div className={cn(
+                'text-xs mt-1 font-medium',
+                isUp && 'text-warning',
+                isDown && 'text-critical',
+                !isUp && !isDown && 'text-muted-foreground'
+              )}>
+                {trend.change}
+              </div>
+            )}
           </div>
         );
       })}

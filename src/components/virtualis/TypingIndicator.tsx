@@ -1,15 +1,21 @@
-import { Bot } from 'lucide-react';
+import alisLogo from '@/assets/alis-logo.png';
 
 export function TypingIndicator() {
   return (
-    <div className="flex gap-3 animate-message-slide">
-      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-info glow-primary flex items-center justify-center flex-shrink-0">
-        <Bot className="w-4 h-4 text-primary-foreground" />
+    <div className="flex gap-3 animate-fade-in">
+      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-info/10 border border-primary/20 flex items-center justify-center shadow-soft">
+        <img src={alisLogo} alt="ALIS" className="w-6 h-6 object-contain" />
       </div>
-      <div className="flex gap-1.5 px-4 py-3.5 bg-card border border-border/30 rounded-2xl rounded-tl-md items-center">
-        <div className="w-2 h-2 bg-primary/60 rounded-full animate-typing-bounce" />
-        <div className="w-2 h-2 bg-primary/60 rounded-full animate-typing-bounce [animation-delay:0.15s]" />
-        <div className="w-2 h-2 bg-primary/60 rounded-full animate-typing-bounce [animation-delay:0.3s]" />
+      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-card border border-border shadow-soft">
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="w-2 h-2 rounded-full bg-primary/40 animate-typing-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
