@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DemoScenario } from '@/types/clinical';
-import { demoPatient, scenarioData, peOrderBundle, progressNoteTemplate } from '@/data/demoData';
+import { StagedOrder, ClinicalNote, BillingEvent } from '@/types/hospital';
+import { demoPatient, scenarioData, peOrderBundle, progressNoteTemplate, demoStagedOrders, demoClinicalNotes, demoBillingEvents } from '@/data/demoData';
 import { useDemoConversation } from '@/hooks/useDemoConversation';
 import { useALISChat } from '@/hooks/useALISChat';
 import { useHospital } from '@/contexts/HospitalContext';
@@ -22,6 +23,38 @@ const Dashboard = () => {
   const [isAIMode, setIsAIMode] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  
+  // Clinical actions state
+  const [stagedOrders, setStagedOrders] = useState<StagedOrder[]>(demoStagedOrders);
+  const [clinicalNotes, setClinicalNotes] = useState<ClinicalNote[]>(demoClinicalNotes);
+  const [billingEvents] = useState<BillingEvent[]>(demoBillingEvents);
+
+  // Order handlers
+  const handleApproveOrder = (orderId: string) => {
+    setStagedOrders(prev => prev.map(order => 
+      order.id === orderId ? { ...order, status: 'approved' as const } : order
+    ));
+  };
+
+  const handleApproveAllOrders = () => {
+    setStagedOrders(prev => prev.map(order => ({ ...order, status: 'approved' as const })));
+  };
+
+  const handleCancelOrder = (orderId: string) => {
+    setStagedOrders(prev => prev.filter(order => order.id !== orderId));
+  };
+
+  // Note handlers
+  const handleEditNote = (noteId: string) => {
+    console.log('Edit note:', noteId);
+    // Could open a modal for editing
+  };
+
+  const handleSignNote = (noteId: string) => {
+    setClinicalNotes(prev => prev.map(note =>
+      note.id === noteId ? { ...note, status: 'signed' as const } : note
+    ));
+  };
 
   // Redirect if no hospital selected or not authenticated
   useEffect(() => {
@@ -127,7 +160,7 @@ const Dashboard = () => {
         onAIModeToggle={handleAIModeToggle}
       />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_420px] min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_700px] min-h-0">
         {/* Patient Dashboard */}
         <PatientDashboard
           patient={demoPatient}
@@ -143,6 +176,14 @@ const Dashboard = () => {
             onSendMessage={onSendMessage}
             onAction={onAction}
             isAIMode={isAIMode}
+            stagedOrders={stagedOrders}
+            clinicalNotes={clinicalNotes}
+            billingEvents={billingEvents}
+            onApproveOrder={handleApproveOrder}
+            onApproveAllOrders={handleApproveAllOrders}
+            onCancelOrder={handleCancelOrder}
+            onEditNote={handleEditNote}
+            onSignNote={handleSignNote}
           />
         </div>
       </div>

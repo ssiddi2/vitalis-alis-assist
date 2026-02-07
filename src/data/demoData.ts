@@ -1,4 +1,5 @@
 import { Patient, ScenarioData, OrderItem, ProgressNote } from '@/types/clinical';
+import { StagedOrder, ClinicalNote, BillingEvent } from '@/types/hospital';
 
 // Demo patient
 export const demoPatient: Patient = {
@@ -280,3 +281,92 @@ Each document is accessible through Virtualis and shows the exact timestamp and 
     },
   ],
 };
+
+// Demo staged orders for the Clinical Actions sidebar
+export const demoStagedOrders: StagedOrder[] = [
+  {
+    id: 'staged-001',
+    conversation_id: null,
+    patient_id: 'pt-001',
+    order_type: 'imaging',
+    order_data: { name: 'CTA Chest with PE Protocol', priority: 'STAT' },
+    rationale: 'Progressive hypoxemia + tachycardia + risk factors',
+    status: 'staged',
+    created_by: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'staged-002',
+    conversation_id: null,
+    patient_id: 'pt-001',
+    order_type: 'lab',
+    order_data: { name: 'D-dimer, Troponin I, BNP, CBC, CMP', priority: 'STAT' },
+    rationale: 'Rule out alternative diagnoses, assess cardiac strain',
+    status: 'staged',
+    created_by: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'staged-003',
+    conversation_id: null,
+    patient_id: 'pt-001',
+    order_type: 'consult',
+    order_data: { name: 'Pulmonology Consult', priority: 'Urgent' },
+    rationale: 'Complex respiratory trajectory, possible PE management',
+    status: 'staged',
+    created_by: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+// Demo clinical notes for the Clinical Actions sidebar
+export const demoClinicalNotes: ClinicalNote[] = [
+  {
+    id: 'note-001',
+    conversation_id: null,
+    patient_id: 'pt-001',
+    note_type: 'progress',
+    content: {
+      subjective: 'Patient reports increased shortness of breath over past 12 hours. Denies chest pain.',
+      objective: 'O2 requirement: 2L NC → 4L NC. HR: 78 → 94 bpm. Mobility: Independent → Assist of 1.',
+      assessment: '72F admitted for CAP now with concerning trajectory for acute PE.',
+      plan: 'CTA chest with PE protocol - STAT. Resume therapeutic anticoagulation.',
+    },
+    status: 'draft',
+    author_id: null,
+    signed_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+// Demo billing events for the Clinical Actions sidebar
+export const demoBillingEvents: BillingEvent[] = [
+  {
+    id: 'bill-001',
+    patient_id: 'pt-001',
+    note_id: null,
+    cpt_codes: ['99223'],
+    icd10_codes: [],
+    estimated_revenue: 425,
+    status: 'pending',
+    submitted_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'bill-002',
+    patient_id: 'pt-001',
+    note_id: null,
+    cpt_codes: ['71275'],
+    icd10_codes: ['I26.99', 'J18.9'],
+    estimated_revenue: 1250,
+    status: 'pending',
+    submitted_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
