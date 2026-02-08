@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import alisLogo from '@/assets/alis-logo.png';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,6 +19,14 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { logLogin } = useAuditLog();
+  const { user, loading: authLoading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +41,7 @@ export default function Auth() {
         if (error) throw error;
         logLogin(); // Log successful login for HIPAA audit
         toast.success('Welcome back!');
-        navigate('/');
+        // Navigation will happen via the useEffect when user state updates
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -52,6 +61,7 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
