@@ -370,3 +370,92 @@ export const demoBillingEvents: BillingEvent[] = [
     updated_at: new Date().toISOString(),
   },
 ];
+
+// Demo team chat messages for showing communication features
+export const demoTeamMessages = [
+  {
+    id: 'msg-001',
+    sender: { name: 'Dr. Sarah Kim', role: 'Attending Physician' },
+    content: 'Just reviewed the morning labs on Chen. D-dimer is elevated at 2.4. Thoughts on PE workup?',
+    timestamp: '08:15',
+    type: 'text' as const,
+  },
+  {
+    id: 'msg-002',
+    sender: { name: 'RN Mike Torres', role: 'Primary Nurse' },
+    content: 'O2 requirement increased overnight. She was on 2L at 2200, now on 4L to maintain sats >92%.',
+    timestamp: '08:18',
+    type: 'text' as const,
+  },
+  {
+    id: 'msg-003',
+    sender: { name: 'ALIS', role: 'AI Assistant' },
+    content: 'I\'ve staged a PE workup bundle based on the trajectory analysis. CTA, labs, and pulmonology consult are ready for approval.',
+    timestamp: '08:20',
+    type: 'text' as const,
+    isAI: true,
+  },
+  {
+    id: 'msg-004',
+    sender: { name: 'Dr. Sarah Kim', role: 'Attending Physician' },
+    content: 'Perfect. Let\'s get the CTA rolling. Can someone make sure she\'s NPO?',
+    timestamp: '08:22',
+    type: 'text' as const,
+  },
+  {
+    id: 'msg-005',
+    sender: { name: 'RN Mike Torres', role: 'Primary Nurse' },
+    content: 'NPO order placed. Radiology can take her in 30 minutes.',
+    timestamp: '08:25',
+    type: 'text' as const,
+  },
+];
+
+// Demo consult requests
+export const demoConsultRequests = [
+  {
+    id: 'consult-001',
+    specialty: 'Pulmonology',
+    urgency: 'urgent' as const,
+    status: 'pending' as const,
+    reason: 'Suspected acute PE in patient with CAP, needs evaluation for anticoagulation management',
+    requestedBy: 'Dr. Sarah Kim',
+    requestedAt: '08:20',
+  },
+  {
+    id: 'consult-002',
+    specialty: 'Hematology',
+    urgency: 'routine' as const,
+    status: 'accepted' as const,
+    reason: 'Prior DVT history, evaluate for hypercoagulable workup',
+    requestedBy: 'Dr. Sarah Kim',
+    requestedAt: '08:45',
+    acceptedBy: 'Dr. James Wu',
+    acceptedAt: '09:15',
+  },
+];
+
+// Demo direct message threads
+export const demoDirectMessages = [
+  {
+    id: 'dm-001',
+    with: { name: 'Dr. James Wu', role: 'Hematology', avatar: null },
+    lastMessage: 'I\'ll review her coag studies and get back to you this afternoon.',
+    timestamp: '09:15',
+    unread: 0,
+  },
+  {
+    id: 'dm-002',
+    with: { name: 'Dr. Lisa Park', role: 'Pulmonology', avatar: null },
+    lastMessage: 'CTA is confirmed for bilateral PE. Starting heparin drip now.',
+    timestamp: '10:30',
+    unread: 2,
+  },
+  {
+    id: 'dm-003',
+    with: { name: 'Case Manager', role: 'Care Coordination', avatar: null },
+    lastMessage: 'Discharge planning on hold per your orders. Will reassess tomorrow.',
+    timestamp: 'Yesterday',
+    unread: 0,
+  },
+];

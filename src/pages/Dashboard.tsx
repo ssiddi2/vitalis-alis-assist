@@ -13,6 +13,8 @@ import { TeamChatPanel } from '@/components/virtualis/TeamChatPanel';
 import { ConsultRequestModal } from '@/components/virtualis/ConsultRequestModal';
 import { OrderReviewModal } from '@/components/virtualis/OrderReviewModal';
 import { ProgressNoteModal } from '@/components/virtualis/ProgressNoteModal';
+import { MobileALISFab } from '@/components/virtualis/MobileALISFab';
+import { MobileALISSheet } from '@/components/virtualis/MobileALISSheet';
 import { Loader2 } from 'lucide-react';
 
 // Scenario-aware initial greetings for ALIS
@@ -35,6 +37,10 @@ const Dashboard = () => {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
   const [showTeamChat, setShowTeamChat] = useState(false);
+  
+  // Mobile ALIS sheet state
+  const [mobileALISOpen, setMobileALISOpen] = useState(false);
+  const [mobileShowTeamChat, setMobileShowTeamChat] = useState(false);
   
   // Clinical actions state
   const [stagedOrders, setStagedOrders] = useState<StagedOrder[]>(demoStagedOrders);
@@ -125,7 +131,7 @@ const Dashboard = () => {
         onScenarioChange={setScenario}
       />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_700px] min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_700px] min-h-0">
         {/* Patient Dashboard */}
         <PatientDashboard
           patient={demoPatient}
@@ -133,7 +139,7 @@ const Dashboard = () => {
           trends={currentData?.trends || []}
         />
 
-        {/* ALIS Chat Panel or Team Chat */}
+        {/* Desktop ALIS Chat Panel or Team Chat */}
         <div className="hidden lg:block h-[calc(100vh-57px)]">
           {showTeamChat ? (
             <TeamChatPanel 
@@ -162,6 +168,34 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Mobile FAB for ALIS */}
+      <MobileALISFab 
+        onClick={() => setMobileALISOpen(true)}
+        hasUnread={aiChat.messages.length > 0 && !mobileALISOpen}
+      />
+
+      {/* Mobile ALIS Sheet */}
+      <MobileALISSheet
+        open={mobileALISOpen}
+        onOpenChange={setMobileALISOpen}
+        showTeamChat={mobileShowTeamChat}
+        onToggleTeamChat={setMobileShowTeamChat}
+        messages={aiChat.messages}
+        isTyping={aiChat.isStreaming}
+        onSendMessage={aiChat.sendMessage}
+        patientId={demoPatient.id}
+        patientName={demoPatient.name}
+        stagedOrders={stagedOrders}
+        clinicalNotes={clinicalNotes}
+        billingEvents={billingEvents}
+        onApproveOrder={handleApproveOrder}
+        onApproveAllOrders={handleApproveAllOrders}
+        onCancelOrder={handleCancelOrder}
+        onEditNote={handleEditNote}
+        onSignNote={handleSignNote}
+        onRequestConsult={() => setIsConsultModalOpen(true)}
+      />
 
       {/* Order Review Modal */}
       <OrderReviewModal
