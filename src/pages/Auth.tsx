@@ -12,11 +12,13 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const navigate = useNavigate();
   const { logLogin } = useAuditLog();
   const { user, loading: authLoading } = useAuth();
@@ -33,7 +35,14 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setResetEmailSent(true);
+        toast.success('Password reset link sent! Check your email.');
+      } else if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -60,6 +69,11 @@ export default function Auth() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBackToLogin = () => {
+    setIsForgotPassword(false);
+    setResetEmailSent(false);
   };
 
 
@@ -136,116 +150,175 @@ export default function Auth() {
                   <img src={alisLogo} alt="ALIS" className="h-10 w-10 object-contain" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground">
-                  {isLogin ? 'Welcome back' : 'Get started'}
+                  {isForgotPassword 
+                    ? 'Reset Password' 
+                    : isLogin 
+                      ? 'Welcome back' 
+                      : 'Get started'}
                 </h2>
                 <p className="text-muted-foreground mt-2">
-                  {isLogin 
-                    ? 'Sign in to access your clinical dashboard' 
-                    : 'Create your account to begin'}
+                  {isForgotPassword
+                    ? resetEmailSent 
+                      ? 'Check your email for the reset link'
+                      : 'Enter your email to receive a reset link'
+                    : isLogin 
+                      ? 'Sign in to access your clinical dashboard' 
+                      : 'Create your account to begin'}
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {!isLogin && (
+              {resetEmailSent ? (
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-success/20 flex items-center justify-center">
+                    <Mail className="h-8 w-8 text-success" />
+                  </div>
+                  <p className="text-muted-foreground mb-6">
+                    We've sent a password reset link to <strong>{email}</strong>
+                  </p>
+                  <Button
+                    onClick={handleBackToLogin}
+                    variant="outline"
+                    className="w-full h-12 rounded-xl"
+                  >
+                    Back to Sign In
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {!isLogin && !isForgotPassword && (
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
+                        Full Name
+                      </Label>
+                      <div className="relative group">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="fullName"
+                          type="text"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Dr. Jane Smith"
+                          className="pl-11 h-12 bg-secondary/50 border-border/50 rounded-xl focus:border-primary focus:ring-primary/20 transition-all"
+                          required={!isLogin}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
-                      Full Name
+                    <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                      Email
                     </Label>
                     <div className="relative group">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <Input
-                        id="fullName"
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Dr. Jane Smith"
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@hospital.com"
                         className="pl-11 h-12 bg-secondary/50 border-border/50 rounded-xl focus:border-primary focus:ring-primary/20 transition-all"
-                        required={!isLogin}
+                        required
                       />
                     </div>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                    Email
-                  </Label>
-                  <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@hospital.com"
-                      className="pl-11 h-12 bg-secondary/50 border-border/50 rounded-xl focus:border-primary focus:ring-primary/20 transition-all"
-                      required
-                    />
-                  </div>
-                </div>
+                  {!isForgotPassword && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                          Password
+                        </Label>
+                        {isLogin && (
+                          <button
+                            type="button"
+                            onClick={() => setIsForgotPassword(true)}
+                            className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                          >
+                            Forgot password?
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative group">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="pl-11 pr-11 h-12 bg-secondary/50 border-border/50 rounded-xl focus:border-primary focus:ring-primary/20 transition-all"
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                    Password
-                  </Label>
-                  <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="pl-11 pr-11 h-12 bg-secondary/50 border-border/50 rounded-xl focus:border-primary focus:ring-primary/20 transition-all"
-                      required
-                      minLength={6}
-                    />
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 rounded-xl btn-primary-gradient text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                        Please wait...
+                      </span>
+                    ) : isForgotPassword ? (
+                      'Send Reset Link'
+                    ) : isLogin ? (
+                      'Sign In'
+                    ) : (
+                      'Create Account'
+                    )}
+                  </Button>
+                </form>
+              )}
+
+              {!resetEmailSent && (
+                <div className="mt-8 text-center">
+                  {!isForgotPassword && (
+                    <>
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-border/50" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-4 text-muted-foreground">or</span>
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setIsLogin(!isLogin)}
+                        className="mt-6 text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
+                      >
+                        {isLogin 
+                          ? "Don't have an account? Sign up" 
+                          : 'Already have an account? Sign in'}
+                      </button>
+                    </>
+                  )}
+                  
+                  {isForgotPassword && (
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={handleBackToLogin}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      Back to Sign In
                     </button>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 rounded-xl btn-primary-gradient text-base font-semibold shadow-lg hover:shadow-xl transition-all"
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                      Please wait...
-                    </span>
-                  ) : (
-                    isLogin ? 'Sign In' : 'Create Account'
                   )}
-                </Button>
-              </form>
-
-              <div className="mt-8 text-center">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border/50" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-4 text-muted-foreground">or</span>
-                  </div>
                 </div>
-                
-                <button
-                  type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="mt-6 text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
-                >
-                  {isLogin 
-                    ? "Don't have an account? Sign up" 
-                    : 'Already have an account? Sign in'}
-                </button>
-              </div>
+              )}
             </div>
             
             {/* Footer */}
