@@ -58,15 +58,15 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
         </span>
 
         {message.actions && message.actions.length > 0 && (
-          <div className="flex gap-2 mt-2">
+          <div className="flex flex-wrap gap-2 mt-3">
             {message.actions.map((action, index) => (
               <Button
                 key={index}
                 variant={action.primary ? 'default' : 'outline'}
                 size="sm"
                 className={cn(
-                  'text-xs h-8 rounded-lg',
-                  action.primary && 'btn-primary-gradient'
+                  'text-xs h-9 rounded-lg font-medium transition-all',
+                  action.primary && 'btn-primary-gradient shadow-md hover:shadow-lg animate-pulse-subtle'
                 )}
                 onClick={() => onAction?.(action.action)}
               >

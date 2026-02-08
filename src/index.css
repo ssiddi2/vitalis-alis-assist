@@ -106,6 +106,21 @@
 }
 
 /* Animations */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out 3;
+}
+
 @keyframes pulse-glow {
   0%, 100% { 
     opacity: 1; 

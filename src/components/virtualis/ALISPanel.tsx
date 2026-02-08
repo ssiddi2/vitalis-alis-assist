@@ -7,7 +7,8 @@ import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { ClinicalNotesPanel } from './ClinicalNotesPanel';
 import { BillingPanel } from './BillingPanel';
 import { Button } from '@/components/ui/button';
-import { Send, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Send, PanelLeftClose, PanelLeft, Zap, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
 
 interface ALISPanelProps {
@@ -142,6 +143,26 @@ export function ALISPanel({
               <span className="text-[10px] text-muted-foreground font-medium">Online</span>
             </div>
           </div>
+        </div>
+
+        {/* Mode Banner */}
+        <div className={cn(
+          "px-4 py-2 text-xs flex items-center gap-2 border-b transition-colors",
+          isAIMode 
+            ? "bg-primary/5 border-primary/20 text-primary" 
+            : "bg-warning/10 border-warning/20 text-warning-foreground"
+        )}>
+          {isAIMode ? (
+            <>
+              <Zap className="w-3 h-3 flex-shrink-0" />
+              <span><strong>AI Live:</strong> Ask me anything about this patient's clinical data</span>
+            </>
+          ) : (
+            <>
+              <FileText className="w-3 h-3 flex-shrink-0" />
+              <span><strong>Demo Mode:</strong> Use action buttons or switch to AI Live for free chat</span>
+            </>
+          )}
         </div>
 
         {/* Messages */}

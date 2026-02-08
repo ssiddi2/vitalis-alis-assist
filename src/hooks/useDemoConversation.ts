@@ -120,24 +120,50 @@ export function useDemoConversation(scenario: DemoScenario) {
         },
       ]);
 
-      // Generate generic response
+      // Generate scenario-aware response
       setIsTyping(true);
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 1200));
       setIsTyping(false);
 
-      let response =
-        "I can help you with that. In production, I would access real-time clinical data and provide evidence-based guidance.";
+      let response = '';
 
-      const lowerContent = content.toLowerCase();
-      if (lowerContent.includes('why')) {
-        response =
-          "Every recommendation I make is backed by specific clinical data points. I synthesize information across nursing assessments, lab values, imaging, medications, and prior records—all with source attribution and timestamps.";
-      } else if (lowerContent.includes('source')) {
-        response =
-          "I maintain full audit trails of every data point used in my analysis. All sources are linked, timestamped, and accessible for review through Virtualis.";
-      } else if (lowerContent.includes('trend')) {
-        response =
-          "I track clinical trajectories by continuously analyzing data streams from all systems. I look for patterns that span time, roles, and departments—the kind of subtle changes that traditional alerts miss.";
+      // Scenario and state-specific helpful responses
+      if (scenario === 'day1') {
+        response = `I'm currently monitoring Margaret for any changes after her admission.
+
+**Try:** Select **"Day 2 - Trajectory Shift"** from the scenario dropdown to see how I detect concerning clinical patterns.
+
+Or switch to **AI Live** mode (top bar) for real-time AI chat.`;
+      } else if (scenario === 'day2') {
+        if (conversationState === 'initial') {
+          response = `Great question! I have important findings to share about Margaret's trajectory.
+
+Click the **"Show me"** button above to see my analysis, or switch to **AI Live** mode in the top bar for real-time AI chat.`;
+        } else if (conversationState === 'analysis' || conversationState === 'sources') {
+          response = `I can prepare a complete PE workup bundle for Margaret.
+
+Click **"Yes, prepare orders"** above to continue, or ask me specific questions in **AI Live** mode.`;
+        } else if (conversationState === 'orders') {
+          response = `The orders are staged and ready for your review.
+
+Click **"Review & Approve Orders"** above to see the complete workup bundle.`;
+        } else {
+          response = `I'm here to help with Margaret's care.
+
+Use the action buttons in messages above to continue, or switch to **AI Live** for free-form questions.`;
+        }
+      } else if (scenario === 'prevention') {
+        response = `This case demonstrates successful early PE detection.
+
+**Try:** Switch to **"Day 2 - Trajectory Shift"** to see how I identified the concerning pattern, or enable **AI Live** to ask questions.`;
+      } else {
+        // Generic but helpful fallback
+        response = `I'm in **Demo Mode**, following a scripted clinical scenario.
+
+**Try:**
+• Using the action buttons in messages above
+• Switching to **AI Live** (top bar) for free-form AI chat
+• Selecting a different scenario from the dropdown`;
       }
 
       setMessages((prev) => [
@@ -150,7 +176,7 @@ export function useDemoConversation(scenario: DemoScenario) {
         },
       ]);
     },
-    []
+    [scenario, conversationState]
   );
 
   return {
