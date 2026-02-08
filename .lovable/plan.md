@@ -1,268 +1,182 @@
 
-# Audit Logging for PHI Access - HIPAA Compliance
 
-## Overview
+# Fix ALIS Chat Experience
 
-This plan implements comprehensive audit logging to track all Protected Health Information (PHI) access, modifications, and clinical actions. This is a critical requirement for **HIPAA compliance** (45 CFR 164.312(b) - Audit Controls).
+## Problem Identified
 
----
+When chatting with ALIS in **Demo Mode**, you're getting generic responses like:
+> "I can help you with that. In production, I would access real-time clinical data..."
 
-## What Gets Logged
-
-### High-Priority PHI Tables (Automatic Logging)
-| Table | Actions Logged | PHI Sensitivity |
-|-------|---------------|-----------------|
-| `patients` | SELECT, INSERT, UPDATE, DELETE | High |
-| `clinical_notes` | SELECT, INSERT, UPDATE, DELETE | High |
-| `staged_orders` | SELECT, INSERT, UPDATE, DELETE | High |
-| `billing_events` | SELECT, INSERT, UPDATE, DELETE | High |
-| `conversations` | INSERT, UPDATE, DELETE | Medium |
-| `messages` | INSERT | Medium |
-
-### Captured Data Points
-- **Who**: User ID, IP address, user agent
-- **What**: Action type, table name, record ID
-- **When**: Timestamp with timezone
-- **Where**: Hospital context, session ID
-- **Why**: Action metadata (e.g., "viewed patient chart", "signed note")
+This happens because Demo Mode is designed for **scripted button-driven flows**, not free-form chat. The fallback responses are confusing and unhelpful.
 
 ---
 
-## Database Schema
+## Root Cause
 
-### New Table: `audit_logs`
+In `useDemoConversation.ts`, the `handleDemoMessage` function has hardcoded fallback responses for any typed message:
 
-```text
-audit_logs
-├── id (UUID, primary key)
-├── user_id (UUID, references auth.users)
-├── hospital_id (UUID, nullable)
-├── action_type (enum: view, create, update, delete, export, sign, approve)
-├── resource_type (text: patient, clinical_note, staged_order, etc.)
-├── resource_id (UUID)
-├── patient_id (UUID, nullable - for quick patient-level queries)
-├── metadata (JSONB - additional context)
-├── ip_address (INET)
-├── user_agent (TEXT)
-├── session_id (TEXT)
-├── created_at (TIMESTAMPTZ)
+```typescript
+let response = "I can help you with that. In production, I would access...";
 ```
 
-### Action Type Enum
-```text
-audit_action_type:
-  - view          (accessed/read data)
-  - create        (inserted new record)
-  - update        (modified existing record)
-  - delete        (removed record)
-  - export        (downloaded/exported data)
-  - sign          (signed clinical note)
-  - approve       (approved order)
-  - login         (user authentication)
-  - logout        (user sign out)
-```
+This creates two problems:
+1. Free-form typing feels broken in Demo Mode
+2. Users don't realize they need to click "AI Live" for real AI responses
 
 ---
 
-## Implementation Components
+## Solution
 
-### 1. Database Triggers (Automatic Logging)
+### Two-Pronged Approach
 
-Create triggers on PHI tables to automatically log INSERT, UPDATE, DELETE operations:
+**Option A: Improve Demo Mode** - Make it clear that Demo Mode is scripted and guide users to use the action buttons
 
-```text
-For each PHI table:
-  AFTER INSERT  → log 'create' action
-  AFTER UPDATE  → log 'update' action with old/new values
-  AFTER DELETE  → log 'delete' action with deleted data
-```
+**Option B: Default to AI Mode** - Start users in AI Mode so they get real responses immediately
 
-Key benefit: Catches all data changes regardless of how they're made (API, edge function, direct SQL).
-
-### 2. Client-Side View Logging
-
-Add explicit logging calls when users view PHI:
-- Patient dashboard access
-- Clinical notes opened
-- Orders reviewed
-- Billing data viewed
-
-### 3. Edge Function for Audit Logging
-
-Create `audit-log` edge function that:
-- Receives audit events from the client
-- Validates user authentication
-- Enriches with IP/user-agent
-- Writes to `audit_logs` table
-
-### 4. RLS Policies for Audit Table
-
-- **SELECT**: Only admins and compliance officers can query logs
-- **INSERT**: Authenticated users can write (via security definer function)
-- **UPDATE/DELETE**: No one (logs are immutable)
+I recommend **Option A** + better UX guidance
 
 ---
 
-## Architecture Diagram
+## Implementation Plan
+
+### 1. Improve Demo Mode Fallback Responses
+
+Instead of generic "in production" responses, provide helpful guidance:
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                        USER ACTIONS                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│   │ View Patient│    │ Sign Note   │    │ Approve Order│        │
-│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘        │
-│          │                  │                  │                │
-│          ▼                  ▼                  ▼                │
-│   ┌─────────────────────────────────────────────────────┐      │
-│   │              useAuditLog Hook (Client)              │      │
-│   │  - Captures action context                          │      │
-│   │  - Includes session/browser info                    │      │
-│   └───────────────────────┬─────────────────────────────┘      │
-│                           │                                     │
-└───────────────────────────┼─────────────────────────────────────┘
-                            ▼
-              ┌─────────────────────────┐
-              │  audit-log Edge Function │
-              │  - Validates auth token  │
-              │  - Extracts IP/UA        │
-              │  - Writes to database    │
-              └────────────┬────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     DATABASE LAYER                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐  │
-│   │                    audit_logs Table                      │  │
-│   │  - Immutable (no UPDATE/DELETE allowed)                  │  │
-│   │  - Indexed for fast queries                              │  │
-│   │  - Admin-only read access                                │  │
-│   └─────────────────────────────────────────────────────────┘  │
-│                           ▲                                     │
-│                           │                                     │
-│   ┌───────────────────────┴───────────────────────────────┐    │
-│   │              Database Triggers                         │    │
-│   │  - patients_audit_trigger                              │    │
-│   │  - clinical_notes_audit_trigger                        │    │
-│   │  - staged_orders_audit_trigger                         │    │
-│   │  - billing_events_audit_trigger                        │    │
-│   └────────────────────────────────────────────────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+Before (current):
+"I can help you with that. In production, I would access real-time clinical data..."
+
+After (improved):
+"In Demo Mode, I follow a scripted clinical scenario to showcase ALIS capabilities.
+
+To explore this case:
+• Click 'Show me' above to see my trajectory analysis
+• Or switch to **AI Live** mode (button in top bar) for real-time AI responses
+
+Would you like me to continue with the demonstration?"
 ```
+
+### 2. Add Visual Mode Indicator in Chat
+
+Add a small banner at the top of the chat that explains the current mode:
+
+**Demo Mode banner:**
+```text
+📝 Demo Mode: Following a scripted PE detection scenario. 
+   Use action buttons below or switch to "AI Live" for free-form chat.
+```
+
+**AI Live banner:**
+```text
+⚡ AI Live: Ask me anything about this patient's clinical data.
+```
+
+### 3. Better Action Button Visibility
+
+When the initial message has action buttons (like "Show me"), make them more prominent with:
+- Pulsing/glowing effect on primary action
+- Clear CTA styling
+
+### 4. Scenario-Aware Fallback Messages
+
+Make fallback responses match the current scenario:
+
+| Scenario | Better Fallback |
+|----------|-----------------|
+| Day 1 | "I'm currently monitoring Margaret for any changes. Try selecting 'Day 2 - Trajectory Shift' from the dropdown to see how I detect concerning patterns." |
+| Day 2 | "Let me walk you through my analysis. Click 'Show me' above to see the trajectory concerns I've identified." |
+| Prevention | "The case has concluded successfully. Switch to 'Day 2' to see how I detected the PE, or enable 'AI Live' to ask questions." |
 
 ---
 
-## New Files to Create
+## File Changes
 
-### Database Migration
-- `supabase/migrations/[timestamp]_audit_logging.sql`
-  - Create `audit_action_type` enum
-  - Create `audit_logs` table with proper indexes
-  - Create `log_audit_event` security definer function
-  - Create triggers for automatic logging on PHI tables
-  - RLS policies (admin read, authenticated insert via function)
-
-### Edge Function
-- `supabase/functions/audit-log/index.ts`
-  - POST endpoint for client-side audit events
-  - Extracts IP from x-forwarded-for header
-  - Validates auth token
-  - Writes to `audit_logs` via service role
-
-### React Hook
-- `src/hooks/useAuditLog.ts`
-  - `logView(resourceType, resourceId, patientId?)` - for viewing
-  - `logAction(actionType, resourceType, resourceId, metadata?)` - for actions
-  - Automatically includes hospital context
-
-### Updated Components
-- `PatientDashboard.tsx` - log patient view
-- `ClinicalNotesPanel.tsx` - log note access and signing
-- `StagedOrdersPanel.tsx` - log order views and approvals
-- `BillingPanel.tsx` - log billing data access
-- `Auth.tsx` - log login events
-- `useAuth.ts` - log logout events
+| File | Change |
+|------|--------|
+| `src/hooks/useDemoConversation.ts` | Smarter fallback responses based on scenario and conversation state |
+| `src/components/virtualis/ALISPanel.tsx` | Add mode indicator banner at top of chat |
+| `src/components/virtualis/ChatMessage.tsx` | Make action buttons more prominent with animations |
 
 ---
 
-## Technical Specifications
+## Technical Details
 
-### Indexes for Query Performance
+### Updated `handleDemoMessage` function
 
-```text
-idx_audit_logs_user_id        - Query by who
-idx_audit_logs_patient_id     - Query by patient
-idx_audit_logs_resource       - Query by resource_type + resource_id
-idx_audit_logs_created_at     - Query by time range
-idx_audit_logs_hospital       - Query by facility
+```typescript
+const handleDemoMessage = useCallback(
+  async (content: string) => {
+    // ... add user message ...
+
+    let response = '';
+    
+    // Scenario-specific helpful responses
+    if (conversationState === 'initial' && scenario === 'day2') {
+      response = `Great question! I have important findings to share about Margaret's trajectory.
+
+Click the **"Show me"** button above to see my analysis, or switch to **AI Live** mode in the top bar for real-time AI chat.`;
+    } else if (conversationState === 'analysis') {
+      response = `I can prepare a complete PE workup bundle. Click **"Yes, prepare orders"** above to continue, or ask me specific questions in AI Live mode.`;
+    } else {
+      // Generic but helpful fallback
+      response = `I'm in Demo Mode, following a scripted scenario. 
+
+Try:
+• Using the action buttons in messages above
+• Switching to **AI Live** (top bar) for free-form AI chat
+• Selecting a different scenario from the dropdown`;
+    }
+    
+    // ... add response message ...
+  },
+  [conversationState, scenario]
+);
 ```
 
-### Security Definer Function
+### Mode Indicator Component
 
-```text
-log_audit_event(
-  p_action_type audit_action_type,
-  p_resource_type text,
-  p_resource_id uuid,
-  p_patient_id uuid DEFAULT NULL,
-  p_hospital_id uuid DEFAULT NULL,
-  p_metadata jsonb DEFAULT '{}'
-)
-```
-
-This function runs with elevated privileges to insert into the audit log regardless of RLS policies.
-
-### Metadata Examples
-
-```text
-View Patient:
-  { "view_type": "dashboard", "duration_ms": 45000 }
-
-Sign Note:
-  { "note_type": "progress", "signature_method": "password" }
-
-Approve Order:
-  { "order_type": "imaging", "priority": "stat" }
+```tsx
+{/* Mode Banner */}
+<div className={cn(
+  "px-4 py-2 text-xs flex items-center gap-2 border-b",
+  isAIMode 
+    ? "bg-primary/5 border-primary/20 text-primary" 
+    : "bg-amber-500/5 border-amber-500/20 text-amber-600"
+)}>
+  {isAIMode ? (
+    <>
+      <Zap className="w-3 h-3" />
+      <span>AI Live: Ask me anything about this patient</span>
+    </>
+  ) : (
+    <>
+      <FileText className="w-3 h-3" />
+      <span>Demo Mode: Use action buttons or switch to AI Live for free chat</span>
+    </>
+  )}
+</div>
 ```
 
 ---
 
-## HIPAA Compliance Mapping
+## User Flow After Fix
 
-| HIPAA Requirement | Implementation |
-|-------------------|----------------|
-| 164.312(b) - Audit Controls | `audit_logs` table with triggers |
-| 164.308(a)(1)(ii)(D) - Information Activity Review | Admin dashboard queries |
-| 164.312(d) - Person/Entity Authentication | `user_id` linked to auth.users |
-| 164.530(j) - Retention | 6-year retention policy (configurable) |
-
----
-
-## Implementation Order
-
-1. **Database Migration** - Create audit_logs table and triggers
-2. **Security Definer Function** - Enable secure insertions
-3. **Edge Function** - Handle client-side audit events
-4. **React Hook** - useAuditLog for consistent logging
-5. **Component Updates** - Add logging to PHI access points
-6. **Auth Integration** - Log login/logout events
+1. **User opens dashboard** → Demo Mode with Day 2 scenario
+2. **Sees mode banner** → "Demo Mode: Use action buttons..."
+3. **Types a message** → Gets helpful guidance pointing to buttons
+4. **Clicks "Show me"** → Scripted flow continues smoothly
+5. **OR clicks "AI Live"** → Switches to real AI mode
+6. **Types in AI Live** → Gets streaming real-time responses
 
 ---
 
-## Estimated Changes
+## Summary
 
-| File | Type | Description |
-|------|------|-------------|
-| `supabase/migrations/[timestamp]_audit_logging.sql` | New | Schema, triggers, RLS |
-| `supabase/functions/audit-log/index.ts` | New | Edge function |
-| `src/hooks/useAuditLog.ts` | New | Client-side hook |
-| `src/pages/Dashboard.tsx` | Edit | Add view logging |
-| `src/components/virtualis/ClinicalNotesPanel.tsx` | Edit | Log note actions |
-| `src/components/virtualis/StagedOrdersPanel.tsx` | Edit | Log order actions |
-| `src/components/virtualis/BillingPanel.tsx` | Edit | Log billing views |
-| `src/pages/Auth.tsx` | Edit | Log login events |
-| `src/hooks/useAuth.ts` | Edit | Log logout events |
+| What | How |
+|------|-----|
+| Clearer Demo Mode | Better fallback responses, mode banner |
+| Guided UX | Point users to action buttons or AI Live |
+| No confusion | Users understand the two modes |
+| Real AI works | AI Live mode uses streaming Gemini responses |
+
