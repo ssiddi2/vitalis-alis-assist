@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DemoScenario } from '@/types/clinical';
 import { StagedOrder, ClinicalNote, BillingEvent } from '@/types/hospital';
 import { demoPatient, scenarioData, peOrderBundle, progressNoteTemplate, demoStagedOrders, demoClinicalNotes, demoBillingEvents } from '@/data/demoData';
-import { useDemoConversation } from '@/hooks/useDemoConversation';
 import { useALISChat } from '@/hooks/useALISChat';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,13 +13,22 @@ import { OrderReviewModal } from '@/components/virtualis/OrderReviewModal';
 import { ProgressNoteModal } from '@/components/virtualis/ProgressNoteModal';
 import { Loader2 } from 'lucide-react';
 
+// Scenario-aware initial greetings for ALIS
+const getInitialGreeting = (scenario: DemoScenario, hospitalName?: string) => {
+  const greetings: Record<DemoScenario, string> = {
+    day1: `I'm monitoring Margaret Chen's pneumonia treatment at ${hospitalName || 'this facility'}. Her admission vitals and initial workup are available. Ask me about her current status, risk factors, or anything you'd like to explore.`,
+    day2: `I've identified concerning patterns in Margaret Chen's trajectory that warrant your attention. Her oxygen requirements are increasing despite treatment, and there are subtle signs that may indicate a developing PE. Would you like me to walk you through what I'm seeing?`,
+    prevention: `The PE workup for Margaret Chen has been completed successfully. The CT-PA confirmed bilateral pulmonary emboli, and anticoagulation has been initiated. Ask me about the case outcome, timeline, or any lessons learned.`,
+  };
+  return greetings[scenario];
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { selectedHospital } = useHospital();
   
-  const [scenario, setScenario] = useState<DemoScenario>('day1');
-  const [isAIMode, setIsAIMode] = useState(false);
+  const [scenario, setScenario] = useState<DemoScenario>('day2');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   
@@ -47,7 +55,6 @@ const Dashboard = () => {
   // Note handlers
   const handleEditNote = (noteId: string) => {
     console.log('Edit note:', noteId);
-    // Could open a modal for editing
   };
 
   const handleSignNote = (noteId: string) => {
@@ -65,10 +72,7 @@ const Dashboard = () => {
     }
   }, [user, authLoading, selectedHospital, navigate]);
 
-  // Demo mode conversation
-  const demoConversation = useDemoConversation(scenario);
-
-  // AI mode conversation - include hospital context
+  // AI chat with patient context
   const aiChat = useALISChat({
     patientContext: {
       patient: demoPatient,
@@ -79,64 +83,23 @@ const Dashboard = () => {
     },
   });
 
-  // Initialize demo conversation when scenario changes
+  // Initialize AI chat with scenario-aware greeting on mount and scenario change
   useEffect(() => {
-    if (!isAIMode) {
-      demoConversation.initializeConversation();
-    }
-  }, [scenario, isAIMode]);
-
-  // Switch AI mode with initial message
-  const handleAIModeToggle = useCallback(() => {
-    const newMode = !isAIMode;
-    setIsAIMode(newMode);
-    
-    if (newMode) {
-      aiChat.clearMessages();
-      aiChat.addInitialMessage(
-        `I'm ALIS, your ambient clinical intelligence assistant at ${selectedHospital?.name || 'this facility'}. I have access to ${demoPatient.name}'s current clinical data and can help you analyze patterns, prepare orders, or assist with documentation.\n\nWhat would you like to explore?`
-      );
-    }
-  }, [isAIMode, aiChat, selectedHospital]);
-
-  // Get current conversation state
-  const messages = isAIMode ? aiChat.messages : demoConversation.messages;
-  const isTyping = isAIMode ? aiChat.isStreaming : demoConversation.isTyping;
+    aiChat.clearMessages();
+    aiChat.addInitialMessage(getInitialGreeting(scenario, selectedHospital?.name));
+  }, [scenario, selectedHospital?.name]);
 
   // Get current scenario data
   const currentData = scenarioData[scenario];
 
-  // Handle ALIS actions (demo mode only)
-  const onAction = async (action: string) => {
-    if (isAIMode) return;
-    
-    const result = await demoConversation.handleAction(action);
-    if (result === 'openOrderModal') {
-      setIsOrderModalOpen(true);
-    } else if (result === 'openNoteModal') {
-      setIsNoteModalOpen(true);
-    }
-  };
-
-  // Handle sending messages
-  const onSendMessage = (message: string) => {
-    if (isAIMode) {
-      aiChat.sendMessage(message);
-    } else {
-      demoConversation.handleDemoMessage(message);
-    }
-  };
-
-  // Handle order approval
+  // Handle order approval modal
   const onOrderApprove = () => {
     setIsOrderModalOpen(false);
-    demoConversation.handleOrdersApproved();
   };
 
-  // Handle note signing
+  // Handle note signing modal
   const onNoteSign = () => {
     setIsNoteModalOpen(false);
-    demoConversation.handleNoteSigned();
   };
 
   // Loading state
@@ -156,8 +119,6 @@ const Dashboard = () => {
       <TopBar
         scenario={scenario}
         onScenarioChange={setScenario}
-        isAIMode={isAIMode}
-        onAIModeToggle={handleAIModeToggle}
       />
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_700px] min-h-0">
@@ -171,11 +132,9 @@ const Dashboard = () => {
         {/* ALIS Chat Panel */}
         <div className="hidden lg:block h-[calc(100vh-57px)]">
           <ALISPanel
-            messages={messages}
-            isTyping={isTyping}
-            onSendMessage={onSendMessage}
-            onAction={onAction}
-            isAIMode={isAIMode}
+            messages={aiChat.messages}
+            isTyping={aiChat.isStreaming}
+            onSendMessage={aiChat.sendMessage}
             patientId={demoPatient.id}
             stagedOrders={stagedOrders}
             clinicalNotes={clinicalNotes}

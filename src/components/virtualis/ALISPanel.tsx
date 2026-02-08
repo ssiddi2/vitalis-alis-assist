@@ -7,7 +7,7 @@ import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { ClinicalNotesPanel } from './ClinicalNotesPanel';
 import { BillingPanel } from './BillingPanel';
 import { Button } from '@/components/ui/button';
-import { Send, PanelLeftClose, PanelLeft, Zap, FileText } from 'lucide-react';
+import { Send, PanelLeftClose, PanelLeft, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
 
@@ -15,8 +15,6 @@ interface ALISPanelProps {
   messages: ChatMessageType[];
   isTyping: boolean;
   onSendMessage: (message: string) => void;
-  onAction: (action: string) => void;
-  isAIMode: boolean;
   patientId?: string;
   stagedOrders?: StagedOrder[];
   clinicalNotes?: ClinicalNote[];
@@ -28,12 +26,18 @@ interface ALISPanelProps {
   onSignNote?: (noteId: string) => void;
 }
 
+// Suggested prompts to help users get started
+const SUGGESTED_PROMPTS = [
+  "What concerns you about this patient?",
+  "Summarize the clinical trajectory",
+  "What orders should I consider?",
+  "Draft a progress note",
+];
+
 export function ALISPanel({
   messages,
   isTyping,
   onSendMessage,
-  onAction,
-  isAIMode,
   patientId,
   stagedOrders = [],
   clinicalNotes = [],
@@ -127,11 +131,9 @@ export function ALISPanel({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-foreground text-sm">ALIS</span>
-                  {isAIMode && (
-                    <span className="text-[9px] px-2 py-0.5 bg-primary/10 text-primary rounded-full uppercase font-bold tracking-wider border border-primary/20">
-                      Live AI
-                    </span>
-                  )}
+                  <span className="text-[9px] px-2 py-0.5 bg-primary/10 text-primary rounded-full uppercase font-bold tracking-wider border border-primary/20">
+                    AI Powered
+                  </span>
                 </div>
                 <span className="text-[10px] text-muted-foreground">
                   Ambient Clinical Intelligence
@@ -145,24 +147,10 @@ export function ALISPanel({
           </div>
         </div>
 
-        {/* Mode Banner */}
-        <div className={cn(
-          "px-4 py-2 text-xs flex items-center gap-2 border-b transition-colors",
-          isAIMode 
-            ? "bg-primary/5 border-primary/20 text-primary" 
-            : "bg-warning/10 border-warning/20 text-warning-foreground"
-        )}>
-          {isAIMode ? (
-            <>
-              <Zap className="w-3 h-3 flex-shrink-0" />
-              <span><strong>AI Live:</strong> Ask me anything about this patient's clinical data</span>
-            </>
-          ) : (
-            <>
-              <FileText className="w-3 h-3 flex-shrink-0" />
-              <span><strong>Demo Mode:</strong> Use action buttons or switch to AI Live for free chat</span>
-            </>
-          )}
+        {/* Suggested Prompts */}
+        <div className="px-4 py-2 text-xs flex items-center gap-2 border-b bg-primary/5 border-primary/20">
+          <Zap className="w-3 h-3 flex-shrink-0 text-primary" />
+          <span className="text-primary"><strong>AI Powered:</strong> Ask me anything about this patient</span>
         </div>
 
         {/* Messages */}
@@ -183,7 +171,6 @@ export function ALISPanel({
               <ChatMessage
                 key={message.id}
                 message={message}
-                onAction={onAction}
               />
             ))}
             {isTyping && <TypingIndicator />}
@@ -199,7 +186,7 @@ export function ALISPanel({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isAIMode ? "Ask ALIS anything..." : "Type a message..."}
+                placeholder="Ask ALIS anything..."
                 rows={1}
                 className="w-full px-3 py-2.5 pr-10 bg-secondary/50 border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 style={{ minHeight: '44px', maxHeight: '100px' }}
