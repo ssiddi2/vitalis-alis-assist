@@ -24,11 +24,9 @@ import virtualisLogo from '@/assets/virtualis-logo.png';
 interface TopBarProps {
   scenario: DemoScenario;
   onScenarioChange: (scenario: DemoScenario) => void;
-  isAIMode: boolean;
-  onAIModeToggle: () => void;
 }
 
-export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }: TopBarProps) {
+export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
   const [currentTime, setCurrentTime] = useState('');
   const { user, role, signOut, isAdmin } = useAuth();
   const { selectedHospital, setSelectedHospital } = useHospital();
@@ -130,20 +128,11 @@ export function TopBar({ scenario, onScenarioChange, isAIMode, onAIModeToggle }:
           </SelectContent>
         </Select>
 
-        {/* AI Mode Toggle */}
-        <Button
-          onClick={onAIModeToggle}
-          variant={isAIMode ? 'default' : 'outline'}
-          size="sm"
-          className={`rounded-xl h-9 px-4 gap-2 transition-all duration-300 ${
-            isAIMode
-              ? 'btn-primary-gradient'
-              : 'bg-secondary/50 border-border hover:bg-secondary'
-          }`}
-        >
-          <Zap className={`w-3.5 h-3.5 ${isAIMode ? 'animate-pulse' : ''}`} />
-          {isAIMode ? 'AI Live' : 'Demo Mode'}
-        </Button>
+        {/* AI Status Indicator */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
+          <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+          <span className="text-xs font-medium text-primary">AI Powered</span>
+        </div>
 
         {/* Time Display */}
         <div className="font-mono text-xs text-muted-foreground px-4 py-2 bg-secondary/50 border border-border rounded-xl">

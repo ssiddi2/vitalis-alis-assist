@@ -1,16 +1,14 @@
 import { ChatMessage as ChatMessageType } from '@/types/clinical';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import alisLogo from '@/assets/alis-logo.png';
 
 interface ChatMessageProps {
   message: ChatMessageType;
-  onAction?: (action: string) => void;
 }
 
-export function ChatMessage({ message, onAction }: ChatMessageProps) {
+export function ChatMessage({ message }: ChatMessageProps) {
   const isAlis = message.role === 'alis';
 
   return (
@@ -56,25 +54,6 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
         <span className="text-[10px] font-mono text-muted-foreground mt-1.5 px-1">
           {message.timestamp}
         </span>
-
-        {message.actions && message.actions.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {message.actions.map((action, index) => (
-              <Button
-                key={index}
-                variant={action.primary ? 'default' : 'outline'}
-                size="sm"
-                className={cn(
-                  'text-xs h-9 rounded-lg font-medium transition-all',
-                  action.primary && 'btn-primary-gradient shadow-md hover:shadow-lg animate-pulse-subtle'
-                )}
-                onClick={() => onAction?.(action.action)}
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
