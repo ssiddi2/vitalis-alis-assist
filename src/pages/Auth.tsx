@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, User, Sparkles } from 'lucide-react';
 import virtualisLogo from '@/assets/virtualis-logo.png';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,6 +17,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { logLogin } = useAuditLog();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +30,7 @@ export default function Auth() {
           password,
         });
         if (error) throw error;
+        logLogin(); // Log successful login for HIPAA audit
         toast.success('Welcome back!');
         navigate('/');
       } else {

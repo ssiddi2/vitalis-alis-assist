@@ -1,14 +1,29 @@
+import { useEffect } from 'react';
 import { DollarSign, TrendingUp, FileCheck } from 'lucide-react';
 import { BillingEvent } from '@/types/hospital';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface BillingPanelProps {
   billingEvents: BillingEvent[];
+  patientId?: string;
 }
 
-export function BillingPanel({ billingEvents }: BillingPanelProps) {
+export function BillingPanel({ billingEvents, patientId }: BillingPanelProps) {
+  const { logView } = useAuditLog();
+  
   const totalRevenue = billingEvents.reduce((sum, event) => sum + (event.estimated_revenue || 0), 0);
   const pendingCount = billingEvents.filter(e => e.status === 'pending').length;
   const submittedCount = billingEvents.filter(e => e.status === 'submitted' || e.status === 'accepted').length;
+
+  // Log view of billing data for HIPAA audit
+  useEffect(() => {
+    if (billingEvents.length > 0 && patientId) {
+      logView('billing_event', billingEvents[0].id, patientId, {
+        event_count: billingEvents.length,
+        total_revenue: totalRevenue,
+      });
+    }
+  }, [billingEvents, patientId, logView, totalRevenue]);
 
   return (
     <div className="glass rounded-xl p-4 border border-border/50">

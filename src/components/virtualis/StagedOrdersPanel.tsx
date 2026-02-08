@@ -1,9 +1,12 @@
-import { ClipboardList, Check, X, AlertCircle } from 'lucide-react';
+import { useEffect } from 'react';
+import { ClipboardList, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StagedOrder, OrderStatus } from '@/types/hospital';
+import { StagedOrder } from '@/types/hospital';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface StagedOrdersPanelProps {
   orders: StagedOrder[];
+  patientId?: string;
   onApprove?: (orderId: string) => void;
   onApproveAll?: () => void;
   onCancel?: (orderId: string) => void;
@@ -15,8 +18,53 @@ const PRIORITY_COLORS: Record<string, string> = {
   Routine: 'text-muted-foreground bg-muted border-border',
 };
 
-export function StagedOrdersPanel({ orders, onApprove, onApproveAll, onCancel }: StagedOrdersPanelProps) {
+export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, onCancel }: StagedOrdersPanelProps) {
+  const { logView, logApprove, logAction } = useAuditLog();
   const pendingOrders = orders.filter(o => o.status === 'staged');
+
+  // Log view of staged orders for HIPAA audit
+  useEffect(() => {
+    if (pendingOrders.length > 0 && patientId) {
+      logView('staged_order', pendingOrders[0].id, patientId, {
+        order_count: pendingOrders.length,
+      });
+    }
+  }, [pendingOrders, patientId, logView]);
+
+  const handleApprove = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (patientId && order) {
+      logApprove('staged_order', orderId, patientId, {
+        order_type: order.order_type,
+        priority: order.order_data?.priority,
+      });
+    }
+    onApprove?.(orderId);
+  };
+
+  const handleApproveAll = () => {
+    pendingOrders.forEach(order => {
+      if (patientId) {
+        logApprove('staged_order', order.id, patientId, {
+          order_type: order.order_type,
+          priority: order.order_data?.priority,
+          batch_approval: true,
+        });
+      }
+    });
+    onApproveAll?.();
+  };
+
+  const handleCancel = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (patientId && order) {
+      logAction('delete', 'staged_order', orderId, patientId, {
+        order_type: order.order_type,
+        action: 'cancelled',
+      });
+    }
+    onCancel?.(orderId);
+  };
 
   if (pendingOrders.length === 0) {
     return (
@@ -71,13 +119,13 @@ export function StagedOrdersPanel({ orders, onApprove, onApproveAll, onCancel }:
               </div>
               <div className="flex gap-1">
                 <button
-                  onClick={() => onCancel?.(order.id)}
+                  onClick={() => handleCancel(order.id)}
                   className="p-1 rounded hover:bg-critical/10 text-muted-foreground hover:text-critical transition-colors"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => onApprove?.(order.id)}
+                  onClick={() => handleApprove(order.id)}
                   className="p-1 rounded hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"
                 >
                   <Check className="h-3.5 w-3.5" />
@@ -90,7 +138,7 @@ export function StagedOrdersPanel({ orders, onApprove, onApproveAll, onCancel }:
 
       {pendingOrders.length > 1 && (
         <Button
-          onClick={onApproveAll}
+          onClick={handleApproveAll}
           size="sm"
           className="w-full mt-3 h-8 text-xs rounded-lg btn-primary-gradient"
         >

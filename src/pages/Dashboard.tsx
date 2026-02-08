@@ -176,6 +176,7 @@ const Dashboard = () => {
             onSendMessage={onSendMessage}
             onAction={onAction}
             isAIMode={isAIMode}
+            patientId={demoPatient.id}
             stagedOrders={stagedOrders}
             clinicalNotes={clinicalNotes}
             billingEvents={billingEvents}

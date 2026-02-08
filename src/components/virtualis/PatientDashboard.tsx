@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { Patient, ClinicalInsight, ClinicalTrend } from '@/types/clinical';
 import { PatientHeader } from './PatientHeader';
 import { InsightCard } from './InsightCard';
 import { ClinicalTrends } from './ClinicalTrends';
 import { Brain, TrendingUp } from 'lucide-react';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface PatientDashboardProps {
   patient: Patient;
@@ -11,6 +13,19 @@ interface PatientDashboardProps {
 }
 
 export function PatientDashboard({ patient, insights, trends }: PatientDashboardProps) {
+  const { logView } = useAuditLog();
+
+  // Log patient view for HIPAA audit trail
+  useEffect(() => {
+    if (patient?.id) {
+      logView('patient', patient.id, patient.id, {
+        view_type: 'dashboard',
+        patient_name: patient.name,
+        mrn: patient.mrn,
+      });
+    }
+  }, [patient?.id, logView]);
+
   return (
     <div className="bg-background p-8 overflow-y-auto relative">
       {/* Subtle background pattern */}

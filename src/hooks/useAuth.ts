@@ -77,6 +77,8 @@ export function useAuth() {
   }, [fetchUserRole]);
 
   const signOut = useCallback(async () => {
+    // Note: Audit logging for logout is handled by the component calling signOut
+    // to avoid circular dependency with useAuditLog
     await supabase.auth.signOut();
   }, []);
 

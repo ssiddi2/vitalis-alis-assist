@@ -16,6 +16,7 @@ interface ALISPanelProps {
   onSendMessage: (message: string) => void;
   onAction: (action: string) => void;
   isAIMode: boolean;
+  patientId?: string;
   stagedOrders?: StagedOrder[];
   clinicalNotes?: ClinicalNote[];
   billingEvents?: BillingEvent[];
@@ -32,6 +33,7 @@ export function ALISPanel({
   onSendMessage,
   onAction,
   isAIMode,
+  patientId,
   stagedOrders = [],
   clinicalNotes = [],
   billingEvents = [],
@@ -88,16 +90,18 @@ export function ALISPanel({
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             <StagedOrdersPanel
               orders={stagedOrders}
+              patientId={patientId}
               onApprove={onApproveOrder}
               onApproveAll={onApproveAllOrders}
               onCancel={onCancelOrder}
             />
             <ClinicalNotesPanel
               notes={clinicalNotes}
+              patientId={patientId}
               onEdit={onEditNote}
               onSign={onSignNote}
             />
-            <BillingPanel billingEvents={billingEvents} />
+            <BillingPanel billingEvents={billingEvents} patientId={patientId} />
           </div>
         </div>
       )}
