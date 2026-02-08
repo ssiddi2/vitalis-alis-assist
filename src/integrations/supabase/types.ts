@@ -128,6 +128,35 @@ export type Database = {
           },
         ]
       }
+      channel_members: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "team_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_participants: {
         Row: {
           consultant_id: string | null
@@ -227,6 +256,83 @@ export type Database = {
           },
         ]
       }
+      consult_requests: {
+        Row: {
+          channel_id: string | null
+          consultant_id: string | null
+          created_at: string
+          hospital_id: string
+          id: string
+          patient_id: string
+          reason: string
+          requesting_user_id: string
+          response_time_minutes: number | null
+          specialty: string
+          status: Database["public"]["Enums"]["consult_status"]
+          updated_at: string
+          urgency: Database["public"]["Enums"]["consult_urgency"]
+        }
+        Insert: {
+          channel_id?: string | null
+          consultant_id?: string | null
+          created_at?: string
+          hospital_id: string
+          id?: string
+          patient_id: string
+          reason: string
+          requesting_user_id: string
+          response_time_minutes?: number | null
+          specialty: string
+          status?: Database["public"]["Enums"]["consult_status"]
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["consult_urgency"]
+        }
+        Update: {
+          channel_id?: string | null
+          consultant_id?: string | null
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          reason?: string
+          requesting_user_id?: string
+          response_time_minutes?: number | null
+          specialty?: string
+          status?: Database["public"]["Enums"]["consult_status"]
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["consult_urgency"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consult_requests_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "team_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consult_requests_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consult_requests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consult_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultants: {
         Row: {
           avatar_url: string | null
@@ -318,6 +424,83 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_conversations: {
+        Row: {
+          created_at: string
+          hospital_id: string
+          id: string
+          participant_1: string
+          participant_2: string
+          patient_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          hospital_id: string
+          id?: string
+          participant_1: string
+          participant_2: string
+          patient_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          participant_1?: string
+          participant_2?: string
+          patient_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_conversations_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_conversations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "direct_conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -571,6 +754,102 @@ export type Database = {
           },
         ]
       }
+      team_channels: {
+        Row: {
+          channel_type: Database["public"]["Enums"]["channel_type"]
+          created_at: string
+          created_by: string
+          hospital_id: string
+          id: string
+          name: string
+          patient_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel_type?: Database["public"]["Enums"]["channel_type"]
+          created_at?: string
+          created_by: string
+          hospital_id: string
+          id?: string
+          name: string
+          patient_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel_type?: Database["public"]["Enums"]["channel_type"]
+          created_at?: string
+          created_by?: string
+          hospital_id?: string
+          id?: string
+          name?: string
+          patient_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_channels_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_channels_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_messages: {
+        Row: {
+          channel_id: string
+          content: string
+          created_at: string
+          id: string
+          message_type: Database["public"]["Enums"]["team_message_type"]
+          read_by: Json | null
+          reply_to_id: string | null
+          sender_id: string
+        }
+        Insert: {
+          channel_id: string
+          content: string
+          created_at?: string
+          id?: string
+          message_type?: Database["public"]["Enums"]["team_message_type"]
+          read_by?: Json | null
+          reply_to_id?: string | null
+          sender_id: string
+        }
+        Update: {
+          channel_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: Database["public"]["Enums"]["team_message_type"]
+          read_by?: Json | null
+          reply_to_id?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "team_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "team_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -651,11 +930,15 @@ export type Database = {
         | "login"
         | "logout"
       billing_status: "pending" | "submitted" | "accepted" | "rejected"
+      channel_type: "patient_care" | "department" | "consult"
       chat_role: "clinician" | "consultant" | "alis"
+      consult_status: "pending" | "accepted" | "completed" | "cancelled"
+      consult_urgency: "routine" | "urgent" | "stat"
       emr_system: "epic" | "meditech" | "cerner"
       note_status: "draft" | "pending_signature" | "signed" | "amended"
       note_type: "progress" | "consult" | "discharge" | "procedure"
       order_status: "staged" | "approved" | "sent" | "cancelled"
+      team_message_type: "text" | "handoff" | "urgent" | "order_link"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -796,11 +1079,15 @@ export const Constants = {
         "logout",
       ],
       billing_status: ["pending", "submitted", "accepted", "rejected"],
+      channel_type: ["patient_care", "department", "consult"],
       chat_role: ["clinician", "consultant", "alis"],
+      consult_status: ["pending", "accepted", "completed", "cancelled"],
+      consult_urgency: ["routine", "urgent", "stat"],
       emr_system: ["epic", "meditech", "cerner"],
       note_status: ["draft", "pending_signature", "signed", "amended"],
       note_type: ["progress", "consult", "discharge", "procedure"],
       order_status: ["staged", "approved", "sent", "cancelled"],
+      team_message_type: ["text", "handoff", "urgent", "order_link"],
     },
   },
 } as const
