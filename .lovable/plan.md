@@ -1,284 +1,268 @@
 
-# Virtualis 2.0: Hospital-Based Clinical Intelligence Platform
+# Audit Logging for PHI Access - HIPAA Compliance
 
-## Vision Understanding
+## Overview
 
-You're building an **interoperable clinical intelligence layer** that sits on top of EMRs (Epic, Meditech, Cerner), enabling clinicians to:
-1. Select which hospital's patients to view
-2. Collaborate with consultants directly in the ALIS chat
-3. See real-time order staging and note generation alongside the conversation
-4. Track billing and revenue cycle metrics
+This plan implements comprehensive audit logging to track all Protected Health Information (PHI) access, modifications, and clinical actions. This is a critical requirement for **HIPAA compliance** (45 CFR 164.312(b) - Audit Controls).
 
 ---
 
-## Architecture Overview
+## What Gets Logged
+
+### High-Priority PHI Tables (Automatic Logging)
+| Table | Actions Logged | PHI Sensitivity |
+|-------|---------------|-----------------|
+| `patients` | SELECT, INSERT, UPDATE, DELETE | High |
+| `clinical_notes` | SELECT, INSERT, UPDATE, DELETE | High |
+| `staged_orders` | SELECT, INSERT, UPDATE, DELETE | High |
+| `billing_events` | SELECT, INSERT, UPDATE, DELETE | High |
+| `conversations` | INSERT, UPDATE, DELETE | Medium |
+| `messages` | INSERT | Medium |
+
+### Captured Data Points
+- **Who**: User ID, IP address, user agent
+- **What**: Action type, table name, record ID
+- **When**: Timestamp with timezone
+- **Where**: Hospital context, session ID
+- **Why**: Action metadata (e.g., "viewed patient chart", "signed note")
+
+---
+
+## Database Schema
+
+### New Table: `audit_logs`
 
 ```text
-+------------------+     +------------------+     +------------------+
-|   HOSPITAL A     |     |   HOSPITAL B     |     |   HOSPITAL C     |
-|   (Epic)         |     |   (Meditech)     |     |   (Cerner)       |
-+--------+---------+     +--------+---------+     +--------+---------+
-         |                        |                        |
-         +------------------------+------------------------+
-                                  |
-                     +------------v------------+
-                     |      VIRTUALIS LAYER    |
-                     |  (Interoperability Hub) |
-                     +------------+------------+
-                                  |
-              +-------------------+-------------------+
-              |                   |                   |
-    +---------v------+  +---------v------+  +---------v------+
-    | Patient List   |  | ALIS AI Chat   |  | Clinical Ops   |
-    | (by Hospital)  |  | + Consultants  |  | (Orders/Notes) |
-    +----------------+  +----------------+  +----------------+
+audit_logs
+├── id (UUID, primary key)
+├── user_id (UUID, references auth.users)
+├── hospital_id (UUID, nullable)
+├── action_type (enum: view, create, update, delete, export, sign, approve)
+├── resource_type (text: patient, clinical_note, staged_order, etc.)
+├── resource_id (UUID)
+├── patient_id (UUID, nullable - for quick patient-level queries)
+├── metadata (JSONB - additional context)
+├── ip_address (INET)
+├── user_agent (TEXT)
+├── session_id (TEXT)
+├── created_at (TIMESTAMPTZ)
+```
+
+### Action Type Enum
+```text
+audit_action_type:
+  - view          (accessed/read data)
+  - create        (inserted new record)
+  - update        (modified existing record)
+  - delete        (removed record)
+  - export        (downloaded/exported data)
+  - sign          (signed clinical note)
+  - approve       (approved order)
+  - login         (user authentication)
+  - logout        (user sign out)
 ```
 
 ---
 
-## Phase 1: Database Schema Expansion
+## Implementation Components
 
-### New Tables
+### 1. Database Triggers (Automatic Logging)
 
-**hospitals** - Multi-hospital support
-- `id`, `name`, `code`, `emr_system` (epic/meditech/cerner)
-- `address`, `logo_url`, `connection_status`
-
-**hospital_users** - User-hospital access mapping
-- `user_id`, `hospital_id`, `access_level`
-- Controls which hospitals each user can view
-
-**patients** - Enhanced with hospital relationship
-- Add `hospital_id` foreign key
-- Add `unit`, `attending_physician`, `care_team`
-
-**consultants** - Specialist directory
-- `id`, `hospital_id`, `specialty`, `name`, `pager`, `on_call_status`
-
-**chat_participants** - Multi-user chat support
-- `conversation_id`, `user_id`, `role` (clinician/consultant/alis)
-- `joined_at`, `is_active`
-
-**staged_orders** - Orders pending approval
-- `id`, `conversation_id`, `patient_id`
-- `order_type`, `order_data`, `status`, `created_by`
-
-**clinical_notes** - Generated documentation
-- `id`, `conversation_id`, `patient_id`
-- `note_type` (progress/consult/discharge), `content`, `status`
-
-**billing_events** - Revenue cycle tracking
-- `id`, `patient_id`, `note_id`, `cpt_codes`, `icd10_codes`
-- `estimated_revenue`, `status`
-
----
-
-## Phase 2: Hospital Selection Flow
-
-### After Login Experience
+Create triggers on PHI tables to automatically log INSERT, UPDATE, DELETE operations:
 
 ```text
-+------------------------------------------+
-|  Welcome, Dr. Smith                      |
-|                                          |
-|  Select a facility:                      |
-|                                          |
-|  +----------------------------------+    |
-|  | [Epic icon] Memorial Hospital    |    |
-|  | 24 patients | 3 alerts           |    |
-|  +----------------------------------+    |
-|                                          |
-|  +----------------------------------+    |
-|  | [Cerner icon] City Medical       |    |
-|  | 18 patients | 1 alert            |    |
-|  +----------------------------------+    |
-+------------------------------------------+
+For each PHI table:
+  AFTER INSERT  → log 'create' action
+  AFTER UPDATE  → log 'update' action with old/new values
+  AFTER DELETE  → log 'delete' action with deleted data
 ```
 
-### Components
-- **HospitalSelector page** - Grid of available hospitals with patient counts
-- **HospitalContext provider** - Manages selected hospital across the app
-- Patients filtered by `hospital_id` automatically
+Key benefit: Catches all data changes regardless of how they're made (API, edge function, direct SQL).
+
+### 2. Client-Side View Logging
+
+Add explicit logging calls when users view PHI:
+- Patient dashboard access
+- Clinical notes opened
+- Orders reviewed
+- Billing data viewed
+
+### 3. Edge Function for Audit Logging
+
+Create `audit-log` edge function that:
+- Receives audit events from the client
+- Validates user authentication
+- Enriches with IP/user-agent
+- Writes to `audit_logs` table
+
+### 4. RLS Policies for Audit Table
+
+- **SELECT**: Only admins and compliance officers can query logs
+- **INSERT**: Authenticated users can write (via security definer function)
+- **UPDATE/DELETE**: No one (logs are immutable)
 
 ---
 
-## Phase 3: Enhanced ALIS Panel - Two-Column Layout
-
-### Redesigned Layout
+## Architecture Diagram
 
 ```text
-+--------------------------------------------------+
-|  ALIS Panel                                      |
-+----------------------+---------------------------+
-|                      |                           |
-|  CLINICAL ACTIONS    |  CONVERSATION             |
-|                      |                           |
-|  +----------------+  |  [ALIS typing...]         |
-|  | STAGED ORDERS  |  |                           |
-|  | -------------  |  |  Based on trajectory,     |
-|  | CTA Chest STAT |  |  I recommend a PE workup  |
-|  | Labs panel     |  |                           |
-|  | [Approve All]  |  |  [Consult Cardiology]     |
-|  +----------------+  |                           |
-|                      |  +---------------------+  |
-|  +----------------+  |  | Dr. Patel (Cards)   |  |
-|  | PROGRESS NOTE  |  |  | joined the chat     |  |
-|  | -------------  |  |  +---------------------+  |
-|  | S: Increased.. |  |                           |
-|  | O: O2 4L NC... |  |  [Message input]          |
-|  | [Edit] [Sign]  |  |                           |
-|  +----------------+  |                           |
-|                      |                           |
-|  +----------------+  |                           |
-|  | BILLING        |  |                           |
-|  | Est. revenue   |  |                           |
-|  | $1,250         |  |                           |
-|  +----------------+  |                           |
-+----------------------+---------------------------+
-```
-
-### Key Features
-- **Left column**: Live-updating staged orders, notes, billing
-- **Right column**: Chat with ALIS and consultants
-- Real-time sync - orders appear as ALIS suggests them
-
----
-
-## Phase 4: Consultant Collaboration
-
-### Workflow
-1. User says: "Consult cardiology"
-2. ALIS identifies on-call cardiologist
-3. Sends notification (in-app + simulated page)
-4. Consultant joins chat as participant
-5. Three-way conversation: User + ALIS + Consultant
-
-### Implementation
-- Extend `alis-chat` edge function to detect consult requests
-- Create `notify-consultant` edge function
-- Add consultant avatar and messages to chat
-- For demo: Synthetic consultant responses with realistic delays
-
----
-
-## Phase 5: EMR Integration Details
-
-### Connection Types (for demo/presentation)
-
-**Epic** - FHIR R4 API
-- Patient demographics, encounters, observations
-- Problem list, medications, allergies
-- Real-time ADT notifications
-
-**Meditech** - HL7v2 / FHIR facade
-- Traditional HL7 messaging
-- Proprietary APIs via integration engine
-
-**Cerner** - FHIR R4 API
-- Similar to Epic FHIR capabilities
-- Millennium platform integration
-
-### Synthetic Data Structure
-```text
-Memorial Hospital (Epic)
-  - 12 patients across 3 units
-  - ICU, Med-Surg, Cardiac
-
-City Medical (Cerner)
-  - 8 patients across 2 units
-  - General Medicine, Oncology
-
-Regional Health (Meditech)
-  - 15 patients across 4 units
-  - ED, Surgical, Rehab, Long-term
+┌─────────────────────────────────────────────────────────────────┐
+│                        USER ACTIONS                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
+│   │ View Patient│    │ Sign Note   │    │ Approve Order│        │
+│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘        │
+│          │                  │                  │                │
+│          ▼                  ▼                  ▼                │
+│   ┌─────────────────────────────────────────────────────┐      │
+│   │              useAuditLog Hook (Client)              │      │
+│   │  - Captures action context                          │      │
+│   │  - Includes session/browser info                    │      │
+│   └───────────────────────┬─────────────────────────────┘      │
+│                           │                                     │
+└───────────────────────────┼─────────────────────────────────────┘
+                            ▼
+              ┌─────────────────────────┐
+              │  audit-log Edge Function │
+              │  - Validates auth token  │
+              │  - Extracts IP/UA        │
+              │  - Writes to database    │
+              └────────────┬────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     DATABASE LAYER                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────────────────────────────────────────────────┐  │
+│   │                    audit_logs Table                      │  │
+│   │  - Immutable (no UPDATE/DELETE allowed)                  │  │
+│   │  - Indexed for fast queries                              │  │
+│   │  - Admin-only read access                                │  │
+│   └─────────────────────────────────────────────────────────┘  │
+│                           ▲                                     │
+│                           │                                     │
+│   ┌───────────────────────┴───────────────────────────────┐    │
+│   │              Database Triggers                         │    │
+│   │  - patients_audit_trigger                              │    │
+│   │  - clinical_notes_audit_trigger                        │    │
+│   │  - staged_orders_audit_trigger                         │    │
+│   │  - billing_events_audit_trigger                        │    │
+│   └────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 6: UI Enhancements
+## New Files to Create
 
-### Larger Virtualis Logo
-- TopBar: 48px height (up from 40px)
-- Auth page: 96px height (up from 80px)
-- Add subtle animation on hover
+### Database Migration
+- `supabase/migrations/[timestamp]_audit_logging.sql`
+  - Create `audit_action_type` enum
+  - Create `audit_logs` table with proper indexes
+  - Create `log_audit_event` security definer function
+  - Create triggers for automatic logging on PHI tables
+  - RLS policies (admin read, authenticated insert via function)
 
-### Patient List View
-- Card-based design with hospital branding
-- Risk indicators, days since admission
-- Quick actions: View, Message, Orders
+### Edge Function
+- `supabase/functions/audit-log/index.ts`
+  - POST endpoint for client-side audit events
+  - Extracts IP from x-forwarded-for header
+  - Validates auth token
+  - Writes to `audit_logs` via service role
 
-### Futuristic Elements
-- Gradient mesh backgrounds
-- Animated connection lines between data sources
-- Pulse indicators for real-time data
+### React Hook
+- `src/hooks/useAuditLog.ts`
+  - `logView(resourceType, resourceId, patientId?)` - for viewing
+  - `logAction(actionType, resourceType, resourceId, metadata?)` - for actions
+  - Automatically includes hospital context
+
+### Updated Components
+- `PatientDashboard.tsx` - log patient view
+- `ClinicalNotesPanel.tsx` - log note access and signing
+- `StagedOrdersPanel.tsx` - log order views and approvals
+- `BillingPanel.tsx` - log billing data access
+- `Auth.tsx` - log login events
+- `useAuth.ts` - log logout events
 
 ---
 
-## Data Model Summary
+## Technical Specifications
+
+### Indexes for Query Performance
 
 ```text
-hospitals (new)
-  - id, name, code, emr_system, logo_url, connection_status
-
-hospital_users (new)
-  - user_id -> auth.users
-  - hospital_id -> hospitals
-  - access_level
-
-patients (enhanced)
-  - hospital_id -> hospitals (NEW)
-  - unit, attending_physician, care_team (NEW)
-
-consultants (new)
-  - hospital_id -> hospitals
-  - specialty, name, pager, on_call_status
-
-conversations (enhanced)
-  - hospital_id -> hospitals (NEW)
-
-chat_participants (new)
-  - conversation_id -> conversations
-  - user_id (nullable for consultants)
-  - consultant_id -> consultants (nullable)
-  - role, joined_at
-
-staged_orders (new)
-  - conversation_id -> conversations
-  - patient_id -> patients
-  - order_type, order_data, status, rationale
-
-clinical_notes (new)
-  - conversation_id -> conversations
-  - patient_id -> patients
-  - note_type, content (JSONB for SOAP), status
-
-billing_events (new)
-  - patient_id -> patients
-  - note_id -> clinical_notes
-  - cpt_codes, icd10_codes, estimated_revenue
+idx_audit_logs_user_id        - Query by who
+idx_audit_logs_patient_id     - Query by patient
+idx_audit_logs_resource       - Query by resource_type + resource_id
+idx_audit_logs_created_at     - Query by time range
+idx_audit_logs_hospital       - Query by facility
 ```
+
+### Security Definer Function
+
+```text
+log_audit_event(
+  p_action_type audit_action_type,
+  p_resource_type text,
+  p_resource_id uuid,
+  p_patient_id uuid DEFAULT NULL,
+  p_hospital_id uuid DEFAULT NULL,
+  p_metadata jsonb DEFAULT '{}'
+)
+```
+
+This function runs with elevated privileges to insert into the audit log regardless of RLS policies.
+
+### Metadata Examples
+
+```text
+View Patient:
+  { "view_type": "dashboard", "duration_ms": 45000 }
+
+Sign Note:
+  { "note_type": "progress", "signature_method": "password" }
+
+Approve Order:
+  { "order_type": "imaging", "priority": "stat" }
+```
+
+---
+
+## HIPAA Compliance Mapping
+
+| HIPAA Requirement | Implementation |
+|-------------------|----------------|
+| 164.312(b) - Audit Controls | `audit_logs` table with triggers |
+| 164.308(a)(1)(ii)(D) - Information Activity Review | Admin dashboard queries |
+| 164.312(d) - Person/Entity Authentication | `user_id` linked to auth.users |
+| 164.530(j) - Retention | 6-year retention policy (configurable) |
 
 ---
 
 ## Implementation Order
 
-1. ✅ **Database migration** - Create all new tables with RLS
-2. ✅ **Synthetic data seeding** - 3 hospitals, 35 patients, specialties
-3. ✅ **Hospital selection page** - Post-login routing
-4. ✅ **Patient list by hospital** - Filtered views (context ready)
-5. ✅ **Enhanced ALIS panel** - Two-column layout
-6. ✅ **Staged orders component** - Real-time order staging panel
-7. ✅ **Clinical notes panel** - SOAP note display/editing
-8. ⏳ **Consultant integration** - Chat participants, notifications (next)
-9. ✅ **Billing tracker** - CPT/revenue display
-10. ✅ **Logo and UI polish** - Sizing, animations, backgrounds
+1. **Database Migration** - Create audit_logs table and triggers
+2. **Security Definer Function** - Enable secure insertions
+3. **Edge Function** - Handle client-side audit events
+4. **React Hook** - useAuditLog for consistent logging
+5. **Component Updates** - Add logging to PHI access points
+6. **Auth Integration** - Log login/logout events
 
 ---
 
-## Technical Notes
+## Estimated Changes
 
-- All hospital filtering uses RLS policies based on `hospital_users`
-- Consultant notifications use Supabase Realtime
-- Orders/notes sync via Realtime subscriptions
-- ALIS edge function enhanced with tool-calling for order/consult actions
-- Demo mode provides scripted consultant interactions
+| File | Type | Description |
+|------|------|-------------|
+| `supabase/migrations/[timestamp]_audit_logging.sql` | New | Schema, triggers, RLS |
+| `supabase/functions/audit-log/index.ts` | New | Edge function |
+| `src/hooks/useAuditLog.ts` | New | Client-side hook |
+| `src/pages/Dashboard.tsx` | Edit | Add view logging |
+| `src/components/virtualis/ClinicalNotesPanel.tsx` | Edit | Log note actions |
+| `src/components/virtualis/StagedOrdersPanel.tsx` | Edit | Log order actions |
+| `src/components/virtualis/BillingPanel.tsx` | Edit | Log billing views |
+| `src/pages/Auth.tsx` | Edit | Log login events |
+| `src/hooks/useAuth.ts` | Edit | Log logout events |
