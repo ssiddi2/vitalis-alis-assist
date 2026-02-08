@@ -29,7 +29,7 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     async function fetchHospitals() {
@@ -94,7 +94,7 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
     }
 
     fetchHospitals();
-  }, [user, authLoading, isAdmin]);
+  }, [user, authLoading]);
 
   return (
     <HospitalContext.Provider value={{ hospitals, selectedHospital, setSelectedHospital, loading, error }}>
