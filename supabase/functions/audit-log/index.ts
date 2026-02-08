@@ -9,6 +9,10 @@ interface AuditLogRequest {
   action_type: 'view' | 'create' | 'update' | 'delete' | 'export' | 'sign' | 'approve' | 'login' | 'logout';
   resource_type: string;
   resource_id?: string;
+  /**
+   * Patient UUID (preferred). If your app uses external/non-UUID identifiers (e.g. EMR MRN like "pt-001"),
+   * send it here anyway — the function will safely store it in metadata and set patient_id to null.
+   */
   patient_id?: string;
   hospital_id?: string;
   metadata?: Record<string, unknown>;
@@ -73,14 +77,29 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Coerce IDs to match DB function signature
+    const isUuid = (value: string | null | undefined): value is string => {
+      if (!value) return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    };
+
+    const patientIdUuid = isUuid(body.patient_id) ? body.patient_id : null;
+    const hospitalIdUuid = isUuid(body.hospital_id) ? body.hospital_id : null;
+
+    const metadata: Record<string, unknown> = {
+      ...(body.metadata ?? {}),
+      ...(body.patient_id && !patientIdUuid ? { external_patient_id: body.patient_id } : {}),
+      ...(body.hospital_id && !hospitalIdUuid ? { external_hospital_id: body.hospital_id } : {}),
+    };
+
     // Call the security definer function to insert audit log
     const { data, error } = await supabase.rpc('log_audit_event', {
       p_action_type: body.action_type,
       p_resource_type: body.resource_type,
       p_resource_id: body.resource_id || null,
-      p_patient_id: body.patient_id || null,
-      p_hospital_id: body.hospital_id || null,
-      p_metadata: body.metadata || {},
+      p_patient_id: patientIdUuid,
+      p_hospital_id: hospitalIdUuid,
+      p_metadata: metadata,
       p_ip_address: ipAddress,
       p_user_agent: userAgent,
       p_session_id: body.session_id || null,
