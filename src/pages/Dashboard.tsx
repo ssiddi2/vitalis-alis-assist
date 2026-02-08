@@ -15,6 +15,7 @@ import { OrderReviewModal } from '@/components/virtualis/OrderReviewModal';
 import { ProgressNoteModal } from '@/components/virtualis/ProgressNoteModal';
 import { MobileALISFab } from '@/components/virtualis/MobileALISFab';
 import { MobileALISSheet } from '@/components/virtualis/MobileALISSheet';
+import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { Loader2 } from 'lucide-react';
 
 // Scenario-aware initial greetings for ALIS
@@ -125,7 +126,8 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      <FuturisticBackground variant="lite" />
       <TopBar
         scenario={scenario}
         onScenarioChange={setScenario}

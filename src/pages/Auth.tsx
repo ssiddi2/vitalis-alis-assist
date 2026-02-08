@@ -9,6 +9,7 @@ import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import alisLogo from '@/assets/alis-logo.png';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
+import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -79,14 +80,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Futuristic Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-info/5" />
-      <div className="absolute inset-0 grid-pattern opacity-30" />
-      
-      {/* Floating Orbs */}
-      <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-info/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
-      <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-success/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      <FuturisticBackground />
       
       {/* Content */}
       <div className="relative z-10 min-h-screen flex">
