@@ -20,7 +20,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
-import virtualisLogo from '@/assets/virtualis-logo.png';
+import { MobileMenu } from './MobileMenu';
+import alisLogo from '@/assets/alis-logo.png';
 
 interface TopBarProps {
   scenario: DemoScenario;
@@ -86,28 +87,32 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
   };
 
   return (
-    <header className="glass-strong border-b border-border px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+    <header className="glass-strong border-b border-border px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-50">
       {/* Logo and Hospital */}
-      <div className="flex items-center gap-4">
-        <img 
-          src={virtualisLogo} 
-          alt="Virtualis" 
-          className="h-12"
-        />
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        {/* ALIS Logo + Wordmark */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <img 
+            src={alisLogo} 
+            alt="ALIS" 
+            className="h-8 sm:h-10"
+          />
+          <span className="hidden sm:block text-lg font-bold text-foreground">ALIS</span>
+        </div>
         
         {selectedHospital && (
           <>
-            <div className="w-px h-8 bg-border" />
+            <div className="w-px h-6 sm:h-8 bg-border hidden sm:block" />
             <button
               onClick={handleBackToHospitals}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/50 border border-border hover:bg-secondary transition-colors group"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-secondary/50 border border-border hover:bg-secondary transition-colors group min-w-0"
             >
-              <ChevronLeft className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-              <Building2 className={`w-4 h-4 ${getEmrColor()}`} />
-              <span className="text-sm font-medium text-foreground">
+              <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+              <Building2 className={`w-3 h-3 sm:w-4 sm:h-4 ${getEmrColor()} flex-shrink-0 hidden sm:block`} />
+              <span className="text-xs sm:text-sm font-medium text-foreground truncate max-w-[80px] sm:max-w-[150px]">
                 {selectedHospital.name}
               </span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-secondary font-semibold uppercase ${getEmrColor()}`}>
+              <span className={`text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full bg-secondary font-semibold uppercase ${getEmrColor()} hidden sm:block`}>
                 {selectedHospital.emr_system}
               </span>
             </button>
@@ -115,8 +120,8 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
         )}
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-3">
+      {/* Desktop Controls */}
+      <div className="hidden lg:flex items-center gap-3">
         {/* Scenario Selector */}
         <Select value={scenario} onValueChange={(v) => onScenarioChange(v as DemoScenario)}>
           <SelectTrigger className="w-[200px] h-9 bg-secondary/50 border-border text-sm rounded-xl">
@@ -187,6 +192,42 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
             Sign In
           </Button>
         )}
+      </div>
+
+      {/* Mobile Controls */}
+      <div className="flex lg:hidden items-center gap-2">
+        {/* Compact User Menu */}
+        {user && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-9 w-9"
+              >
+                <User className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-xl border-border shadow-elevated">
+              <div className="px-3 py-2">
+                <p className="text-sm font-medium">{user.email}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 capitalize">{role} Access</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-critical cursor-pointer">
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        
+        {/* Mobile Menu */}
+        <MobileMenu 
+          scenario={scenario} 
+          onScenarioChange={onScenarioChange} 
+          currentTime={currentTime}
+        />
       </div>
     </header>
   );

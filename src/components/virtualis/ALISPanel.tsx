@@ -29,14 +29,6 @@ interface ALISPanelProps {
   onOpenTeamChat?: () => void;
 }
 
-// Suggested prompts to help users get started
-const SUGGESTED_PROMPTS = [
-  "What concerns you about this patient?",
-  "Summarize the clinical trajectory",
-  "What orders should I consider?",
-  "Draft a progress note",
-];
-
 export function ALISPanel({
   messages,
   isTyping,
@@ -55,9 +47,19 @@ export function ALISPanel({
   onOpenTeamChat,
 }: ALISPanelProps) {
   const [inputValue, setInputValue] = useState('');
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false); // Default to collapsed on mobile
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Show sidebar by default on larger screens
+  useEffect(() => {
+    const handleResize = () => {
+      setShowSidebar(window.innerWidth >= 1280); // xl breakpoint
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -85,10 +87,10 @@ export function ALISPanel({
     <div className="flex h-full bg-card border-l border-border relative overflow-hidden">
       {/* Clinical Actions Sidebar */}
       {showSidebar && (
-        <div className="w-[280px] border-r border-border bg-secondary/30 flex flex-col">
+        <div className="w-[240px] xl:w-[280px] border-r border-border bg-secondary/30 flex flex-col">
           {/* Sidebar Header */}
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Clinical Actions</h3>
+          <div className="px-3 xl:px-4 py-3 border-b border-border flex items-center justify-between">
+            <h3 className="text-xs xl:text-sm font-semibold text-foreground">Clinical Actions</h3>
             <button
               onClick={() => setShowSidebar(false)}
               className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -98,7 +100,7 @@ export function ALISPanel({
           </div>
 
           {/* Sidebar Content */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          <div className="flex-1 overflow-y-auto p-2 xl:p-3 space-y-2 xl:space-y-3">
             <StagedOrdersPanel
               orders={stagedOrders}
               patientId={patientId}
@@ -120,42 +122,42 @@ export function ALISPanel({
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="relative px-4 py-3 border-b border-border bg-gradient-to-r from-primary/5 to-info/5">
+        <div className="relative px-3 xl:px-4 py-2 xl:py-3 border-b border-border bg-gradient-to-r from-primary/5 to-info/5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 xl:gap-3">
               {!showSidebar && (
                 <button
                   onClick={() => setShowSidebar(true)}
-                  className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors mr-1"
+                  className="p-1 xl:p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors mr-1"
                 >
                   <PanelLeft className="h-4 w-4" />
                 </button>
               )}
               <div className="relative">
-                <img src={alisLogo} alt="ALIS" className="h-9 w-9 object-contain" />
+                <img src={alisLogo} alt="ALIS" className="h-7 w-7 xl:h-9 xl:w-9 object-contain" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground text-sm">ALIS</span>
-                  <span className="text-[9px] px-2 py-0.5 bg-primary/10 text-primary rounded-full uppercase font-bold tracking-wider border border-primary/20">
-                    AI Powered
+                <div className="flex items-center gap-1.5 xl:gap-2">
+                  <span className="font-semibold text-foreground text-xs xl:text-sm">ALIS</span>
+                  <span className="text-[8px] xl:text-[9px] px-1.5 xl:px-2 py-0.5 bg-primary/10 text-primary rounded-full uppercase font-bold tracking-wider border border-primary/20">
+                    AI
                   </span>
                 </div>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[9px] xl:text-[10px] text-muted-foreground hidden sm:block">
                   Ambient Clinical Intelligence
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 xl:gap-2">
               {onOpenTeamChat && (
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={onOpenTeamChat}
-                  className="h-8 text-xs"
+                  className="h-7 xl:h-8 text-[10px] xl:text-xs px-2 xl:px-3"
                 >
                   <MessageSquare className="h-3 w-3 mr-1" />
-                  Team Chat
+                  <span className="hidden sm:inline">Team</span>
                 </Button>
               )}
               {onRequestConsult && (
@@ -163,34 +165,34 @@ export function ALISPanel({
                   variant="outline" 
                   size="sm"
                   onClick={onRequestConsult}
-                  className="h-8 text-xs"
+                  className="h-7 xl:h-8 text-[10px] xl:text-xs px-2 xl:px-3"
                 >
                   <Stethoscope className="h-3 w-3 mr-1" />
-                  Consult
+                  <span className="hidden sm:inline">Consult</span>
                 </Button>
               )}
               <div className="w-2 h-2 bg-success rounded-full animate-pulse-glow" />
-              <span className="text-[10px] text-muted-foreground font-medium">Online</span>
+              <span className="text-[9px] xl:text-[10px] text-muted-foreground font-medium hidden sm:block">Online</span>
             </div>
           </div>
         </div>
 
         {/* Suggested Prompts */}
-        <div className="px-4 py-2 text-xs flex items-center gap-2 border-b bg-primary/5 border-primary/20">
+        <div className="px-3 xl:px-4 py-1.5 xl:py-2 text-[10px] xl:text-xs flex items-center gap-2 border-b bg-primary/5 border-primary/20">
           <Zap className="w-3 h-3 flex-shrink-0 text-primary" />
-          <span className="text-primary"><strong>AI Powered:</strong> Ask me anything about this patient</span>
+          <span className="text-primary truncate"><strong>AI Powered:</strong> Ask me anything about this patient</span>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
-          <div className="flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto p-3 xl:p-4" ref={scrollRef}>
+          <div className="flex flex-col gap-3 xl:gap-4">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full py-8 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-info/10 border border-primary/20 flex items-center justify-center mb-3 shadow-soft">
-                  <img src={alisLogo} alt="ALIS" className="h-10 w-10 object-contain" />
+              <div className="flex flex-col items-center justify-center h-full py-6 xl:py-8 text-center">
+                <div className="w-12 h-12 xl:w-16 xl:h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-info/10 border border-primary/20 flex items-center justify-center mb-2 xl:mb-3 shadow-soft">
+                  <img src={alisLogo} alt="ALIS" className="h-8 w-8 xl:h-10 xl:w-10 object-contain" />
                 </div>
-                <h3 className="text-base font-semibold text-foreground mb-1">Ready to assist</h3>
-                <p className="text-xs text-muted-foreground max-w-xs">
+                <h3 className="text-sm xl:text-base font-semibold text-foreground mb-1">Ready to assist</h3>
+                <p className="text-[10px] xl:text-xs text-muted-foreground max-w-xs">
                   Ask me about clinical patterns, patient trajectories, or let me help with orders and documentation.
                 </p>
               </div>
@@ -206,7 +208,7 @@ export function ALISPanel({
         </div>
 
         {/* Input */}
-        <div className="relative p-3 border-t border-border bg-card/80 backdrop-blur-sm">
+        <div className="relative p-2 xl:p-3 border-t border-border bg-card/80 backdrop-blur-sm">
           <div className="flex gap-2 items-end">
             <div className="flex-1 relative">
               <textarea
@@ -216,15 +218,15 @@ export function ALISPanel({
                 onKeyDown={handleKeyDown}
                 placeholder="Ask ALIS anything..."
                 rows={1}
-                className="w-full px-3 py-2.5 pr-10 bg-secondary/50 border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
-                style={{ minHeight: '44px', maxHeight: '100px' }}
+                className="w-full px-3 py-2 xl:py-2.5 pr-10 bg-secondary/50 border border-border rounded-xl text-xs xl:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                style={{ minHeight: '40px', maxHeight: '100px' }}
               />
             </div>
             <Button
               onClick={handleSend}
               disabled={!inputValue.trim() || isTyping}
               size="icon"
-              className="h-11 w-11 rounded-xl btn-primary-gradient disabled:opacity-30"
+              className="h-10 w-10 xl:h-11 xl:w-11 rounded-xl btn-primary-gradient disabled:opacity-30"
             >
               <Send className="h-4 w-4" />
             </Button>
