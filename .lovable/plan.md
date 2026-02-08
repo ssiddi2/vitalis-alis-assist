@@ -1,73 +1,161 @@
 
+# Demo Readiness Improvement Plan
 
-# Fix Hospital Selector Loading Issue
+## Current State Assessment
 
-## Problem Identified
+After reviewing the codebase, mobile/desktop views, and feature implementations, here's what needs work:
 
-The application is stuck on "Loading facilities..." because there's a fundamental architectural issue with authentication state management:
+### Issues Identified
 
-**Root Cause**: The `useAuth()` hook creates **separate state instances** for each component that calls it. This means:
-- `HospitalProvider` has its own copy of auth state
-- `HospitalSelector` has its own copy of auth state
-- These states don't stay synchronized, causing race conditions
+**1. Responsive Layout Problems**
+- The dashboard uses `lg:grid-cols-[1fr_700px]` which hides the ALIS panel entirely on mobile
+- The ALIS panel is marked `hidden lg:block` - mobile users can't access the AI assistant at all
+- TopBar logo and controls overflow on smaller screens
+- Hospital selector cards don't stack properly on mobile
 
-When you sign in:
-1. Auth changes trigger in one instance
-2. But the other instance may not have received the update yet
-3. The loading state never properly resolves
+**2. Logo Formatting Issues**
+- TopBar uses `virtualis-logo.png` but the ALIS logo is more recognizable
+- Logo sizing inconsistent: 12px in TopBar, 32px in HospitalSelector, 20px on mobile Auth
+- No wordmark or clear branding hierarchy
 
-## Solution
+**3. Provider Onboarding via ALIS**
+- ALIS currently has NO tool-calling capabilities for provider management
+- The edge function only streams conversation responses
+- Cannot add users, send invites, or manage access
 
-Create a proper `AuthProvider` context that shares authentication state across the entire app, similar to how `HospitalProvider` works.
+**4. Communication Features Not Demonstrable**
+- TeamChatPanel exists but requires database channels to be created first
+- DirectMessageSidebar works but needs multiple users in the hospital
+- No demo data for conversations - they appear empty
+- Cannot show the flow without multiple logged-in users
 
-### Changes Required
-
-**1. Create AuthContext (`src/contexts/AuthContext.tsx`)**
-
-Create a new context that wraps the existing auth logic:
-- Move the auth state management into a provider
-- Export both the provider and a `useAuth()` hook that reads from context
-- All components will share the same auth state instance
-
-**2. Update App.tsx**
-
-Wrap the app with `AuthProvider` at the top level (outside `HospitalProvider`):
-```text
-QueryClientProvider
-  └── TooltipProvider
-        └── BrowserRouter
-              └── AuthProvider (NEW - added here)
-                    └── HospitalProvider
-                          └── Routes
-```
-
-**3. Update existing useAuth hook**
-
-Convert the current hook to use the new context instead of creating local state.
-
-**4. Simplify HospitalContext.tsx** 
-
-Remove the redundant auth hook call since auth state will now be properly shared.
+**5. Ordering System Limitations**
+- StagedOrdersPanel displays hardcoded `demoStagedOrders` from demoData.ts
+- Approve/Cancel only updates local React state - not persisted
+- ALIS cannot programmatically stage orders via tool calls
+- No database integration for order management
 
 ---
 
-## Technical Details
+## Implementation Plan
 
-### New AuthContext Structure
+### Phase 1: Mobile Responsive Layout
 
-The provider will:
-- Initialize with `loading: true`
-- Set up `onAuthStateChange` listener once at app startup
-- Check for existing session with `getSession()`
-- Fetch user role when authenticated
-- Set `loading: false` only after initial auth check completes
+**TopBar.tsx Changes:**
+- Add hamburger menu for mobile with slide-out drawer
+- Stack hospital badge vertically on smaller screens
+- Make scenario selector full-width on mobile
+- Hide secondary controls (time, AI status) behind menu
 
-### State Flow After Fix
+**Dashboard.tsx Changes:**
+- Replace hidden ALIS panel with a mobile FAB (Floating Action Button)
+- Open ALIS in a full-screen Sheet/Drawer on mobile
+- Add bottom navigation for key actions
+- Make patient dashboard full-width on all screens
 
-1. App mounts → `AuthProvider` starts loading
-2. Auth check completes → `loading: false`, `user` populated (or null)
-3. `HospitalProvider` sees auth is ready → fetches hospitals
-4. `HospitalSelector` shows hospitals (or redirects to auth if no user)
+**PatientDashboard.tsx Changes:**
+- Reduce padding on mobile (p-4 instead of p-8)
+- Stack insight cards vertically
+- Make trend charts horizontally scrollable
 
-This ensures a single source of truth for authentication state.
+**HospitalSelector.tsx Changes:**
+- Force single-column grid on mobile/tablet
+- Increase touch target sizes
+- Improve card spacing
 
+### Phase 2: Logo and Branding Consistency
+
+**Consolidate to ALIS branding across all pages:**
+- TopBar: Replace virtualis-logo with ALIS logo + "ALIS" wordmark
+- Standardize sizes: 40px desktop header, 32px mobile
+- Add proper alt text and accessibility labels
+- Consider adding a favicon update if needed
+
+### Phase 3: ALIS Tool Capabilities for Provider Management
+
+**Expand the alis-chat edge function to support tools:**
+
+```text
+New tool definitions for ALIS:
+- invite_provider: Sends email invite to join hospital
+- list_providers: Shows current providers for the hospital
+- update_provider_role: Changes access level for a user
+- deactivate_provider: Removes provider access
+```
+
+**Implementation approach:**
+1. Add OpenAI-compatible function calling to the edge function
+2. Create corresponding database RPCs for each action
+3. Have ALIS parse tool calls and execute them
+4. Return structured responses to the frontend
+
+### Phase 4: Communication Demo Flow
+
+**Seed demo conversations:**
+- Create 2-3 demo team channels with pre-populated messages
+- Add sample direct message threads
+- Show realistic clinical handoff examples
+
+**Create demo mode toggle:**
+- When enabled, inject demo data into channels/messages
+- Shows consult requests in progress
+- Simulates real-time message arrival
+
+**Improve empty states:**
+- Better onboarding UI when no channels exist
+- Quick-create buttons for common channel types
+
+### Phase 5: Order Staging with AI Integration
+
+**Database integration for orders:**
+- Use existing `staged_orders` table for persistence
+- Hook ALIS tool calls to create orders
+- Real-time subscription for order updates
+
+**ALIS order capabilities:**
+- "Stage a CT-PA for this patient" creates an actual staged order
+- "What orders are pending?" queries the database
+- Approval/cancellation persists to database
+
+**Demo order bundle:**
+- Pre-stage a PE workup bundle when entering Day 2 scenario
+- Show the full approve/reject workflow
+
+---
+
+## Technical Changes Summary
+
+| File | Changes |
+|------|---------|
+| `src/components/virtualis/TopBar.tsx` | Mobile menu drawer, responsive logo |
+| `src/pages/Dashboard.tsx` | Mobile FAB for ALIS, Sheet integration |
+| `src/components/virtualis/ALISPanel.tsx` | Sheet wrapper for mobile |
+| `src/components/virtualis/PatientDashboard.tsx` | Responsive padding, card layout |
+| `src/pages/HospitalSelector.tsx` | Mobile grid improvements |
+| `supabase/functions/alis-chat/index.ts` | Add tool calling support |
+| `src/hooks/useALISChat.ts` | Handle tool call responses |
+| `src/data/demoData.ts` | Add demo conversations, messages |
+| `src/hooks/useTeamChat.ts` | Demo mode injection |
+| `src/components/virtualis/StagedOrdersPanel.tsx` | Database integration |
+
+---
+
+## Priority Order for Demo
+
+1. **Mobile responsive layout** - Critical for any demo on phones/tablets
+2. **Logo consistency** - Quick visual polish
+3. **Demo communication data** - Makes the app look "lived in"
+4. **Order database integration** - Shows the workflow actually works
+5. **ALIS tool calling** - Advanced feature for later demos
+
+---
+
+## Estimated Effort
+
+- Phase 1 (Mobile): 3-4 changes, medium complexity
+- Phase 2 (Logo): 2-3 changes, low complexity  
+- Phase 3 (ALIS Tools): 1 edge function + frontend, high complexity
+- Phase 4 (Demo Data): Seed data + hooks, medium complexity
+- Phase 5 (Orders): Database integration, medium complexity
+
+The mobile responsive fixes and branding should be prioritized first as they're immediately visible to any demo audience.
