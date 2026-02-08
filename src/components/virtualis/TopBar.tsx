@@ -15,10 +15,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useState, useEffect } from 'react';
-import { Zap, User, LogOut, Shield, Building2, ChevronLeft } from 'lucide-react';
+import { User, LogOut, Shield, Building2, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
+import { DirectMessageSidebar } from './DirectMessageSidebar';
 import virtualisLogo from '@/assets/virtualis-logo.png';
 
 interface TopBarProps {
@@ -133,6 +134,9 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
           <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
           <span className="text-xs font-medium text-primary">AI Powered</span>
         </div>
+
+        {/* Direct Messages */}
+        <DirectMessageSidebar />
 
         {/* Time Display */}
         <div className="font-mono text-xs text-muted-foreground px-4 py-2 bg-secondary/50 border border-border rounded-xl">
