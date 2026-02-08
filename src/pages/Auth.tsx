@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Mail, Lock, User, Sparkles } from 'lucide-react';
-import virtualisLogo from '@/assets/virtualis-logo.png';
+import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import alisLogo from '@/assets/alis-logo.png';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
 export default function Auth() {
@@ -72,16 +72,19 @@ export default function Auth() {
             <div className="mb-12 relative">
               <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150" />
               <img 
-                src={virtualisLogo} 
-                alt="Virtualis" 
-                className="h-24 mx-auto relative z-10 drop-shadow-lg"
+                src={alisLogo} 
+                alt="ALIS" 
+                className="h-32 mx-auto relative z-10 drop-shadow-lg"
               />
             </div>
             
             <div className="space-y-6">
               <h1 className="text-5xl font-bold text-foreground tracking-tight">
-                Intelligent Medicine
+                Welcome to ALIS
               </h1>
+              <p className="text-lg text-muted-foreground">
+                Ambient Learning Intelligence System
+              </p>
               <p className="text-xl text-muted-foreground leading-relaxed">
                 AI-powered clinical intelligence for modern healthcare. 
                 Monitor patient trajectories, surface real-time insights, and make data-driven decisions.
@@ -108,17 +111,19 @@ export default function Auth() {
             {/* Mobile logo */}
             <div className="lg:hidden mb-8 text-center">
               <img 
-                src={virtualisLogo} 
-                alt="Virtualis" 
-                className="h-16 mx-auto drop-shadow-lg"
+                src={alisLogo} 
+                alt="ALIS" 
+                className="h-20 mx-auto drop-shadow-lg"
               />
+              <h2 className="text-xl font-bold text-foreground mt-4">ALIS</h2>
+              <p className="text-sm text-muted-foreground">Ambient Learning Intelligence System</p>
             </div>
 
             <div className="glass-strong rounded-3xl p-8 shadow-elevated border border-border/50">
-              {/* Header with icon */}
+              {/* Header with logo */}
               <div className="text-center mb-8">
-                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary to-info flex items-center justify-center shadow-lg glow-primary">
-                  <Sparkles className="w-8 h-8 text-primary-foreground" />
+                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/10 to-info/10 flex items-center justify-center shadow-lg border border-primary/20">
+                  <img src={alisLogo} alt="ALIS" className="h-10 w-10 object-contain" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground">
                   {isLogin ? 'Welcome back' : 'Get started'}
