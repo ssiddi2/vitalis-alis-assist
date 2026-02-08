@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action_type: Database["public"]["Enums"]["audit_action_type"]
+          created_at: string
+          hospital_id: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json | null
+          patient_id: string | null
+          resource_id: string | null
+          resource_type: string
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: Database["public"]["Enums"]["audit_action_type"]
+          created_at?: string
+          hospital_id?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          patient_id?: string | null
+          resource_id?: string | null
+          resource_type: string
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["audit_action_type"]
+          created_at?: string
+          hospital_id?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json | null
+          patient_id?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_events: {
         Row: {
           cpt_codes: string[] | null
@@ -548,9 +608,33 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_audit_event: {
+        Args: {
+          p_action_type: Database["public"]["Enums"]["audit_action_type"]
+          p_hospital_id?: string
+          p_ip_address?: unknown
+          p_metadata?: Json
+          p_patient_id?: string
+          p_resource_id?: string
+          p_resource_type: string
+          p_session_id?: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "clinician" | "viewer"
+      audit_action_type:
+        | "view"
+        | "create"
+        | "update"
+        | "delete"
+        | "export"
+        | "sign"
+        | "approve"
+        | "login"
+        | "logout"
       billing_status: "pending" | "submitted" | "accepted" | "rejected"
       chat_role: "clinician" | "consultant" | "alis"
       emr_system: "epic" | "meditech" | "cerner"
@@ -685,6 +769,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "clinician", "viewer"],
+      audit_action_type: [
+        "view",
+        "create",
+        "update",
+        "delete",
+        "export",
+        "sign",
+        "approve",
+        "login",
+        "logout",
+      ],
       billing_status: ["pending", "submitted", "accepted", "rejected"],
       chat_role: ["clinician", "consultant", "alis"],
       emr_system: ["epic", "meditech", "cerner"],

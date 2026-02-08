@@ -1,9 +1,12 @@
+import { useEffect } from 'react';
 import { FileText, Check, Clock, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ClinicalNote, NoteStatus } from '@/types/hospital';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface ClinicalNotesPanelProps {
   notes: ClinicalNote[];
+  patientId?: string;
   onEdit?: (noteId: string) => void;
   onSign?: (noteId: string) => void;
 }
@@ -15,7 +18,29 @@ const STATUS_CONFIG: Record<NoteStatus, { label: string; color: string; icon: ty
   amended: { label: 'Amended', color: 'text-info bg-info/10', icon: Edit3 },
 };
 
-export function ClinicalNotesPanel({ notes, onEdit, onSign }: ClinicalNotesPanelProps) {
+export function ClinicalNotesPanel({ notes, patientId, onEdit, onSign }: ClinicalNotesPanelProps) {
+  const { logView, logSign } = useAuditLog();
+
+  // Log view of clinical notes for HIPAA audit
+  useEffect(() => {
+    if (notes.length > 0 && patientId) {
+      logView('clinical_note', notes[0].id, patientId, {
+        note_count: notes.length,
+        note_status: notes[0].status,
+      });
+    }
+  }, [notes, patientId, logView]);
+
+  const handleSign = (noteId: string) => {
+    if (patientId) {
+      logSign('clinical_note', noteId, patientId, {
+        note_type: notes.find(n => n.id === noteId)?.note_type,
+        signature_method: 'electronic',
+      });
+    }
+    onSign?.(noteId);
+  };
+
   if (notes.length === 0) {
     return (
       <div className="glass rounded-xl p-4 border border-border/50">
@@ -88,7 +113,7 @@ export function ClinicalNotesPanel({ notes, onEdit, onSign }: ClinicalNotesPanel
           <Button
             size="sm"
             className="flex-1 h-8 text-xs rounded-lg btn-primary-gradient"
-            onClick={() => onSign?.(latestNote.id)}
+            onClick={() => handleSign(latestNote.id)}
           >
             <Check className="h-3 w-3 mr-1" />
             Sign
