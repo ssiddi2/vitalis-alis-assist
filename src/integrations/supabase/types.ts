@@ -887,35 +887,20 @@ export type Database = {
         }
         Returns: boolean
       }
-      log_audit_event:
-        | {
-            Args: {
-              p_action_type: Database["public"]["Enums"]["audit_action_type"]
-              p_hospital_id?: string
-              p_ip_address?: unknown
-              p_metadata?: Json
-              p_patient_id?: string
-              p_resource_id?: string
-              p_resource_type: string
-              p_session_id?: string
-              p_user_agent?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_action_type: Database["public"]["Enums"]["audit_action_type"]
-              p_hospital_id?: string
-              p_ip_address?: unknown
-              p_metadata?: Json
-              p_patient_id?: string
-              p_resource_id?: string
-              p_resource_type: string
-              p_session_id?: string
-              p_user_agent?: string
-            }
-            Returns: string
-          }
+      log_audit_event: {
+        Args: {
+          p_action_type: Database["public"]["Enums"]["audit_action_type"]
+          p_hospital_id?: string
+          p_ip_address?: unknown
+          p_metadata?: Json
+          p_patient_id?: string
+          p_resource_id?: string
+          p_resource_type: string
+          p_session_id?: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "clinician" | "viewer"
