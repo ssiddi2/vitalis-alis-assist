@@ -12,7 +12,7 @@ import {
   LogOut,
   Loader2
 } from 'lucide-react';
-import virtualisLogo from '@/assets/virtualis-logo.png';
+import alisLogo from '@/assets/alis-logo.png';
 
 const EMR_CONFIG = {
   epic: { 
@@ -79,7 +79,7 @@ export default function HospitalSelector() {
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
         <header className="glass-strong border-b border-border px-8 py-4 flex items-center justify-between">
-          <img src={virtualisLogo} alt="Virtualis" className="h-12" />
+          <img src={alisLogo} alt="ALIS" className="h-12" />
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
               {user?.email}
