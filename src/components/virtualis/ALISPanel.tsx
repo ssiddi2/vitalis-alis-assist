@@ -7,7 +7,7 @@ import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { ClinicalNotesPanel } from './ClinicalNotesPanel';
 import { BillingPanel } from './BillingPanel';
 import { Button } from '@/components/ui/button';
-import { Send, PanelLeftClose, PanelLeft, Zap } from 'lucide-react';
+import { Send, PanelLeftClose, PanelLeft, Zap, Stethoscope, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
 
@@ -16,6 +16,7 @@ interface ALISPanelProps {
   isTyping: boolean;
   onSendMessage: (message: string) => void;
   patientId?: string;
+  patientName?: string;
   stagedOrders?: StagedOrder[];
   clinicalNotes?: ClinicalNote[];
   billingEvents?: BillingEvent[];
@@ -24,6 +25,8 @@ interface ALISPanelProps {
   onCancelOrder?: (orderId: string) => void;
   onEditNote?: (noteId: string) => void;
   onSignNote?: (noteId: string) => void;
+  onRequestConsult?: () => void;
+  onOpenTeamChat?: () => void;
 }
 
 // Suggested prompts to help users get started
@@ -39,6 +42,7 @@ export function ALISPanel({
   isTyping,
   onSendMessage,
   patientId,
+  patientName,
   stagedOrders = [],
   clinicalNotes = [],
   billingEvents = [],
@@ -47,6 +51,8 @@ export function ALISPanel({
   onCancelOrder,
   onEditNote,
   onSignNote,
+  onRequestConsult,
+  onOpenTeamChat,
 }: ALISPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [showSidebar, setShowSidebar] = useState(true);
@@ -141,6 +147,28 @@ export function ALISPanel({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {onOpenTeamChat && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={onOpenTeamChat}
+                  className="h-8 text-xs"
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  Team Chat
+                </Button>
+              )}
+              {onRequestConsult && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={onRequestConsult}
+                  className="h-8 text-xs"
+                >
+                  <Stethoscope className="h-3 w-3 mr-1" />
+                  Consult
+                </Button>
+              )}
               <div className="w-2 h-2 bg-success rounded-full animate-pulse-glow" />
               <span className="text-[10px] text-muted-foreground font-medium">Online</span>
             </div>

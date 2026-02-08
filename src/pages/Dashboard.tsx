@@ -9,6 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { TopBar } from '@/components/virtualis/TopBar';
 import { PatientDashboard } from '@/components/virtualis/PatientDashboard';
 import { ALISPanel } from '@/components/virtualis/ALISPanel';
+import { TeamChatPanel } from '@/components/virtualis/TeamChatPanel';
+import { ConsultRequestModal } from '@/components/virtualis/ConsultRequestModal';
 import { OrderReviewModal } from '@/components/virtualis/OrderReviewModal';
 import { ProgressNoteModal } from '@/components/virtualis/ProgressNoteModal';
 import { Loader2 } from 'lucide-react';
@@ -31,6 +33,8 @@ const Dashboard = () => {
   const [scenario, setScenario] = useState<DemoScenario>('day2');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
+  const [showTeamChat, setShowTeamChat] = useState(false);
   
   // Clinical actions state
   const [stagedOrders, setStagedOrders] = useState<StagedOrder[]>(demoStagedOrders);
@@ -129,22 +133,33 @@ const Dashboard = () => {
           trends={currentData?.trends || []}
         />
 
-        {/* ALIS Chat Panel */}
+        {/* ALIS Chat Panel or Team Chat */}
         <div className="hidden lg:block h-[calc(100vh-57px)]">
-          <ALISPanel
-            messages={aiChat.messages}
-            isTyping={aiChat.isStreaming}
-            onSendMessage={aiChat.sendMessage}
-            patientId={demoPatient.id}
-            stagedOrders={stagedOrders}
-            clinicalNotes={clinicalNotes}
-            billingEvents={billingEvents}
-            onApproveOrder={handleApproveOrder}
-            onApproveAllOrders={handleApproveAllOrders}
-            onCancelOrder={handleCancelOrder}
-            onEditNote={handleEditNote}
-            onSignNote={handleSignNote}
-          />
+          {showTeamChat ? (
+            <TeamChatPanel 
+              patientId={demoPatient.id}
+              patientName={demoPatient.name}
+              onBack={() => setShowTeamChat(false)}
+            />
+          ) : (
+            <ALISPanel
+              messages={aiChat.messages}
+              isTyping={aiChat.isStreaming}
+              onSendMessage={aiChat.sendMessage}
+              patientId={demoPatient.id}
+              patientName={demoPatient.name}
+              stagedOrders={stagedOrders}
+              clinicalNotes={clinicalNotes}
+              billingEvents={billingEvents}
+              onApproveOrder={handleApproveOrder}
+              onApproveAllOrders={handleApproveAllOrders}
+              onCancelOrder={handleCancelOrder}
+              onEditNote={handleEditNote}
+              onSignNote={handleSignNote}
+              onRequestConsult={() => setIsConsultModalOpen(true)}
+              onOpenTeamChat={() => setShowTeamChat(true)}
+            />
+          )}
         </div>
       </div>
 
@@ -162,6 +177,14 @@ const Dashboard = () => {
         onClose={() => setIsNoteModalOpen(false)}
         note={progressNoteTemplate}
         onSign={onNoteSign}
+      />
+
+      {/* Consult Request Modal */}
+      <ConsultRequestModal
+        isOpen={isConsultModalOpen}
+        onClose={() => setIsConsultModalOpen(false)}
+        patientId={demoPatient.id}
+        patientName={demoPatient.name}
       />
     </div>
   );
