@@ -13,6 +13,7 @@ import {
   Loader2
 } from 'lucide-react';
 import alisLogo from '@/assets/alis-logo.png';
+import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 
 const EMR_CONFIG = {
   epic: { 
@@ -69,11 +70,7 @@ export default function HospitalSelector() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-info/5" />
-      <div className="absolute inset-0 grid-pattern opacity-20" />
-      <div className="absolute top-20 left-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float hidden sm:block" />
-      <div className="absolute bottom-20 right-20 w-72 h-72 bg-info/10 rounded-full blur-3xl animate-float hidden sm:block" style={{ animationDelay: '1s' }} />
+      <FuturisticBackground />
 
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col">
