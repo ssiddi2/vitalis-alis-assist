@@ -29,10 +29,15 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, isAdmin } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
 
   useEffect(() => {
     async function fetchHospitals() {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        return;
+      }
+
       if (!user) {
         setHospitals([]);
         setLoading(false);
@@ -43,12 +48,19 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         setError(null);
 
+        console.log('Fetching hospitals for user:', user.id);
+
         // Fetch hospitals - admins see all, others see based on hospital_users
-        let hospitalsQuery = supabase.from('hospitals').select('*');
+        const { data: hospitalsData, error: hospitalsError } = await supabase
+          .from('hospitals')
+          .select('*');
         
-        const { data: hospitalsData, error: hospitalsError } = await hospitalsQuery;
-        
-        if (hospitalsError) throw hospitalsError;
+        if (hospitalsError) {
+          console.error('Hospitals query error:', hospitalsError);
+          throw hospitalsError;
+        }
+
+        console.log('Hospitals fetched:', hospitalsData?.length || 0);
 
         // Fetch patient counts per hospital
         const hospitalsWithCounts = await Promise.all(
@@ -82,7 +94,7 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
     }
 
     fetchHospitals();
-  }, [user, isAdmin]);
+  }, [user, authLoading, isAdmin]);
 
   return (
     <HospitalContext.Provider value={{ hospitals, selectedHospital, setSelectedHospital, loading, error }}>
