@@ -83,7 +83,7 @@ export function usePatientDetails(patientId: string | undefined) {
     fetchDetails();
 
     // Realtime subscription for staged_orders
-    const channel = supabase
+    const ordersChannel = supabase
       .channel(`staged-orders-${patientId}`)
       .on(
         'postgres_changes',
@@ -96,7 +96,6 @@ export function usePatientDetails(patientId: string | undefined) {
         (payload) => {
           const newOrder = payload.new as Record<string, unknown>;
           setStagedOrders((prev) => {
-            // Avoid duplicates
             if (prev.some(o => o.id === newOrder.id)) return prev;
             return [{
               ...newOrder,
@@ -125,8 +124,51 @@ export function usePatientDetails(patientId: string | undefined) {
       )
       .subscribe();
 
+    // Realtime subscription for clinical_notes
+    const notesChannel = supabase
+      .channel(`clinical-notes-${patientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'clinical_notes',
+          filter: `patient_id=eq.${patientId}`,
+        },
+        (payload) => {
+          const newNote = payload.new as Record<string, unknown>;
+          setClinicalNotes((prev) => {
+            if (prev.some(n => n.id === newNote.id)) return prev;
+            return [{
+              ...newNote,
+              content: (typeof newNote.content === 'object' ? newNote.content : {}) as ClinicalNote['content'],
+            } as ClinicalNote, ...prev];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'clinical_notes',
+          filter: `patient_id=eq.${patientId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Record<string, unknown>;
+          setClinicalNotes((prev) =>
+            prev.map(n => n.id === updated.id
+              ? { ...n, ...updated, content: (typeof updated.content === 'object' ? updated.content : {}) as ClinicalNote['content'] } as ClinicalNote
+              : n
+            )
+          );
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(notesChannel);
     };
   }, [patientId]);
 
