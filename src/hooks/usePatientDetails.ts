@@ -81,6 +81,53 @@ export function usePatientDetails(patientId: string | undefined) {
     }
 
     fetchDetails();
+
+    // Realtime subscription for staged_orders
+    const channel = supabase
+      .channel(`staged-orders-${patientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'staged_orders',
+          filter: `patient_id=eq.${patientId}`,
+        },
+        (payload) => {
+          const newOrder = payload.new as Record<string, unknown>;
+          setStagedOrders((prev) => {
+            // Avoid duplicates
+            if (prev.some(o => o.id === newOrder.id)) return prev;
+            return [{
+              ...newOrder,
+              order_data: (typeof newOrder.order_data === 'object' ? newOrder.order_data : {}) as Record<string, unknown>,
+            } as StagedOrder, ...prev];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'staged_orders',
+          filter: `patient_id=eq.${patientId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Record<string, unknown>;
+          setStagedOrders((prev) =>
+            prev.map(o => o.id === updated.id
+              ? { ...o, ...updated, order_data: (typeof updated.order_data === 'object' ? updated.order_data : {}) as Record<string, unknown> } as StagedOrder
+              : o
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [patientId]);
 
   return { clinicalNotes, insights, trends, stagedOrders, billingEvents, loading, setStagedOrders, setClinicalNotes };

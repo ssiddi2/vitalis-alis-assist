@@ -27,6 +27,7 @@ interface ALISPanelProps {
   onSignNote?: (noteId: string) => void;
   onRequestConsult?: () => void;
   onOpenTeamChat?: () => void;
+  clinicianName?: string;
 }
 
 export function ALISPanel({
@@ -45,6 +46,7 @@ export function ALISPanel({
   onSignNote,
   onRequestConsult,
   onOpenTeamChat,
+  clinicianName,
 }: ALISPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [showSidebar, setShowSidebar] = useState(false); // Default to collapsed on mobile
@@ -107,6 +109,7 @@ export function ALISPanel({
               onApprove={onApproveOrder}
               onApproveAll={onApproveAllOrders}
               onCancel={onCancelOrder}
+              clinicianName={clinicianName}
             />
             <ClinicalNotesPanel
               notes={clinicalNotes}

@@ -76,23 +76,10 @@ const tools = [
       parameters: {
         type: "object",
         properties: {
-          email: {
-            type: "string",
-            description: "Email address of the provider to invite"
-          },
-          name: {
-            type: "string",
-            description: "Full name of the provider"
-          },
-          role: {
-            type: "string",
-            enum: ["clinician", "viewer"],
-            description: "Access role for the provider"
-          },
-          specialty: {
-            type: "string",
-            description: "Clinical specialty (optional)"
-          }
+          email: { type: "string", description: "Email address of the provider to invite" },
+          name: { type: "string", description: "Full name of the provider" },
+          role: { type: "string", enum: ["clinician", "viewer"], description: "Access role for the provider" },
+          specialty: { type: "string", description: "Clinical specialty (optional)" }
         },
         required: ["email", "name", "role"]
       }
@@ -103,11 +90,7 @@ const tools = [
     function: {
       name: "list_providers",
       description: "List all providers with access to the current hospital",
-      parameters: {
-        type: "object",
-        properties: {},
-        required: []
-      }
+      parameters: { type: "object", properties: {}, required: [] }
     }
   },
   {
@@ -118,19 +101,9 @@ const tools = [
       parameters: {
         type: "object",
         properties: {
-          name: {
-            type: "string",
-            description: "Name of the channel"
-          },
-          channel_type: {
-            type: "string",
-            enum: ["patient_care", "department", "consult"],
-            description: "Type of channel"
-          },
-          patient_id: {
-            type: "string",
-            description: "Patient ID if this is a patient-specific channel (optional)"
-          }
+          name: { type: "string", description: "Name of the channel" },
+          channel_type: { type: "string", enum: ["patient_care", "department", "consult"], description: "Type of channel" },
+          patient_id: { type: "string", description: "Patient ID if this is a patient-specific channel (optional)" }
         },
         required: ["name", "channel_type"]
       }
@@ -176,8 +149,6 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
     }
 
     case "invite_provider": {
-      // In a real app, this would send an email via a service like Resend
-      // For demo, we'll simulate the invite
       return {
         success: true,
         message: `Invitation sent to ${args.email} for ${args.name} as ${args.role}`,
@@ -192,11 +163,7 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
 
       const { data, error } = await supabase
         .from("hospital_users")
-        .select(`
-          user_id,
-          access_level,
-          created_at
-        `)
+        .select(`user_id, access_level, created_at`)
         .eq("hospital_id", context.hospitalId);
 
       if (error) {
@@ -204,7 +171,6 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         return { success: false, message: error.message };
       }
 
-      // Get profiles for the users
       const userIds = data?.map(u => u.user_id) || [];
       const { data: profiles } = await supabase
         .from("profiles")
@@ -219,11 +185,7 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         joined: u.created_at
       })) || [];
 
-      return {
-        success: true,
-        providers,
-        count: providers.length
-      };
+      return { success: true, providers, count: providers.length };
     }
 
     case "create_team_channel": {
@@ -248,24 +210,71 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         return { success: false, message: error.message };
       }
 
-      // Add creator as member
       await supabase
         .from("channel_members")
-        .insert({
-          channel_id: data.id,
-          user_id: context.userId
-        });
+        .insert({ channel_id: data.id, user_id: context.userId });
 
-      return {
-        success: true,
-        message: `Channel "${args.name}" created`,
-        channel: data
-      };
+      return { success: true, message: `Channel "${args.name}" created`, channel: data };
     }
 
     default:
       return { success: false, message: `Unknown tool: ${toolName}` };
   }
+}
+
+// Helper: consume an SSE stream fully and collect tool calls + content
+async function consumeStream(response: Response): Promise<{
+  content: string;
+  toolCalls: Array<{ id: string; name: string; arguments: string }>;
+}> {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let textBuffer = "";
+  let content = "";
+  const toolCallsMap = new Map<number, { id: string; name: string; arguments: string }>();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    textBuffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex: number;
+    while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+      let line = textBuffer.slice(0, newlineIndex);
+      textBuffer = textBuffer.slice(newlineIndex + 1);
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (line.startsWith(":") || line.trim() === "") continue;
+      if (!line.startsWith("data: ")) continue;
+
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") break;
+
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const choice = parsed.choices?.[0];
+        if (choice?.delta?.content) {
+          content += choice.delta.content;
+        }
+        if (choice?.delta?.tool_calls) {
+          for (const tc of choice.delta.tool_calls) {
+            const idx = tc.index ?? 0;
+            if (!toolCallsMap.has(idx)) {
+              toolCallsMap.set(idx, { id: tc.id || `call_${idx}`, name: "", arguments: "" });
+            }
+            const existing = toolCallsMap.get(idx)!;
+            if (tc.id) existing.id = tc.id;
+            if (tc.function?.name) existing.name = tc.function.name;
+            if (tc.function?.arguments) existing.arguments += tc.function.arguments;
+          }
+        }
+      } catch {
+        // partial JSON, ignore
+      }
+    }
+  }
+
+  const toolCalls = Array.from(toolCallsMap.values()).filter(tc => tc.name);
+  return { content, toolCalls };
 }
 
 serve(async (req) => {
@@ -281,21 +290,24 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Extract context for tool execution
     const context = {
       hospitalId: patientContext?.hospital?.id,
       patientId: patientContext?.patient?.id,
-      userId: null as string | null // Would come from auth in production
+      userId: null as string | null,
     };
 
-    // Build system message with optional patient context
     let systemContent = ALIS_SYSTEM_PROMPT;
     if (patientContext) {
       systemContent += `\n\nCurrent Patient Context:\n${JSON.stringify(patientContext, null, 2)}`;
     }
 
-    // First call - may include tool calls
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const apiMessages = [
+      { role: "system", content: systemContent },
+      ...messages,
+    ];
+
+    // First AI call (non-streaming) to detect tool calls
+    const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -303,37 +315,159 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemContent },
-          ...messages,
-        ],
+        messages: apiMessages,
         tools,
         stream: true,
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    if (!firstResponse.ok) {
+      if (firstResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (firstResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "AI service temporarily unavailable" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const errorText = await firstResponse.text();
+      console.error("AI gateway error:", firstResponse.status, errorText);
+      return new Response(JSON.stringify({ error: "AI service temporarily unavailable" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    return new Response(response.body, {
+    // Consume the first stream to check for tool calls
+    const firstResult = await consumeStream(firstResponse);
+
+    // If no tool calls, re-do with streaming directly to client
+    if (firstResult.toolCalls.length === 0) {
+      // Make a second streaming call without tools to get clean streaming
+      const streamResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: apiMessages,
+          stream: true,
+        }),
+      });
+
+      if (!streamResponse.ok) {
+        const t = await streamResponse.text();
+        console.error("Stream error:", t);
+        return new Response(JSON.stringify({ error: "AI service error" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(streamResponse.body, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      });
+    }
+
+    // We have tool calls - execute them, then get follow-up response
+    console.log(`Executing ${firstResult.toolCalls.length} tool call(s)`);
+
+    const toolResults: Array<{ toolCallId: string; name: string; args: Record<string, unknown>; result: unknown }> = [];
+
+    for (const tc of firstResult.toolCalls) {
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(tc.arguments);
+      } catch {
+        console.error("Failed to parse tool args:", tc.arguments);
+      }
+      const result = await executeTool(tc.name, args, context);
+      toolResults.push({ toolCallId: tc.id, name: tc.name, args, result });
+      console.log(`Tool ${tc.name} result:`, JSON.stringify(result));
+    }
+
+    // Build follow-up messages with tool results
+    const followUpMessages = [
+      ...apiMessages,
+    ];
+
+    // Add assistant message with tool calls
+    const assistantMsg: Record<string, unknown> = { role: "assistant" };
+    if (firstResult.content) {
+      assistantMsg.content = firstResult.content;
+    }
+    assistantMsg.tool_calls = firstResult.toolCalls.map(tc => ({
+      id: tc.id,
+      type: "function",
+      function: { name: tc.name, arguments: tc.arguments },
+    }));
+    followUpMessages.push(assistantMsg);
+
+    // Add tool results
+    for (const tr of toolResults) {
+      followUpMessages.push({
+        role: "tool",
+        tool_call_id: tr.toolCallId,
+        content: JSON.stringify(tr.result),
+      });
+    }
+
+    // Get follow-up streaming response
+    const followUpResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: followUpMessages,
+        stream: true,
+      }),
+    });
+
+    if (!followUpResponse.ok) {
+      const t = await followUpResponse.text();
+      console.error("Follow-up error:", t);
+      return new Response(JSON.stringify({ error: "AI service error during follow-up" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Create a custom stream that prepends tool_result events before the AI follow-up
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    (async () => {
+      try {
+        // Send tool_result events first
+        for (const tr of toolResults) {
+          const eventData = JSON.stringify({
+            tool_name: tr.name,
+            tool_args: tr.args,
+            result: tr.result,
+          });
+          await writer.write(encoder.encode(`event: tool_result\ndata: ${eventData}\n\n`));
+        }
+
+        // Then pipe the follow-up stream
+        const reader = followUpResponse.body!.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await writer.write(value);
+        }
+      } catch (e) {
+        console.error("Stream pipe error:", e);
+      } finally {
+        await writer.close();
+      }
+    })();
+
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useALISChat } from '@/hooks/useALISChat';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import { usePatients, DBPatient } from '@/hooks/usePatients';
 import { cn } from '@/lib/utils';
 import { usePatientDetails } from '@/hooks/usePatientDetails';
@@ -69,15 +70,26 @@ const Dashboard = () => {
     if (selectedPatient) setSelectedPatientId(selectedPatient.id);
   }, [selectedPatient?.id]);
 
+  // Handle tool calls from ALIS (e.g. stage_order)
+  const handleToolCall = useCallback((toolName: string, _args: Record<string, unknown>, result: unknown) => {
+    const res = result as { success?: boolean; message?: string; order?: Record<string, unknown> };
+    if (toolName === 'stage_order' && res.success) {
+      toast.success('Order staged — awaiting your signature', {
+        description: res.message,
+      });
+    }
+  }, []);
+
   // AI chat with real patient context
   const aiChat = useALISChat({
     patientContext: selectedPatient ? {
       patient: selectedPatient,
       hospital: selectedHospital,
-      clinicalNotes: clinicalNotes.slice(0, 3), // last 3 notes for context
+      clinicalNotes: clinicalNotes.slice(0, 3),
       insights,
       trends,
     } : undefined,
+    onToolCall: handleToolCall,
   });
 
   // Initialize AI greeting when patient changes
@@ -192,6 +204,7 @@ const Dashboard = () => {
               onSignNote={handleSignNote}
               onRequestConsult={() => setIsConsultModalOpen(true)}
               onOpenTeamChat={() => setShowTeamChat(true)}
+              clinicianName={user?.email?.split('@')[0] || 'Clinician'}
             />
           )}
         </div>
