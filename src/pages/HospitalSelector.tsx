@@ -49,7 +49,7 @@ export default function HospitalSelector() {
 
   const handleSelectHospital = (hospital: Hospital) => {
     setSelectedHospital(hospital);
-    navigate('/dashboard');
+    navigate('/census');
   };
 
   const handleSignOut = async () => {

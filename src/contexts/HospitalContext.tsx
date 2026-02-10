@@ -18,6 +18,8 @@ interface HospitalContextType {
   hospitals: Hospital[];
   selectedHospital: Hospital | null;
   setSelectedHospital: (hospital: Hospital | null) => void;
+  selectedPatientId: string | null;
+  setSelectedPatientId: (id: string | null) => void;
   loading: boolean;
   error: string | null;
 }
@@ -27,6 +29,7 @@ const HospitalContext = createContext<HospitalContextType | undefined>(undefined
 export function HospitalProvider({ children }: { children: ReactNode }) {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
@@ -97,7 +100,7 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
   }, [user, authLoading]);
 
   return (
-    <HospitalContext.Provider value={{ hospitals, selectedHospital, setSelectedHospital, loading, error }}>
+    <HospitalContext.Provider value={{ hospitals, selectedHospital, setSelectedHospital, selectedPatientId, setSelectedPatientId, loading, error }}>
       {children}
     </HospitalContext.Provider>
   );

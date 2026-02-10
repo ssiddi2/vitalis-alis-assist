@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { HospitalProvider } from "@/contexts/HospitalContext";
 import HospitalSelector from "./pages/HospitalSelector";
+import PatientCensus from "./pages/PatientCensus";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -23,6 +24,7 @@ const App = () => (
           <HospitalProvider>
             <Routes>
               <Route path="/" element={<HospitalSelector />} />
+              <Route path="/census" element={<PatientCensus />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
