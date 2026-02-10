@@ -4,6 +4,7 @@ import { useALISChat } from '@/hooks/useALISChat';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAuth } from '@/hooks/useAuth';
 import { usePatients, DBPatient } from '@/hooks/usePatients';
+import { cn } from '@/lib/utils';
 import { usePatientDetails } from '@/hooks/usePatientDetails';
 import { TopBar } from '@/components/virtualis/TopBar';
 import { PatientDashboard } from '@/components/virtualis/PatientDashboard';
@@ -26,6 +27,7 @@ const Dashboard = () => {
   const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
   const [mobileALISOpen, setMobileALISOpen] = useState(false);
   const [mobileShowTeamChat, setMobileShowTeamChat] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Fetch patients for selected hospital
   const { patients, patientsByUnit, loading: patientsLoading } = usePatients(selectedHospital?.id);
@@ -129,7 +131,12 @@ const Dashboard = () => {
       <FuturisticBackground variant="lite" />
       <TopBar />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[240px_1fr_420px] xl:grid-cols-[260px_1fr_700px] min-h-0">
+      <div className={cn(
+        "flex-1 grid grid-cols-1 min-h-0 transition-all duration-200",
+        sidebarCollapsed
+          ? "lg:grid-cols-[48px_1fr_420px] xl:grid-cols-[48px_1fr_700px]"
+          : "lg:grid-cols-[240px_1fr_420px] xl:grid-cols-[260px_1fr_700px]"
+      )}>
         {/* Patient List Sidebar (hidden on mobile) */}
         <div className="hidden lg:block h-[calc(100vh-57px)] border-r border-border overflow-hidden">
           <PatientListSidebar
@@ -137,6 +144,8 @@ const Dashboard = () => {
             selectedPatientId={selectedPatient?.id}
             onSelectPatient={setSelectedPatient}
             loading={patientsLoading}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(prev => !prev)}
           />
         </div>
 
