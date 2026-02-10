@@ -4,6 +4,12 @@ import { toast } from 'sonner';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/alis-chat`;
 
+interface ToolCallResult {
+  tool_name: string;
+  tool_args: Record<string, unknown>;
+  result: { success: boolean; message?: string; order?: Record<string, unknown> };
+}
+
 interface UseALISChatOptions {
   patientContext?: Record<string, unknown>;
   onToolCall?: (toolName: string, args: Record<string, unknown>, result: unknown) => void;
@@ -22,7 +28,6 @@ export function useALISChat(options: UseALISChatOptions = {}) {
       minute: '2-digit',
     });
 
-    // Add user message
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -63,8 +68,7 @@ export function useALISChat(options: UseALISChatOptions = {}) {
       let textBuffer = '';
       let assistantContent = '';
       let assistantMessageId = '';
-      let toolCalls: Array<{ name: string; arguments: string }> = [];
-      let currentToolCall: { name: string; arguments: string } | null = null;
+      let currentEventType = 'message'; // track SSE event type
 
       while (true) {
         const { done, value } = await reader.read();
@@ -78,17 +82,41 @@ export function useALISChat(options: UseALISChatOptions = {}) {
           textBuffer = textBuffer.slice(newlineIndex + 1);
 
           if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
+          
+          // Track event type from SSE
+          if (line.startsWith('event: ')) {
+            currentEventType = line.slice(7).trim();
+            continue;
+          }
+          
+          if (line.startsWith(':') || line.trim() === '') {
+            // Reset event type on empty line (end of SSE block)
+            if (line.trim() === '') currentEventType = 'message';
+            continue;
+          }
           if (!line.startsWith('data: ')) continue;
 
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') break;
 
+          // Handle tool_result events
+          if (currentEventType === 'tool_result') {
+            try {
+              const toolResult: ToolCallResult = JSON.parse(jsonStr);
+              if (options.onToolCall) {
+                options.onToolCall(toolResult.tool_name, toolResult.tool_args, toolResult.result);
+              }
+            } catch (e) {
+              console.error('Error parsing tool result:', e);
+            }
+            currentEventType = 'message';
+            continue;
+          }
+
           try {
             const parsed = JSON.parse(jsonStr);
             const choice = parsed.choices?.[0];
             
-            // Handle regular content
             const deltaContent = choice?.delta?.content;
             if (deltaContent) {
               assistantContent += deltaContent;
@@ -112,66 +140,9 @@ export function useALISChat(options: UseALISChatOptions = {}) {
                 ];
               });
             }
-
-            // Handle tool calls (if present in delta)
-            const deltaToolCalls = choice?.delta?.tool_calls;
-            if (deltaToolCalls) {
-              for (const tc of deltaToolCalls) {
-                if (tc.function?.name) {
-                  // Start of a new tool call
-                  if (currentToolCall) {
-                    toolCalls.push(currentToolCall);
-                  }
-                  currentToolCall = {
-                    name: tc.function.name,
-                    arguments: tc.function.arguments || '',
-                  };
-                } else if (tc.function?.arguments && currentToolCall) {
-                  // Continuation of arguments
-                  currentToolCall.arguments += tc.function.arguments;
-                }
-              }
-            }
-
-            // Check for finish reason
-            if (choice?.finish_reason === 'tool_calls' && currentToolCall) {
-              toolCalls.push(currentToolCall);
-              currentToolCall = null;
-            }
           } catch {
             textBuffer = line + '\n' + textBuffer;
             break;
-          }
-        }
-      }
-
-      // Process any tool calls
-      if (toolCalls.length > 0) {
-        for (const tc of toolCalls) {
-          try {
-            const args = JSON.parse(tc.arguments);
-            
-            // Notify parent about tool call
-            if (options.onToolCall) {
-              options.onToolCall(tc.name, args, { success: true });
-            }
-
-            // Add a message about the tool action
-            const toolMessage = getToolActionMessage(tc.name, args);
-            if (toolMessage && !assistantContent.includes(toolMessage)) {
-              assistantContent += `\n\n${toolMessage}`;
-              setMessages((prev) => {
-                const lastMsg = prev[prev.length - 1];
-                if (lastMsg?.role === 'alis') {
-                  return prev.map((m, i) =>
-                    i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                  );
-                }
-                return prev;
-              });
-            }
-          } catch (e) {
-            console.error('Error parsing tool call:', e);
           }
         }
       }
@@ -210,20 +181,4 @@ export function useALISChat(options: UseALISChatOptions = {}) {
     clearMessages,
     addInitialMessage,
   };
-}
-
-// Helper to generate user-friendly messages for tool actions
-function getToolActionMessage(toolName: string, args: Record<string, unknown>): string {
-  switch (toolName) {
-    case 'stage_order':
-      return `✓ **Order Staged**: ${args.name} (${args.priority})\n_Rationale: ${args.rationale}_`;
-    case 'invite_provider':
-      return `✓ **Invitation Sent**: ${args.name} (${args.email}) as ${args.role}`;
-    case 'list_providers':
-      return `📋 **Provider List Retrieved**`;
-    case 'create_team_channel':
-      return `✓ **Channel Created**: ${args.name}`;
-    default:
-      return '';
-  }
 }
