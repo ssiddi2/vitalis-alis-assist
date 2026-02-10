@@ -19,7 +19,7 @@ import { Loader2 } from 'lucide-react';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { selectedHospital } = useHospital();
+  const { selectedHospital, selectedPatientId, setSelectedPatientId } = useHospital();
   
   const [selectedPatient, setSelectedPatient] = useState<DBPatient | null>(null);
   const [showTeamChat, setShowTeamChat] = useState(false);
@@ -36,20 +36,24 @@ const Dashboard = () => {
     loading: detailsLoading, setStagedOrders, setClinicalNotes,
   } = usePatientDetails(selectedPatient?.id);
 
-  // Auto-select first critical patient (or first patient) when list loads
+  // Auto-select patient from context, or first critical patient
   useEffect(() => {
     if (patients.length > 0 && !selectedPatient) {
+      if (selectedPatientId) {
+        const fromContext = patients.find(p => p.id === selectedPatientId);
+        if (fromContext) { setSelectedPatient(fromContext); return; }
+      }
       const critical = patients.find(p => p.status === 'critical');
       setSelectedPatient(critical || patients[0]);
     }
-  }, [patients, selectedPatient]);
+  }, [patients, selectedPatient, selectedPatientId]);
 
   // Reset selected patient when hospital changes
   useEffect(() => {
     setSelectedPatient(null);
   }, [selectedHospital?.id]);
 
-  // Redirect if no hospital selected or not authenticated
+  // Redirect if not authenticated or no hospital/patient selected
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -57,6 +61,11 @@ const Dashboard = () => {
       navigate('/');
     }
   }, [user, authLoading, selectedHospital, navigate]);
+
+  // Sync selected patient back to context for consistency
+  useEffect(() => {
+    if (selectedPatient) setSelectedPatientId(selectedPatient.id);
+  }, [selectedPatient?.id]);
 
   // AI chat with real patient context
   const aiChat = useALISChat({
