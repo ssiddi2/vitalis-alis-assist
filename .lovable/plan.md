@@ -1,105 +1,116 @@
 
-# Dynamic Order Creation & Signing Workflow
+# Dynamic Note Creation, Editing, and Order/Note Signing Workflow
 
 ## Problem
 
-Right now, the order workflow has several gaps:
-
-1. **Tool calls aren't executed server-side** -- The edge function streams the AI response but never calls `executeTool()` (the function exists but is never invoked). Orders mentioned in chat don't actually appear in the Staged Orders panel.
-
-2. **No real-time feedback** -- When ALIS stages an order, the sidebar doesn't update until a page refresh. There's no visual indication that an order is being created.
-
-3. **No signing step** -- Orders go from "staged" to "approved" with a single click. There's no confirmation or signature workflow.
+1. **No note creation tool** -- ALIS can't create clinical notes through chat. The edge function only has `stage_order`; there's no `create_note` tool.
+2. **Edit does nothing** -- Clicking "Edit" on a note just logs to console (`console.log('Edit note:', noteId)`).
+3. **Sign doesn't persist** -- Signing a note only updates local state; nothing is saved to the database.
+4. **Note type not visible** -- The panel always says "Progress Note" regardless of `note_type` (progress, consult, discharge, procedure).
+5. **No editable note modal** -- The existing `ProgressNoteModal` is read-only and never wired into the main workflow.
 
 ---
 
 ## Plan
 
-### 1. Execute tool calls server-side in the edge function
+### 1. Add `create_note` tool to the edge function
 
 **File: `supabase/functions/alis-chat/index.ts`**
 
-The `executeTool` function already exists but is never called. Update the streaming handler to:
+Add a new tool definition alongside `stage_order`:
 
-- Collect tool calls from the streamed response (detect `finish_reason: "tool_calls"`)
-- After the initial stream ends, execute each tool call via `executeTool()`
-- Send tool results back to the AI as a second request for a follow-up response
-- Stream that follow-up response back to the client
-- Include a custom SSE event (e.g., `event: tool_result`) with the tool call result so the frontend can react immediately
+- Parameters: `note_type` (progress, consult, discharge, procedure), `subjective`, `objective`, `assessment`, `plan`
+- The tool inserts a row into `clinical_notes` with status `draft`
+- Returns the created note so the frontend can display it immediately
+- Emits a `tool_result` SSE event just like orders do
 
-### 2. Handle tool result events on the frontend
+### 2. Enable realtime for `clinical_notes`
 
-**File: `src/hooks/useALISChat.ts`**
+**Database migration:**
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.clinical_notes;
+```
 
-Update the SSE parser to:
-
-- Detect `event: tool_result` lines in the stream
-- When a `stage_order` tool result arrives, call `onToolCall` with the result data
-- This triggers the parent (Dashboard) to add the new order to the staged orders list in real-time
-
-### 3. Wire up `onToolCall` in Dashboard to update staged orders live
-
-**File: `src/pages/Dashboard.tsx`**
-
-- Pass an `onToolCall` callback to `useALISChat`
-- When `stage_order` is called, append the new order to `stagedOrders` state immediately
-- Show a toast notification: "Order staged -- awaiting your signature"
-
-### 4. Add an order signing confirmation modal
-
-**File: `src/components/virtualis/OrderSignatureModal.tsx` (new)**
-
-Create a lightweight confirmation dialog that appears when the clinician clicks "Approve" on a staged order:
-
-- Shows order details (type, name, priority, rationale)
-- Displays a "Sign & Send" button with the clinician's name
-- Shows a brief animation/checkmark on successful signing
-- Logs the signature action to the audit trail
-
-### 5. Update StagedOrdersPanel to use the signing modal
-
-**File: `src/components/virtualis/StagedOrdersPanel.tsx`**
-
-- When "Approve" is clicked, open the `OrderSignatureModal` instead of immediately approving
-- Add a subtle pulse/highlight animation when a new order appears in the list (so the clinician notices it was just staged)
-- Show an "Order created by ALIS" badge on AI-generated orders
-
-### 6. Enable realtime subscription for staged_orders
+### 3. Add realtime subscription for clinical_notes in `usePatientDetails`
 
 **File: `src/hooks/usePatientDetails.ts`**
 
-- Add a Supabase realtime subscription on `staged_orders` filtered by `patient_id`
-- On `INSERT`, add the new order to state
-- On `UPDATE`, update the order status (staged -> approved -> sent)
-- This ensures orders created server-side by the edge function appear instantly
+Subscribe to INSERT and UPDATE events on `clinical_notes` filtered by `patient_id`, so notes created by ALIS appear instantly in the sidebar.
+
+### 4. Create an editable note modal
+
+**File: `src/components/virtualis/NoteEditorModal.tsx` (new)**
+
+A dialog that lets the clinician:
+- See the note type (Progress, Consult, Discharge, Procedure) as a header badge
+- Edit each SOAP field (S, O, A, P) in textarea inputs
+- Save changes back to the database (UPDATE `clinical_notes`)
+- Sign the note with an electronic signature block (similar to OrderSignatureModal)
+- Signing updates `status` to `signed` and sets `signed_at` in the database
+
+### 5. Update `ClinicalNotesPanel` to show all notes with type labels
+
+**File: `src/components/virtualis/ClinicalNotesPanel.tsx`**
+
+- Show the `note_type` label (e.g., "Progress Note", "Consult Note") instead of always "Progress Note"
+- List all draft/pending notes (not just the latest one) so clinicians can review multiple
+- Add pulse animation for newly created notes (like orders have)
+- Wire "Edit" to open the `NoteEditorModal`
+- Wire "Sign" to open the `NoteEditorModal` in sign mode
+
+### 6. Wire `onToolCall` in Dashboard for note creation
+
+**File: `src/pages/Dashboard.tsx`**
+
+- Handle `create_note` tool results alongside `stage_order`
+- Show toast: "Note drafted -- ready for review"
+- The realtime subscription will handle adding it to the list
+
+### 7. Handle `create_note` tool results in `useALISChat`
+
+**File: `src/hooks/useALISChat.ts`**
+
+Already handles generic `tool_result` events and forwards to `onToolCall`. The `create_note` results will flow through the same path -- no changes needed here.
 
 ---
 
 ## Workflow After Changes
 
-```text
-User types: "Order a CBC and BMP stat"
-          |
-          v
-ALIS streams response + triggers stage_order tool call
-          |
-          v
-Edge function executes tool --> inserts into staged_orders table
-          |
-          v
-Realtime subscription fires --> new order appears in sidebar with pulse animation
-          |
-          v
-ALIS confirms in chat: "Order Staged: CBC (STAT)"
-          |
-          v
-Clinician clicks Approve --> Signature modal opens
-          |
-          v
-Clinician clicks "Sign & Send" --> order status = approved, audit logged
-          |
-          v
-Success animation + toast: "Order signed and sent to EMR"
+### Note Creation
+```
+Clinician: "Draft a progress note for this patient"
+    |
+    v
+ALIS generates SOAP content + calls create_note tool
+    |
+    v
+Edge function inserts into clinical_notes (status: draft)
+    |
+    v
+Realtime fires --> note appears in Clinical Actions with pulse
+    |
+    v
+ALIS confirms: "Progress note drafted. Review in the sidebar."
+    |
+    v
+Clinician clicks Edit --> NoteEditorModal opens with editable SOAP fields
+    |
+    v
+Clinician edits content, clicks Save --> database updated
+    |
+    v
+Clinician clicks Sign --> electronic signature applied, status = signed
+```
+
+### Order Creation (existing, unchanged)
+```
+Clinician: "Order a CBC stat"
+    |
+    v
+ALIS calls stage_order --> order appears with pulse
+    |
+    v
+Clinician clicks Approve --> OrderSignatureModal --> signed
 ```
 
 ---
@@ -108,21 +119,16 @@ Success animation + toast: "Order signed and sent to EMR"
 
 | File | Action | Description |
 |------|--------|-------------|
-| `supabase/functions/alis-chat/index.ts` | Edit | Execute tool calls server-side, send tool_result SSE events |
-| `src/hooks/useALISChat.ts` | Edit | Parse tool_result events, forward to onToolCall callback |
-| `src/pages/Dashboard.tsx` | Edit | Wire onToolCall to update stagedOrders state |
-| `src/components/virtualis/OrderSignatureModal.tsx` | New | Signing confirmation dialog with clinician name and audit logging |
-| `src/components/virtualis/StagedOrdersPanel.tsx` | Edit | Integrate signing modal, add new-order animation, ALIS badge |
-| `src/hooks/usePatientDetails.ts` | Edit | Add realtime subscription for staged_orders |
-
----
+| `supabase/functions/alis-chat/index.ts` | Edit | Add `create_note` tool definition and executor |
+| `src/hooks/usePatientDetails.ts` | Edit | Add realtime subscription for `clinical_notes` |
+| `src/components/virtualis/NoteEditorModal.tsx` | New | Editable SOAP note modal with save and sign |
+| `src/components/virtualis/ClinicalNotesPanel.tsx` | Edit | Show note types, list all drafts, wire edit/sign to modal |
+| `src/pages/Dashboard.tsx` | Edit | Handle `create_note` tool results, wire modal callbacks |
 
 ## Database Changes
 
-**Migration: Enable realtime for staged_orders**
-
 ```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.staged_orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.clinical_notes;
 ```
 
-No schema changes needed -- the existing `staged_orders` table already has the correct structure and RLS policies.
+No schema changes -- the existing `clinical_notes` table already has `note_type`, `content` (JSONB for SOAP), `status`, and `signed_at`.
