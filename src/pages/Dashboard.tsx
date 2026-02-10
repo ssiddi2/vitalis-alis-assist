@@ -125,7 +125,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+    <div className="h-screen bg-background flex flex-col relative overflow-hidden">
       <FuturisticBackground variant="lite" />
       <TopBar />
 
