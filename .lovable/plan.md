@@ -1,55 +1,55 @@
 
 
-# Two-Step Navigation: Facility → Patient List → Patient Dashboard
+# Patient Census Cleanup, ALIS Scroll Fix, and Quick Actions
 
-## Current Flow
-Facility Selector → Dashboard (patient list embedded as sidebar)
+## Issues Identified
 
-## New Flow
-Facility Selector → **Patient Census Page** (full-page list) → Patient Dashboard (with ALIS)
+1. **Patient Census cards are cluttered** -- The `ml-4.5` indent class doesn't exist in Tailwind, patient info runs together, and the card layout lacks clear visual hierarchy.
+
+2. **ALIS chat overflows the viewport** -- The Dashboard uses `min-h-screen` but the ALIS panel's flex layout doesn't properly constrain its height. The messages area grows unbounded, pushing the input below the fold.
+
+3. **No quick-action buttons** -- Users want shortcuts like "Create Note", "Place Order", etc. available in the ALIS panel or dashboard without having to type a prompt.
 
 ---
 
-## Implementation
+## Plan
 
-### 1. Create New Patient Census Page
+### 1. Fix Patient Census Card Layout
 
-**New file: `src/pages/PatientCensus.tsx`**
+**Edit: `src/pages/PatientCensus.tsx`**
 
-A full-page view showing all patients for the selected hospital, reusing the existing `PatientListSidebar` component logic but in a full-page layout:
-- Hospital name and EMR badge at top
-- Patients grouped by unit in a card/table layout (larger than the sidebar version)
-- Color-coded status indicators
-- Click a patient row to navigate to `/dashboard`
-- Back button to return to facility selector
-- Uses `FuturisticBackground variant="lite"`
+Restructure each patient card for clean visual hierarchy:
+- Replace `ml-4.5` (invalid) with `ml-[18px]` or remove indent entirely
+- Add a clear two-row layout: **Row 1** = status dot + name + bed badge, **Row 2** = demographics line (age/sex, MRN), **Row 3** = diagnosis, **Row 4** = attending
+- Use proper spacing, separators, and consistent text sizing
+- Add a subtle right-arrow or chevron on hover to signal clickability
 
-### 2. Add Route
-
-**Edit: `src/App.tsx`**
-
-Add `/census` route pointing to `PatientCensus`.
-
-### 3. Update Hospital Selector
-
-**Edit: `src/pages/HospitalSelector.tsx`**
-
-Change `handleSelectHospital` to navigate to `/census` instead of `/dashboard`.
-
-### 4. Update Dashboard
+### 2. Fix ALIS Panel Scroll Containment
 
 **Edit: `src/pages/Dashboard.tsx`**
 
-- Store the selected patient ID in URL or context so the dashboard knows which patient to load
-- Remove the patient list sidebar column on desktop (or keep it for switching between patients once inside)
-- If no patient is selected, redirect back to `/census`
-- Keep the ALIS panel and patient dashboard as-is
+- Change the outer container from `min-h-screen` to `h-screen` so the layout is viewport-locked
+- Ensure the grid children use `h-full` / `overflow-hidden` properly
 
-### 5. Add Selected Patient to Hospital Context
+**Edit: `src/components/virtualis/ALISPanel.tsx`**
 
-**Edit: `src/contexts/HospitalContext.tsx`**
+- The ALIS panel already has `h-full` and `overflow-hidden` on the root, and `flex-1 overflow-y-auto` on the messages area -- the issue is the parent not constraining height. The Dashboard fix should resolve this.
 
-Add `selectedPatientId` / `setSelectedPatientId` to the context so the census page can set it and the dashboard can read it without URL params.
+**Edit: `src/components/virtualis/PatientDashboard.tsx`**
+
+- Ensure the patient dashboard column also scrolls independently within `h-[calc(100vh-57px)]` rather than pushing the page height.
+
+### 3. Add Quick Action Buttons to ALIS Panel
+
+**Edit: `src/components/virtualis/ALISPanel.tsx`**
+
+Add a row of quick-action chip buttons above the text input:
+- "Create Note" -- sends a pre-filled prompt to ALIS: "Draft a progress note for this patient"
+- "Place Order" -- sends: "Suggest orders for this patient based on current status"
+- "Summarize" -- sends: "Summarize this patient's current clinical status"
+- "Care Plan" -- sends: "Outline the care plan for this patient"
+
+These appear as small rounded pill buttons (like suggestion chips) just above the textarea, horizontally scrollable if needed.
 
 ---
 
@@ -57,18 +57,34 @@ Add `selectedPatientId` / `setSelectedPatientId` to the context so the census pa
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/pages/PatientCensus.tsx` | Create | Full-page patient list per hospital |
-| `src/App.tsx` | Edit | Add `/census` route |
-| `src/pages/HospitalSelector.tsx` | Edit | Navigate to `/census` instead of `/dashboard` |
-| `src/pages/Dashboard.tsx` | Edit | Read selected patient from context, keep sidebar for switching |
-| `src/contexts/HospitalContext.tsx` | Edit | Add selectedPatientId state |
+| `src/pages/PatientCensus.tsx` | Edit | Clean up card layout, fix spacing, improve hierarchy |
+| `src/pages/Dashboard.tsx` | Edit | Lock to viewport height (`h-screen`) to contain all panels |
+| `src/components/virtualis/PatientDashboard.tsx` | Edit | Add `h-full overflow-y-auto` to stay within bounds |
+| `src/components/virtualis/ALISPanel.tsx` | Edit | Add quick-action chips above input |
 
 ---
 
-## User Flow After Implementation
+## Technical Details
 
-1. Login → Facility Selector (pick hospital)
-2. → Patient Census page (see all patients for that hospital, grouped by unit)
-3. → Click a patient → Dashboard opens with that patient's clinical data + ALIS
-4. Patient list sidebar remains in dashboard for quick switching between patients without going back
+**Census card restructure:**
+```text
++------------------------------------------+
+| [status dot]  Patient Name     Bed: 4A   |
+| 72M  ·  MRN-001234                       |
+| Sepsis secondary to UTI                  |
+| Dr. Williams                             |
++------------------------------------------+
+```
+
+**Quick action chips (ALIS input area):**
+```text
+[ Create Note ]  [ Place Order ]  [ Summarize ]  [ Care Plan ]
++--------------------------------------------------+  [Send]
+| Ask ALIS anything...                             |
++--------------------------------------------------+
+```
+
+**Dashboard height fix:**
+- Outer div: `h-screen` instead of `min-h-screen`
+- Grid area: already uses `h-[calc(100vh-57px)]` for sidebar and ALIS columns; ensure the middle PatientDashboard column also uses this constraint
 
