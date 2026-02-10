@@ -1,145 +1,147 @@
 
-# Futuristic Background with Lite Mode Toggle
+# Patient List by Hospital with Clinical Notes
 
-## Current State
+## Problem
 
-The app has inconsistent backgrounds:
-- **Auth page**: Full futuristic treatment (gradient, grid pattern, 3 animated floating orbs)
-- **Hospital Selector**: Partial treatment (2 orbs hidden on mobile)
-- **Dashboard**: Plain white background, no visual flair
+The dashboard currently shows a single hardcoded demo patient ("Margaret Chen") regardless of which hospital/EMR you select. There's no patient list, no way to switch between patients, and no hospital-specific data shown. The database already has 8 patients for Memorial General (Epic), 6 for City Medical (Cerner), and 6+ for Regional Health (Meditech) -- but they're never fetched or displayed.
 
-## Solution Overview
+## Solution
 
-Create a reusable `FuturisticBackground` component with two modes:
-
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| **Full** | Animated floating orbs, gradient, grid pattern | Default for desktop, marketing pages |
-| **Lite** | Static gradient + grid, no animations | Mobile devices, reduced motion, performance-sensitive |
-
-The mode will be controlled by:
-1. A `lite` prop for explicit control
-2. Automatic detection of `prefers-reduced-motion` media query
-3. Optional user toggle stored in localStorage
+Build a patient census sidebar that fetches real patients from the database filtered by the selected hospital, and allow clicking a patient to view their details and clinical notes.
 
 ---
 
-## Implementation
+### 1. Create a Patient List Sidebar Component
 
-### 1. Create FuturisticBackground Component
+**New file: `src/components/virtualis/PatientListSidebar.tsx`**
 
-**File**: `src/components/virtualis/FuturisticBackground.tsx`
+A scrollable sidebar showing all patients for the selected hospital, grouped by unit (ICU, Med-Surg, Cardiac, etc.), with:
+- Status indicators (critical = red, warning = amber, stable = green)
+- Patient name, age, sex, bed number
+- Admission diagnosis summary
+- Click to select a patient and view their dashboard
+
+### 2. Create a `usePatients` Hook
+
+**New file: `src/hooks/usePatients.ts`**
+
+Fetches patients from Supabase filtered by `hospital_id`:
+```text
+SELECT * FROM patients WHERE hospital_id = :selectedHospitalId ORDER BY status, name
+```
+Returns patients grouped by unit for display.
+
+### 3. Seed Clinical Notes per Hospital
+
+**Database migration** to insert sample clinical notes for patients across all three hospitals. Each EMR system will have notes that reflect its style:
+
+| Hospital (EMR) | Notes Style |
+|---|---|
+| Memorial General (Epic) | Structured SOAP notes with Epic-style formatting |
+| City Medical (Cerner) | PowerChart-style documentation |
+| Regional Health (Meditech) | Meditech-formatted clinical entries |
+
+Sample notes per patient will include:
+- Admission H&P
+- Daily progress notes
+- Nursing assessments
+
+### 4. Update Dashboard Layout
+
+**Modified file: `src/pages/Dashboard.tsx`**
+
+Change from single-patient view to a three-panel layout:
 
 ```text
-Props:
-- variant: 'full' | 'lite' | 'auto' (default: 'auto')
-- className: string (optional)
+Desktop:
++------------------+---------------------------+-----------------+
+| Patient List     | Patient Dashboard         | ALIS Panel      |
+| (sidebar, 280px) | (center, flexible)        | (right, 420px+) |
++------------------+---------------------------+-----------------+
 
-Features:
-- 'auto' mode: Uses 'lite' on mobile (<1024px) or if prefers-reduced-motion
-- Gradient background layer (always shown)
-- Grid pattern overlay (always shown, subtle opacity)
-- Floating orbs (only in 'full' mode)
-- All elements use absolute positioning with pointer-events-none
+Mobile:
+- Patient list accessible via a top tab or dropdown
+- Patient dashboard full width
+- ALIS via existing FAB
 ```
 
-### 2. Add Animation Keyframes for Orbs
+Key changes:
+- Add patient list as left sidebar (collapsible on smaller screens)
+- Track `selectedPatient` state instead of using hardcoded `demoPatient`
+- Fetch clinical notes for the selected patient
+- Pass real patient data to `PatientDashboard` and `ALISPanel`
 
-**File**: `src/index.css`
+### 5. Update PatientDashboard for Real Data
 
-The existing `animate-float` keyframe works well. Add a new slower variant for variety:
+**Modified file: `src/components/virtualis/PatientDashboard.tsx`**
 
-```css
-@keyframes float-slow {
-  0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
-  50% { transform: translateY(-30px) scale(1.03) rotate(3deg); }
-}
+- Accept clinical notes as a prop and display them in a "Recent Notes" section
+- Show attending physician and care team info
+- Display unit-specific context
 
-.animate-float-slow {
-  animation: float-slow 8s ease-in-out infinite;
-}
-```
+### 6. Create Clinical Notes Display Component
 
-### 3. Apply Background to All Pages
+**New file: `src/components/virtualis/ClinicalNotesDisplay.tsx`**
 
-**Dashboard.tsx**:
-```text
-Add <FuturisticBackground variant="lite" /> inside the main container
-Use lite mode by default since dashboard has dense content
-```
-
-**HospitalSelector.tsx**:
-```text
-Replace inline background elements with <FuturisticBackground />
-Uses auto mode - full on desktop, lite on mobile
-```
-
-**Auth.tsx**:
-```text
-Replace inline background with <FuturisticBackground />
-Uses auto mode for consistency
-```
-
-### 4. Optional: User Preference Toggle
-
-Add a small toggle in settings or TopBar that lets users switch between full/lite mode. Store preference in localStorage.
+Renders clinical notes (SOAP format) with:
+- Note type badge (Progress, H&P, Consult)
+- Timestamp and author
+- Expandable sections for S/O/A/P
+- Status indicator (Draft, Signed)
 
 ---
 
-## Component Design
+## Database Changes
 
-```text
-FuturisticBackground
-├── Gradient Layer (always)
-│   └── from-primary/5 via-background to-info/5
-├── Grid Pattern Layer (always)
-│   └── grid-pattern opacity-20
-└── Orbs Layer (full mode only)
-    ├── Orb 1: top-left, primary/10, animate-float
-    ├── Orb 2: bottom-right, info/10, animate-float-slow
-    └── Orb 3: center-left, success/10, animate-float (delay)
-```
+### Migration: Seed clinical notes for existing patients
+
+Insert 2-3 clinical notes per patient across all hospitals. Example for Memorial General (Epic):
+
+**Robert Chen (ICU, Sepsis):**
+- Admission H&P: Detailed sepsis workup, source investigation
+- Progress Note Day 2: Vasopressor requirements, culture results
+- Progress Note Day 3: Improving, weaning pressors
+
+**Maria Santos (ICU, STEMI):**
+- Admission H&P: Cardiac catheterization findings, stent placement
+- Progress Note Day 2: Post-PCI monitoring, echo results
+
+Similar notes for all patients at City Medical and Regional Health, with EMR-appropriate formatting differences.
 
 ---
 
-## Files to Create/Modify
+## Files Summary
 
 | File | Action | Description |
-|------|--------|-------------|
-| `src/components/virtualis/FuturisticBackground.tsx` | Create | Reusable background component |
-| `src/index.css` | Edit | Add `animate-float-slow` keyframe |
-| `src/pages/Dashboard.tsx` | Edit | Add FuturisticBackground (lite) |
-| `src/pages/HospitalSelector.tsx` | Edit | Replace inline background with component |
-| `src/pages/Auth.tsx` | Edit | Replace inline background with component |
+|---|---|---|
+| `src/components/virtualis/PatientListSidebar.tsx` | Create | Scrollable patient census by unit |
+| `src/components/virtualis/ClinicalNotesDisplay.tsx` | Create | Renders SOAP notes with expand/collapse |
+| `src/hooks/usePatients.ts` | Create | Fetches patients by hospital_id |
+| `src/pages/Dashboard.tsx` | Edit | Add patient list sidebar, track selected patient |
+| `src/components/virtualis/PatientDashboard.tsx` | Edit | Show clinical notes section |
+| Migration SQL | Create | Seed clinical notes for all hospital patients |
 
 ---
 
-## Performance Considerations
+## Data Architecture
 
-**Lite mode benefits:**
-- No CSS animations = reduced CPU/GPU usage
-- Simpler DOM = faster paint times
-- Better battery life on mobile devices
-- Respects user accessibility preferences
-
-**Detection logic:**
 ```text
-isLite = 
-  variant === 'lite' ||
-  (variant === 'auto' && (
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-    window.innerWidth < 1024
-  ))
+Hospital Selected
+    |
+    v
+usePatients(hospitalId)
+    |
+    v
+Patient List Sidebar ──click──> selectedPatient
+    |                                |
+    v                                v
+Grouped by Unit              PatientDashboard
+(ICU, Med-Surg, etc.)        + Clinical Notes
+                             + ALIS Context
 ```
 
----
+## Patient Counts by Hospital
 
-## Visual Result
-
-| Page | Desktop | Mobile |
-|------|---------|--------|
-| Auth | Full (3 orbs, animated) | Lite (gradient + grid only) |
-| Hospital Selector | Full | Lite |
-| Dashboard | Lite | Lite |
-
-The dashboard uses lite mode even on desktop because it has dense clinical content - the animations could be distracting during patient care.
+- **Memorial General (Epic)**: 8 patients across ICU (3), Med-Surg (3), Cardiac (2)
+- **City Medical (Cerner)**: 6 patients across Gen Med (3), Oncology (3)
+- **Regional Health (Meditech)**: 6+ patients across ED, Surgical, Rehab, Telemetry
