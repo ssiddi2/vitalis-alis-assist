@@ -141,7 +141,7 @@ export function TopBar() {
               </div>
               <DropdownMenuSeparator />
               {isAdmin && (
-                <DropdownMenuItem className="gap-2 cursor-pointer">
+                <DropdownMenuItem onClick={() => navigate('/admin')} className="gap-2 cursor-pointer">
                   <Shield className="w-4 h-4" />
                   Admin Panel
                 </DropdownMenuItem>
