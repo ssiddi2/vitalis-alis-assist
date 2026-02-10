@@ -21,9 +21,8 @@ interface MobileALISSheetProps {
   onApproveOrder?: (orderId: string) => void;
   onApproveAllOrders?: () => void;
   onCancelOrder?: (orderId: string) => void;
-  onEditNote?: (noteId: string) => void;
-  onSignNote?: (noteId: string) => void;
   onRequestConsult?: () => void;
+  clinicianName?: string;
 }
 
 export function MobileALISSheet({
@@ -42,9 +41,8 @@ export function MobileALISSheet({
   onApproveOrder,
   onApproveAllOrders,
   onCancelOrder,
-  onEditNote,
-  onSignNote,
   onRequestConsult,
+  clinicianName,
 }: MobileALISSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -71,10 +69,9 @@ export function MobileALISSheet({
             onApproveOrder={onApproveOrder}
             onApproveAllOrders={onApproveAllOrders}
             onCancelOrder={onCancelOrder}
-            onEditNote={onEditNote}
-            onSignNote={onSignNote}
             onRequestConsult={onRequestConsult}
             onOpenTeamChat={() => onToggleTeamChat(true)}
+            clinicianName={clinicianName}
           />
         )}
       </SheetContent>

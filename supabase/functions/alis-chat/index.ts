@@ -27,6 +27,7 @@ Your communication style:
 
 You have access to the following tools to take actions:
 - stage_order: Stage a clinical order for physician approval
+- create_note: Create a clinical SOAP note (progress, consult, discharge, procedure) for physician review
 - invite_provider: Send an email invitation to a new provider
 - list_providers: List all providers with access to the current hospital
 - create_team_channel: Create a new team communication channel
@@ -108,6 +109,40 @@ const tools = [
         required: ["name", "channel_type"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_note",
+      description: "Create a clinical SOAP note for the current patient. The note will appear as a draft for physician review and signing.",
+      parameters: {
+        type: "object",
+        properties: {
+          note_type: {
+            type: "string",
+            enum: ["progress", "consult", "discharge", "procedure"],
+            description: "The type of clinical note"
+          },
+          subjective: {
+            type: "string",
+            description: "Subjective findings - patient complaints, symptoms, history"
+          },
+          objective: {
+            type: "string",
+            description: "Objective findings - vitals, physical exam, lab results"
+          },
+          assessment: {
+            type: "string",
+            description: "Clinical assessment and diagnosis"
+          },
+          plan: {
+            type: "string",
+            description: "Treatment plan and next steps"
+          }
+        },
+        required: ["note_type", "subjective", "objective", "assessment", "plan"]
+      }
+    }
   }
 ];
 
@@ -145,6 +180,41 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         success: true, 
         message: `Order staged: ${args.name} (${args.priority})`,
         order: data
+      };
+    }
+
+    case "create_note": {
+      if (!context.patientId) {
+        return { success: false, message: "No patient context available" };
+      }
+
+      const { data, error } = await supabase
+        .from("clinical_notes")
+        .insert({
+          patient_id: context.patientId,
+          note_type: args.note_type as string,
+          content: {
+            subjective: args.subjective,
+            objective: args.objective,
+            assessment: args.assessment,
+            plan: args.plan,
+          },
+          status: "draft",
+          author_id: context.userId || null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating note:", error);
+        return { success: false, message: error.message };
+      }
+
+      const typeLabel = (args.note_type as string).charAt(0).toUpperCase() + (args.note_type as string).slice(1);
+      return {
+        success: true,
+        message: `${typeLabel} note drafted — ready for review`,
+        note: data,
       };
     }
 

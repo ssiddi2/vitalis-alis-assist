@@ -36,7 +36,7 @@ const Dashboard = () => {
   // Fetch details for selected patient
   const {
     clinicalNotes, insights, trends, stagedOrders, billingEvents,
-    loading: detailsLoading, setStagedOrders, setClinicalNotes,
+    loading: detailsLoading, setStagedOrders,
   } = usePatientDetails(selectedPatient?.id);
 
   // Auto-select patient from context, or first critical patient
@@ -72,11 +72,12 @@ const Dashboard = () => {
 
   // Handle tool calls from ALIS (e.g. stage_order)
   const handleToolCall = useCallback((toolName: string, _args: Record<string, unknown>, result: unknown) => {
-    const res = result as { success?: boolean; message?: string; order?: Record<string, unknown> };
-    if (toolName === 'stage_order' && res.success) {
-      toast.success('Order staged — awaiting your signature', {
-        description: res.message,
-      });
+    const res = result as { success?: boolean; message?: string };
+    if (!res.success) return;
+    if (toolName === 'stage_order') {
+      toast.success('Order staged — awaiting your signature', { description: res.message });
+    } else if (toolName === 'create_note') {
+      toast.success('Note drafted — ready for review', { description: res.message });
     }
   }, []);
 
@@ -116,14 +117,6 @@ const Dashboard = () => {
   };
   const handleCancelOrder = (orderId: string) => {
     setStagedOrders(prev => prev.filter(order => order.id !== orderId));
-  };
-  const handleEditNote = (noteId: string) => {
-    console.log('Edit note:', noteId);
-  };
-  const handleSignNote = (noteId: string) => {
-    setClinicalNotes(prev => prev.map(note =>
-      note.id === noteId ? { ...note, status: 'signed' as const } : note
-    ));
   };
 
   // Loading state
@@ -200,8 +193,6 @@ const Dashboard = () => {
               onApproveOrder={handleApproveOrder}
               onApproveAllOrders={handleApproveAllOrders}
               onCancelOrder={handleCancelOrder}
-              onEditNote={handleEditNote}
-              onSignNote={handleSignNote}
               onRequestConsult={() => setIsConsultModalOpen(true)}
               onOpenTeamChat={() => setShowTeamChat(true)}
               clinicianName={user?.email?.split('@')[0] || 'Clinician'}
@@ -233,9 +224,8 @@ const Dashboard = () => {
         onApproveOrder={handleApproveOrder}
         onApproveAllOrders={handleApproveAllOrders}
         onCancelOrder={handleCancelOrder}
-        onEditNote={handleEditNote}
-        onSignNote={handleSignNote}
         onRequestConsult={() => setIsConsultModalOpen(true)}
+        clinicianName={user?.email?.split('@')[0] || 'Clinician'}
       />
 
       {/* Consult Request Modal */}

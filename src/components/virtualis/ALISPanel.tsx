@@ -23,8 +23,6 @@ interface ALISPanelProps {
   onApproveOrder?: (orderId: string) => void;
   onApproveAllOrders?: () => void;
   onCancelOrder?: (orderId: string) => void;
-  onEditNote?: (noteId: string) => void;
-  onSignNote?: (noteId: string) => void;
   onRequestConsult?: () => void;
   onOpenTeamChat?: () => void;
   clinicianName?: string;
@@ -42,8 +40,6 @@ export function ALISPanel({
   onApproveOrder,
   onApproveAllOrders,
   onCancelOrder,
-  onEditNote,
-  onSignNote,
   onRequestConsult,
   onOpenTeamChat,
   clinicianName,
@@ -114,8 +110,7 @@ export function ALISPanel({
             <ClinicalNotesPanel
               notes={clinicalNotes}
               patientId={patientId}
-              onEdit={onEditNote}
-              onSign={onSignNote}
+              clinicianName={clinicianName}
             />
             <BillingPanel billingEvents={billingEvents} patientId={patientId} />
           </div>
