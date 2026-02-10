@@ -44,7 +44,7 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes }: P
   };
 
   return (
-    <div className="bg-background p-4 sm:p-6 lg:p-8 overflow-y-auto relative pb-24 lg:pb-8">
+    <div className="bg-background p-4 sm:p-6 lg:p-8 overflow-y-auto relative pb-24 lg:pb-8 h-full">
       <div className="absolute inset-0 grid-pattern pointer-events-none opacity-50" />
       
       <div className="relative max-w-4xl mx-auto lg:mx-0">

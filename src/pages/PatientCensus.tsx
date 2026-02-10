@@ -113,31 +113,31 @@ export default function PatientCensus() {
                       <button
                         key={patient.id}
                         onClick={() => handleSelectPatient(patient)}
-                        className="group glass-strong rounded-xl p-4 border border-border/50 hover:border-primary/50 transition-all duration-200 text-left hover:shadow-elevated active:scale-[0.98]"
+                        className="group glass-strong rounded-xl p-3.5 border border-border/50 hover:border-primary/50 transition-all duration-200 text-left hover:shadow-elevated active:scale-[0.98]"
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', statusColors[patient.status || 'active'])} />
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={cn('w-2 h-2 rounded-full flex-shrink-0', statusColors[patient.status || 'active'])} />
                             <span className="text-sm font-semibold text-foreground truncate">
                               {patient.name}
                             </span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground font-mono flex-shrink-0">
+                          <span className="text-[10px] text-muted-foreground font-mono flex-shrink-0 ml-2 px-1.5 py-0.5 rounded bg-secondary/60">
                             {patient.bed}
                           </span>
                         </div>
 
-                        <div className="space-y-1 ml-4.5">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="space-y-1 pl-4">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <span>{patient.age}{patient.sex === 'M' ? 'M' : 'F'}</span>
                             <span className="text-muted-foreground/30">·</span>
-                            <span className="font-mono">{patient.mrn}</span>
+                            <span className="font-mono text-[11px]">{patient.mrn}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground/80 truncate">
                             {patient.admission_diagnosis || 'No diagnosis'}
                           </p>
                           {patient.attending_physician && (
-                            <p className="text-[10px] text-muted-foreground/70 truncate">
+                            <p className="text-[10px] text-muted-foreground/60 truncate">
                               Dr. {patient.attending_physician}
                             </p>
                           )}

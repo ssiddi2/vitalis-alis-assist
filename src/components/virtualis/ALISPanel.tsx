@@ -7,7 +7,7 @@ import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { ClinicalNotesPanel } from './ClinicalNotesPanel';
 import { BillingPanel } from './BillingPanel';
 import { Button } from '@/components/ui/button';
-import { Send, PanelLeftClose, PanelLeft, Zap, Stethoscope, MessageSquare } from 'lucide-react';
+import { Send, PanelLeftClose, PanelLeft, Zap, Stethoscope, MessageSquare, FileText, ClipboardList, BarChart3, HeartPulse } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
 
@@ -209,6 +209,25 @@ export function ALISPanel({
 
         {/* Input */}
         <div className="relative p-2 xl:p-3 border-t border-border bg-card/80 backdrop-blur-sm">
+          {/* Quick Action Chips */}
+          <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-hide">
+            {[
+              { label: 'Create Note', icon: FileText, prompt: 'Draft a progress note for this patient' },
+              { label: 'Place Order', icon: ClipboardList, prompt: 'Suggest orders for this patient based on current status' },
+              { label: 'Summarize', icon: BarChart3, prompt: 'Summarize this patient\'s current clinical status' },
+              { label: 'Care Plan', icon: HeartPulse, prompt: 'Outline the care plan for this patient' },
+            ].map(({ label, icon: Icon, prompt }) => (
+              <button
+                key={label}
+                onClick={() => onSendMessage(prompt)}
+                disabled={isTyping}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] xl:text-xs font-medium bg-secondary/60 hover:bg-primary/10 text-muted-foreground hover:text-primary border border-border/50 hover:border-primary/30 transition-colors whitespace-nowrap disabled:opacity-30"
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-2 items-end">
             <div className="flex-1 relative">
               <textarea
