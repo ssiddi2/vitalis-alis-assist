@@ -1,24 +1,14 @@
 import { useState } from 'react';
-import { Menu, X, Clock, Zap } from 'lucide-react';
+import { Menu, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { DemoScenario } from '@/types/clinical';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
 
 interface MobileMenuProps {
-  scenario: DemoScenario;
-  onScenarioChange: (scenario: DemoScenario) => void;
   currentTime: string;
 }
 
-export function MobileMenu({ scenario, onScenarioChange, currentTime }: MobileMenuProps) {
+export function MobileMenu({ currentTime }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,26 +23,6 @@ export function MobileMenu({ scenario, onScenarioChange, currentTime }: MobileMe
           <SheetTitle className="text-left">Menu</SheetTitle>
         </SheetHeader>
         <div className="p-4 space-y-4">
-          {/* Scenario Selector */}
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Demo Scenario
-            </label>
-            <Select value={scenario} onValueChange={(v) => {
-              onScenarioChange(v as DemoScenario);
-              setOpen(false);
-            }}>
-              <SelectTrigger className="w-full h-10 bg-secondary/50 border-border rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-border shadow-elevated">
-                <SelectItem value="day1">Day 1 – Admission</SelectItem>
-                <SelectItem value="day2">Day 2 – Trajectory Shift</SelectItem>
-                <SelectItem value="prevention">Prevention – Action Bundle</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* AI Status */}
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
             <Zap className="w-4 h-4 text-primary" />

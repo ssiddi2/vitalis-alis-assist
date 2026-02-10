@@ -1,12 +1,3 @@
-import { DemoScenario } from '@/types/clinical';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +5,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { User, LogOut, Shield, Building2, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,12 +15,7 @@ import { DirectMessageSidebar } from './DirectMessageSidebar';
 import { MobileMenu } from './MobileMenu';
 import alisLogo from '@/assets/alis-logo.png';
 
-interface TopBarProps {
-  scenario: DemoScenario;
-  onScenarioChange: (scenario: DemoScenario) => void;
-}
-
-export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
+export function TopBar() {
   const [currentTime, setCurrentTime] = useState('');
   const { user, role, signOut, isAdmin } = useAuth();
   const { selectedHospital, setSelectedHospital } = useHospital();
@@ -90,13 +77,8 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
     <header className="glass-strong border-b border-border px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-50">
       {/* Logo and Hospital */}
       <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-        {/* ALIS Logo + Wordmark */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <img 
-            src={alisLogo} 
-            alt="ALIS" 
-            className="h-8 sm:h-10"
-          />
+          <img src={alisLogo} alt="ALIS" className="h-8 sm:h-10" />
           <span className="hidden sm:block text-lg font-bold text-foreground">ALIS</span>
         </div>
         
@@ -122,18 +104,6 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
 
       {/* Desktop Controls */}
       <div className="hidden lg:flex items-center gap-3">
-        {/* Scenario Selector */}
-        <Select value={scenario} onValueChange={(v) => onScenarioChange(v as DemoScenario)}>
-          <SelectTrigger className="w-[200px] h-9 bg-secondary/50 border-border text-sm rounded-xl">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl border-border shadow-elevated">
-            <SelectItem value="day1">Day 1 – Admission</SelectItem>
-            <SelectItem value="day2">Day 2 – Trajectory Shift</SelectItem>
-            <SelectItem value="prevention">Prevention – Action Bundle</SelectItem>
-          </SelectContent>
-        </Select>
-
         {/* AI Status Indicator */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
           <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
@@ -196,15 +166,10 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
 
       {/* Mobile Controls */}
       <div className="flex lg:hidden items-center gap-2">
-        {/* Compact User Menu */}
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-9 w-9"
-              >
+              <Button variant="ghost" size="icon" className="h-9 w-9">
                 <User className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -222,12 +187,7 @@ export function TopBar({ scenario, onScenarioChange }: TopBarProps) {
           </DropdownMenu>
         )}
         
-        {/* Mobile Menu */}
-        <MobileMenu 
-          scenario={scenario} 
-          onScenarioChange={onScenarioChange} 
-          currentTime={currentTime}
-        />
+        <MobileMenu currentTime={currentTime} />
       </div>
     </header>
   );

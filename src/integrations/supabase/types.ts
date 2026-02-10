@@ -605,6 +605,38 @@ export type Database = {
           },
         ]
       }
+      patient_vitals: {
+        Row: {
+          id: string
+          insights: Json
+          patient_id: string
+          trends: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          insights?: Json
+          patient_id: string
+          trends?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          insights?: Json
+          patient_id?: string
+          trends?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_vitals_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           admission_day: number

@@ -1,78 +1,53 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DemoScenario } from '@/types/clinical';
-import { StagedOrder, ClinicalNote, BillingEvent } from '@/types/hospital';
-import { demoPatient, scenarioData, peOrderBundle, progressNoteTemplate, demoStagedOrders, demoClinicalNotes, demoBillingEvents } from '@/data/demoData';
 import { useALISChat } from '@/hooks/useALISChat';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAuth } from '@/hooks/useAuth';
+import { usePatients, DBPatient } from '@/hooks/usePatients';
+import { usePatientDetails } from '@/hooks/usePatientDetails';
 import { TopBar } from '@/components/virtualis/TopBar';
 import { PatientDashboard } from '@/components/virtualis/PatientDashboard';
+import { PatientListSidebar } from '@/components/virtualis/PatientListSidebar';
 import { ALISPanel } from '@/components/virtualis/ALISPanel';
 import { TeamChatPanel } from '@/components/virtualis/TeamChatPanel';
 import { ConsultRequestModal } from '@/components/virtualis/ConsultRequestModal';
-import { OrderReviewModal } from '@/components/virtualis/OrderReviewModal';
-import { ProgressNoteModal } from '@/components/virtualis/ProgressNoteModal';
 import { MobileALISFab } from '@/components/virtualis/MobileALISFab';
 import { MobileALISSheet } from '@/components/virtualis/MobileALISSheet';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { Loader2 } from 'lucide-react';
-
-// Scenario-aware initial greetings for ALIS
-const getInitialGreeting = (scenario: DemoScenario, hospitalName?: string) => {
-  const greetings: Record<DemoScenario, string> = {
-    day1: `I'm monitoring Margaret Chen's pneumonia treatment at ${hospitalName || 'this facility'}. Her admission vitals and initial workup are available. Ask me about her current status, risk factors, or anything you'd like to explore.`,
-    day2: `I've identified concerning patterns in Margaret Chen's trajectory that warrant your attention. Her oxygen requirements are increasing despite treatment, and there are subtle signs that may indicate a developing PE. Would you like me to walk you through what I'm seeing?`,
-    prevention: `The PE workup for Margaret Chen has been completed successfully. The CT-PA confirmed bilateral pulmonary emboli, and anticoagulation has been initiated. Ask me about the case outcome, timeline, or any lessons learned.`,
-  };
-  return greetings[scenario];
-};
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { selectedHospital } = useHospital();
   
-  const [scenario, setScenario] = useState<DemoScenario>('day2');
-  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
-  const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<DBPatient | null>(null);
   const [showTeamChat, setShowTeamChat] = useState(false);
-  
-  // Mobile ALIS sheet state
+  const [isConsultModalOpen, setIsConsultModalOpen] = useState(false);
   const [mobileALISOpen, setMobileALISOpen] = useState(false);
   const [mobileShowTeamChat, setMobileShowTeamChat] = useState(false);
-  
-  // Clinical actions state
-  const [stagedOrders, setStagedOrders] = useState<StagedOrder[]>(demoStagedOrders);
-  const [clinicalNotes, setClinicalNotes] = useState<ClinicalNote[]>(demoClinicalNotes);
-  const [billingEvents] = useState<BillingEvent[]>(demoBillingEvents);
 
-  // Order handlers
-  const handleApproveOrder = (orderId: string) => {
-    setStagedOrders(prev => prev.map(order => 
-      order.id === orderId ? { ...order, status: 'approved' as const } : order
-    ));
-  };
+  // Fetch patients for selected hospital
+  const { patients, patientsByUnit, loading: patientsLoading } = usePatients(selectedHospital?.id);
 
-  const handleApproveAllOrders = () => {
-    setStagedOrders(prev => prev.map(order => ({ ...order, status: 'approved' as const })));
-  };
+  // Fetch details for selected patient
+  const {
+    clinicalNotes, insights, trends, stagedOrders, billingEvents,
+    loading: detailsLoading, setStagedOrders, setClinicalNotes,
+  } = usePatientDetails(selectedPatient?.id);
 
-  const handleCancelOrder = (orderId: string) => {
-    setStagedOrders(prev => prev.filter(order => order.id !== orderId));
-  };
+  // Auto-select first critical patient (or first patient) when list loads
+  useEffect(() => {
+    if (patients.length > 0 && !selectedPatient) {
+      const critical = patients.find(p => p.status === 'critical');
+      setSelectedPatient(critical || patients[0]);
+    }
+  }, [patients, selectedPatient]);
 
-  // Note handlers
-  const handleEditNote = (noteId: string) => {
-    console.log('Edit note:', noteId);
-  };
-
-  const handleSignNote = (noteId: string) => {
-    setClinicalNotes(prev => prev.map(note =>
-      note.id === noteId ? { ...note, status: 'signed' as const } : note
-    ));
-  };
+  // Reset selected patient when hospital changes
+  useEffect(() => {
+    setSelectedPatient(null);
+  }, [selectedHospital?.id]);
 
   // Redirect if no hospital selected or not authenticated
   useEffect(() => {
@@ -83,34 +58,49 @@ const Dashboard = () => {
     }
   }, [user, authLoading, selectedHospital, navigate]);
 
-  // AI chat with patient context
+  // AI chat with real patient context
   const aiChat = useALISChat({
-    patientContext: {
-      patient: demoPatient,
-      currentScenario: scenario,
+    patientContext: selectedPatient ? {
+      patient: selectedPatient,
       hospital: selectedHospital,
-      insights: scenarioData[scenario]?.insights,
-      trends: scenarioData[scenario]?.trends,
-    },
+      clinicalNotes: clinicalNotes.slice(0, 3), // last 3 notes for context
+      insights,
+      trends,
+    } : undefined,
   });
 
-  // Initialize AI chat with scenario-aware greeting on mount and scenario change
+  // Initialize AI greeting when patient changes
   useEffect(() => {
-    aiChat.clearMessages();
-    aiChat.addInitialMessage(getInitialGreeting(scenario, selectedHospital?.name));
-  }, [scenario, selectedHospital?.name]);
+    if (selectedPatient && selectedHospital) {
+      aiChat.clearMessages();
+      const status = selectedPatient.status === 'critical' ? 'with critical status findings' : selectedPatient.status === 'warning' ? 'with items requiring attention' : 'who is clinically stable';
+      aiChat.addInitialMessage(
+        `I'm monitoring **${selectedPatient.name}** (${selectedPatient.age}${selectedPatient.sex}, ${selectedPatient.unit || selectedPatient.location}) at ${selectedHospital.name}. ` +
+        `This patient is ${status}. ` +
+        `I have access to ${clinicalNotes.length} clinical note(s) and current vitals/trends. Ask me anything about this patient's clinical status, trajectory, or care plan.`
+      );
+    }
+  }, [selectedPatient?.id, selectedHospital?.name, clinicalNotes.length]);
 
-  // Get current scenario data
-  const currentData = scenarioData[scenario];
-
-  // Handle order approval modal
-  const onOrderApprove = () => {
-    setIsOrderModalOpen(false);
+  // Order handlers
+  const handleApproveOrder = (orderId: string) => {
+    setStagedOrders(prev => prev.map(order =>
+      order.id === orderId ? { ...order, status: 'approved' as const } : order
+    ));
   };
-
-  // Handle note signing modal
-  const onNoteSign = () => {
-    setIsNoteModalOpen(false);
+  const handleApproveAllOrders = () => {
+    setStagedOrders(prev => prev.map(order => ({ ...order, status: 'approved' as const })));
+  };
+  const handleCancelOrder = (orderId: string) => {
+    setStagedOrders(prev => prev.filter(order => order.id !== orderId));
+  };
+  const handleEditNote = (noteId: string) => {
+    console.log('Edit note:', noteId);
+  };
+  const handleSignNote = (noteId: string) => {
+    setClinicalNotes(prev => prev.map(note =>
+      note.id === noteId ? { ...note, status: 'signed' as const } : note
+    ));
   };
 
   // Loading state
@@ -128,25 +118,43 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
       <FuturisticBackground variant="lite" />
-      <TopBar
-        scenario={scenario}
-        onScenarioChange={setScenario}
-      />
+      <TopBar />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_700px] min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[240px_1fr_420px] xl:grid-cols-[260px_1fr_700px] min-h-0">
+        {/* Patient List Sidebar (hidden on mobile) */}
+        <div className="hidden lg:block h-[calc(100vh-57px)] border-r border-border overflow-hidden">
+          <PatientListSidebar
+            patientsByUnit={patientsByUnit}
+            selectedPatientId={selectedPatient?.id}
+            onSelectPatient={setSelectedPatient}
+            loading={patientsLoading}
+          />
+        </div>
+
         {/* Patient Dashboard */}
-        <PatientDashboard
-          patient={demoPatient}
-          insights={currentData?.insights || []}
-          trends={currentData?.trends || []}
-        />
+        {selectedPatient ? (
+          <PatientDashboard
+            patient={selectedPatient}
+            insights={insights}
+            trends={trends}
+            clinicalNotes={clinicalNotes}
+          />
+        ) : (
+          <div className="flex items-center justify-center text-muted-foreground">
+            {patientsLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : (
+              <p className="text-sm">Select a patient to view their dashboard</p>
+            )}
+          </div>
+        )}
 
         {/* Desktop ALIS Chat Panel or Team Chat */}
         <div className="hidden lg:block h-[calc(100vh-57px)]">
           {showTeamChat ? (
             <TeamChatPanel 
-              patientId={demoPatient.id}
-              patientName={demoPatient.name}
+              patientId={selectedPatient?.id || ''}
+              patientName={selectedPatient?.name || ''}
               onBack={() => setShowTeamChat(false)}
             />
           ) : (
@@ -154,8 +162,8 @@ const Dashboard = () => {
               messages={aiChat.messages}
               isTyping={aiChat.isStreaming}
               onSendMessage={aiChat.sendMessage}
-              patientId={demoPatient.id}
-              patientName={demoPatient.name}
+              patientId={selectedPatient?.id}
+              patientName={selectedPatient?.name}
               stagedOrders={stagedOrders}
               clinicalNotes={clinicalNotes}
               billingEvents={billingEvents}
@@ -186,8 +194,8 @@ const Dashboard = () => {
         messages={aiChat.messages}
         isTyping={aiChat.isStreaming}
         onSendMessage={aiChat.sendMessage}
-        patientId={demoPatient.id}
-        patientName={demoPatient.name}
+        patientId={selectedPatient?.id || ''}
+        patientName={selectedPatient?.name || ''}
         stagedOrders={stagedOrders}
         clinicalNotes={clinicalNotes}
         billingEvents={billingEvents}
@@ -199,28 +207,12 @@ const Dashboard = () => {
         onRequestConsult={() => setIsConsultModalOpen(true)}
       />
 
-      {/* Order Review Modal */}
-      <OrderReviewModal
-        isOpen={isOrderModalOpen}
-        onClose={() => setIsOrderModalOpen(false)}
-        orders={peOrderBundle}
-        onApprove={onOrderApprove}
-      />
-
-      {/* Progress Note Modal */}
-      <ProgressNoteModal
-        isOpen={isNoteModalOpen}
-        onClose={() => setIsNoteModalOpen(false)}
-        note={progressNoteTemplate}
-        onSign={onNoteSign}
-      />
-
       {/* Consult Request Modal */}
       <ConsultRequestModal
         isOpen={isConsultModalOpen}
         onClose={() => setIsConsultModalOpen(false)}
-        patientId={demoPatient.id}
-        patientName={demoPatient.name}
+        patientId={selectedPatient?.id || ''}
+        patientName={selectedPatient?.name || ''}
       />
     </div>
   );
