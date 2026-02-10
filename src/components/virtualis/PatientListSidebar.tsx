@@ -1,6 +1,6 @@
 import { DBPatient } from '@/hooks/usePatients';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, Users, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Users, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,8 @@ interface PatientListSidebarProps {
   selectedPatientId: string | undefined;
   onSelectPatient: (patient: DBPatient) => void;
   loading: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -18,14 +20,7 @@ const statusColors: Record<string, string> = {
   active: 'bg-success',
 };
 
-const statusLabel: Record<string, string> = {
-  critical: 'Critical',
-  warning: 'Warning',
-  stable: 'Stable',
-  active: 'Active',
-};
-
-export function PatientListSidebar({ patientsByUnit, selectedPatientId, onSelectPatient, loading }: PatientListSidebarProps) {
+export function PatientListSidebar({ patientsByUnit, selectedPatientId, onSelectPatient, loading, collapsed, onToggleCollapse }: PatientListSidebarProps) {
   const [openUnits, setOpenUnits] = useState<Record<string, boolean>>({});
 
   const toggleUnit = (unit: string) => {
@@ -39,6 +34,39 @@ export function PatientListSidebar({ patientsByUnit, selectedPatientId, onSelect
     return (
       <div className="flex items-center justify-center h-32">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Collapsed view
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center py-3 gap-2 h-full">
+        <button
+          onClick={onToggleCollapse}
+          className="p-1.5 rounded-md hover:bg-secondary/50 transition-colors"
+          title="Expand census"
+        >
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <Users className="h-4 w-4 text-primary" />
+        <span className="text-[9px] font-bold text-primary">{totalPatients}</span>
+        <div className="flex-1 flex flex-col items-center gap-1.5 mt-2 overflow-y-auto">
+          {unitEntries.flatMap(([, patients]) =>
+            patients.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => onSelectPatient(p)}
+                className={cn(
+                  "w-3 h-3 rounded-full flex-shrink-0 transition-all",
+                  statusColors[p.status || 'active'],
+                  selectedPatientId === p.id && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                )}
+                title={`${p.name} – ${p.bed}`}
+              />
+            ))
+          )}
+        </div>
       </div>
     );
   }
@@ -61,15 +89,26 @@ export function PatientListSidebar({ patientsByUnit, selectedPatientId, onSelect
             Census
           </span>
         </div>
-        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
-          {totalPatients}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+            {totalPatients}
+          </span>
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="p-1 rounded-md hover:bg-secondary/50 transition-colors"
+              title="Collapse census"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Patient List */}
       <div className="flex-1 overflow-y-auto">
         {unitEntries.map(([unit, patients]) => {
-          const isOpen = openUnits[unit] !== false; // default open
+          const isOpen = openUnits[unit] !== false;
           const criticalCount = patients.filter(p => p.status === 'critical').length;
 
           return (
@@ -94,31 +133,35 @@ export function PatientListSidebar({ patientsByUnit, selectedPatientId, onSelect
                     key={patient.id}
                     onClick={() => onSelectPatient(patient)}
                     className={cn(
-                      "w-full px-3 py-2 text-left hover:bg-secondary/50 transition-colors border-b border-border/30",
+                      "w-full px-3 py-2.5 text-left hover:bg-secondary/50 transition-colors border-b border-border/30",
                       selectedPatientId === patient.id && "bg-primary/5 border-l-2 border-l-primary"
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-2 h-2 rounded-full flex-shrink-0", statusColors[patient.status || 'active'])} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                      {/* Row 1: Status dot + Name | Bed */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={cn("w-2 h-2 rounded-full flex-shrink-0", statusColors[patient.status || 'active'])} />
                           <span className="text-xs font-medium text-foreground truncate">
                             {patient.name}
                           </span>
-                          <span className="text-[9px] text-muted-foreground flex-shrink-0 ml-1">
-                            {patient.bed}
-                          </span>
                         </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className="text-[10px] text-muted-foreground">
-                            {patient.age}{patient.sex === 'M' ? 'M' : 'F'}
-                          </span>
-                          <span className="text-muted-foreground/30">·</span>
-                          <span className="text-[10px] text-muted-foreground truncate">
-                            {patient.admission_diagnosis || 'No dx'}
-                          </span>
-                        </div>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium flex-shrink-0 ml-2">
+                          {patient.bed}
+                        </span>
                       </div>
+                      {/* Row 2: Age/Sex · MRN */}
+                      <div className="pl-4 text-[10px] text-muted-foreground">
+                        {patient.age}{patient.sex === 'M' ? 'M' : 'F'}
+                        <span className="mx-1 text-muted-foreground/30">·</span>
+                        {patient.mrn}
+                      </div>
+                      {/* Row 3: Diagnosis */}
+                      {patient.admission_diagnosis && (
+                        <div className="pl-4 text-[10px] text-muted-foreground/70 truncate">
+                          {patient.admission_diagnosis}
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
