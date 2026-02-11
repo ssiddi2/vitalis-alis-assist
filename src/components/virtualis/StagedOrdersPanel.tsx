@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, Check, X, Sparkles } from 'lucide-react';
+import { ClipboardList, Check, X, Sparkles, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StagedOrder } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { OrderSignatureModal } from './OrderSignatureModal';
+import { OrderEntryModal } from './OrderEntryModal';
 import { cn } from '@/lib/utils';
 
 interface StagedOrdersPanelProps {
@@ -27,6 +28,7 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
   const pendingOrders = orders.filter(o => o.status === 'staged');
   const [signingOrder, setSigningOrder] = useState<StagedOrder | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+  const [orderEntryOpen, setOrderEntryOpen] = useState(false);
 
   // Track newly added orders for pulse animation
   useEffect(() => {
@@ -86,13 +88,21 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
   if (pendingOrders.length === 0) {
     return (
       <div className="glass rounded-xl p-4 border border-border/50">
-        <div className="flex items-center gap-2 mb-3">
-          <ClipboardList className="h-4 w-4 text-primary" />
-          <h4 className="text-sm font-semibold text-foreground">Staged Orders</h4>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold text-foreground">Staged Orders</h4>
+          </div>
+          {patientId && (
+            <Button variant="outline" size="sm" onClick={() => setOrderEntryOpen(true)} className="h-7 text-[10px] px-2">
+              <Plus className="h-3 w-3 mr-1" /> New Order
+            </Button>
+          )}
         </div>
         <p className="text-xs text-muted-foreground text-center py-4">
           No orders pending approval
         </p>
+        {patientId && <OrderEntryModal open={orderEntryOpen} onOpenChange={setOrderEntryOpen} patientId={patientId} />}
       </div>
     );
   }
@@ -105,9 +115,16 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
             <ClipboardList className="h-4 w-4 text-primary" />
             <h4 className="text-sm font-semibold text-foreground">Staged Orders</h4>
           </div>
-          <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">
-            {pendingOrders.length} pending
-          </span>
+          <div className="flex items-center gap-2">
+            {patientId && (
+              <button onClick={() => setOrderEntryOpen(true)} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="New Order">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">
+              {pendingOrders.length} pending
+            </span>
+          </div>
         </div>
 
         <div className="space-y-2 max-h-[200px] overflow-y-auto">
@@ -185,6 +202,8 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
         patientId={patientId}
         onSign={handleSignComplete}
       />
+
+      {patientId && <OrderEntryModal open={orderEntryOpen} onOpenChange={setOrderEntryOpen} patientId={patientId} />}
     </>
   );
 }

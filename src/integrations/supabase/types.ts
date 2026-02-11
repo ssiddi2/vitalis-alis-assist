@@ -76,8 +76,12 @@ export type Database = {
       }
       billing_events: {
         Row: {
+          appeal_status: string | null
+          coder_reviewed: boolean | null
+          coding_confidence: number | null
           cpt_codes: string[] | null
           created_at: string
+          denial_reason: string | null
           estimated_revenue: number | null
           icd10_codes: string[] | null
           id: string
@@ -88,8 +92,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          appeal_status?: string | null
+          coder_reviewed?: boolean | null
+          coding_confidence?: number | null
           cpt_codes?: string[] | null
           created_at?: string
+          denial_reason?: string | null
           estimated_revenue?: number | null
           icd10_codes?: string[] | null
           id?: string
@@ -100,8 +108,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          appeal_status?: string | null
+          coder_reviewed?: boolean | null
+          coding_confidence?: number | null
           cpt_codes?: string[] | null
           created_at?: string
+          denial_reason?: string | null
           estimated_revenue?: number | null
           icd10_codes?: string[] | null
           id?: string
@@ -573,6 +585,65 @@ export type Database = {
         }
         Relationships: []
       }
+      imaging_studies: {
+        Row: {
+          accession_number: string | null
+          body_part: string | null
+          created_at: string
+          id: string
+          impression: string | null
+          modality: string | null
+          patient_id: string
+          reading_radiologist: string | null
+          report_text: string | null
+          status: string
+          study_date: string
+          study_type: string
+          updated_at: string
+          viewer_url: string | null
+        }
+        Insert: {
+          accession_number?: string | null
+          body_part?: string | null
+          created_at?: string
+          id?: string
+          impression?: string | null
+          modality?: string | null
+          patient_id: string
+          reading_radiologist?: string | null
+          report_text?: string | null
+          status?: string
+          study_date?: string
+          study_type: string
+          updated_at?: string
+          viewer_url?: string | null
+        }
+        Update: {
+          accession_number?: string | null
+          body_part?: string | null
+          created_at?: string
+          id?: string
+          impression?: string | null
+          modality?: string | null
+          patient_id?: string
+          reading_radiologist?: string | null
+          report_text?: string | null
+          status?: string
+          study_date?: string
+          study_type?: string
+          updated_at?: string
+          viewer_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imaging_studies_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -601,6 +672,60 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          hospital_id: string | null
+          id: string
+          metadata: Json | null
+          patient_id: string | null
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          hospital_id?: string | null
+          id?: string
+          metadata?: Json | null
+          patient_id?: string | null
+          read?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          hospital_id?: string | null
+          id?: string
+          metadata?: Json | null
+          patient_id?: string | null
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]

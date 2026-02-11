@@ -28,11 +28,10 @@ Your communication style:
 You have access to the following tools to take actions:
 - stage_order: Stage a clinical order for physician approval
 - create_note: Create a clinical SOAP note (progress, consult, discharge, procedure) for physician review
+- suggest_billing_codes: Analyze clinical encounters and suggest CPT/ICD-10 billing codes with confidence levels
 - invite_provider: Send an email invitation to a new provider
 - list_providers: List all providers with access to the current hospital
 - create_team_channel: Create a new team communication channel
-
-When using tools, explain what you're doing and confirm success or failure.
 
 Current context: You are assisting a clinician reviewing patient data. Be helpful, precise, and maintain patient safety as the highest priority. When discussing clinical findings, always reference the specific data points that informed your analysis.`;
 
@@ -141,6 +140,33 @@ const tools = [
           }
         },
         required: ["note_type", "subjective", "objective", "assessment", "plan"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "suggest_billing_codes",
+      description: "Analyze a clinical note and suggest appropriate CPT and ICD-10 codes for billing. Returns recommended codes with confidence levels.",
+      parameters: {
+        type: "object",
+        properties: {
+          note_summary: {
+            type: "string",
+            description: "Summary of the clinical encounter to analyze for billing codes"
+          },
+          encounter_type: {
+            type: "string",
+            enum: ["new_patient", "established_patient", "consult", "procedure", "critical_care"],
+            description: "Type of encounter for E&M code selection"
+          },
+          complexity: {
+            type: "string",
+            enum: ["low", "moderate", "high"],
+            description: "Medical decision-making complexity"
+          }
+        },
+        required: ["note_summary", "encounter_type", "complexity"]
       }
     }
   }
@@ -285,6 +311,40 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         .insert({ channel_id: data.id, user_id: context.userId });
 
       return { success: true, message: `Channel "${args.name}" created`, channel: data };
+    }
+
+    case "suggest_billing_codes": {
+      // Generate billing code suggestions based on encounter details
+      const complexityMap: Record<string, { cpt: string[]; revenue: number }> = {
+        "new_patient_low": { cpt: ["99202"], revenue: 110 },
+        "new_patient_moderate": { cpt: ["99203"], revenue: 175 },
+        "new_patient_high": { cpt: ["99205"], revenue: 350 },
+        "established_patient_low": { cpt: ["99212"], revenue: 75 },
+        "established_patient_moderate": { cpt: ["99214"], revenue: 155 },
+        "established_patient_high": { cpt: ["99215"], revenue: 250 },
+        "consult_low": { cpt: ["99242"], revenue: 150 },
+        "consult_moderate": { cpt: ["99243"], revenue: 200 },
+        "consult_high": { cpt: ["99245"], revenue: 375 },
+        "critical_care_low": { cpt: ["99291"], revenue: 450 },
+        "critical_care_moderate": { cpt: ["99291"], revenue: 450 },
+        "critical_care_high": { cpt: ["99291", "99292"], revenue: 600 },
+        "procedure_low": { cpt: ["99213"], revenue: 110 },
+        "procedure_moderate": { cpt: ["99214"], revenue: 155 },
+        "procedure_high": { cpt: ["99215"], revenue: 250 },
+      };
+
+      const key = `${args.encounter_type}_${args.complexity}`;
+      const codes = complexityMap[key] || complexityMap["established_patient_moderate"];
+      
+      return {
+        success: true,
+        message: `Suggested CPT codes: ${codes.cpt.join(", ")} (est. $${codes.revenue})`,
+        suggested_cpt: codes.cpt,
+        estimated_revenue: codes.revenue,
+        encounter_type: args.encounter_type,
+        complexity: args.complexity,
+        confidence: args.complexity === "high" ? 0.85 : args.complexity === "moderate" ? 0.9 : 0.95,
+      };
     }
 
     default:

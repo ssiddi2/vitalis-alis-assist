@@ -13,6 +13,7 @@ import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
 import { MobileMenu } from './MobileMenu';
+import { NotificationCenter } from './NotificationCenter';
 import alisLogo from '@/assets/alis-logo.png';
 
 export function TopBar() {
@@ -109,6 +110,9 @@ export function TopBar() {
           <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
           <span className="text-xs font-medium text-primary">AI Powered</span>
         </div>
+
+        {/* Notifications */}
+        <NotificationCenter />
 
         {/* Direct Messages */}
         <DirectMessageSidebar />

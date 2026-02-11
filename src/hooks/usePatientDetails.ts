@@ -9,6 +9,7 @@ export function usePatientDetails(patientId: string | undefined) {
   const [trends, setTrends] = useState<ClinicalTrend[]>([]);
   const [stagedOrders, setStagedOrders] = useState<StagedOrder[]>([]);
   const [billingEvents, setBillingEvents] = useState<BillingEvent[]>([]);
+  const [imagingStudies, setImagingStudies] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,6 +19,7 @@ export function usePatientDetails(patientId: string | undefined) {
       setTrends([]);
       setStagedOrders([]);
       setBillingEvents([]);
+      setImagingStudies([]);
       setLoading(false);
       return;
     }
@@ -25,7 +27,7 @@ export function usePatientDetails(patientId: string | undefined) {
     async function fetchDetails() {
       setLoading(true);
       try {
-        const [notesRes, vitalsRes, ordersRes, billingRes] = await Promise.all([
+        const [notesRes, vitalsRes, ordersRes, billingRes, imagingRes] = await Promise.all([
           supabase
             .from('clinical_notes')
             .select('*')
@@ -46,6 +48,11 @@ export function usePatientDetails(patientId: string | undefined) {
             .select('*')
             .eq('patient_id', patientId)
             .order('created_at', { ascending: false }),
+          supabase
+            .from('imaging_studies')
+            .select('*')
+            .eq('patient_id', patientId)
+            .order('study_date', { ascending: false }),
         ]);
 
         if (notesRes.data) {
@@ -72,6 +79,10 @@ export function usePatientDetails(patientId: string | undefined) {
 
         if (billingRes.data) {
           setBillingEvents(billingRes.data as unknown as BillingEvent[]);
+        }
+
+        if (imagingRes.data) {
+          setImagingStudies(imagingRes.data);
         }
       } catch (err) {
         console.error('Error fetching patient details:', err);
@@ -172,5 +183,5 @@ export function usePatientDetails(patientId: string | undefined) {
     };
   }, [patientId]);
 
-  return { clinicalNotes, insights, trends, stagedOrders, billingEvents, loading, setStagedOrders, setClinicalNotes };
+  return { clinicalNotes, insights, trends, stagedOrders, billingEvents, imagingStudies, loading, setStagedOrders, setClinicalNotes };
 }
