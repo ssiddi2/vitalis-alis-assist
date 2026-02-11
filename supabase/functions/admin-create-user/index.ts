@@ -54,7 +54,6 @@ serve(async (req) => {
       });
     }
 
-    // Parse body once
     const body = await req.json();
     const { action } = body;
 
@@ -108,7 +107,7 @@ serve(async (req) => {
 
     // ---- CREATE USER (invite by email) ----
     if (action === "create_user") {
-      const { email, full_name, role, hospital_id, avatar_url } = body;
+      const { email, full_name, role, hospital_ids, hospital_id, avatar_url } = body;
 
       if (!email || !full_name || !role) {
         return new Response(JSON.stringify({ error: "Missing required fields: email, full_name, role" }), {
@@ -117,7 +116,6 @@ serve(async (req) => {
         });
       }
 
-      // Validate role
       if (!["admin", "clinician", "viewer"].includes(role)) {
         return new Response(JSON.stringify({ error: "Invalid role. Must be admin, clinician, or viewer." }), {
           status: 400,
@@ -125,7 +123,6 @@ serve(async (req) => {
         });
       }
 
-      // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return new Response(JSON.stringify({ error: "Invalid email format" }), {
@@ -134,7 +131,6 @@ serve(async (req) => {
         });
       }
 
-      // Create user via admin API with invite
       const { data: newUser, error: createError } = await adminClient.auth.admin.inviteUserByEmail(email, {
         data: { full_name },
       });
@@ -149,40 +145,119 @@ serve(async (req) => {
 
       const userId = newUser.user.id;
 
-      // Update profile with avatar if provided (profile is auto-created by trigger)
       if (avatar_url) {
-        await adminClient
-          .from("profiles")
-          .update({ avatar_url, full_name })
-          .eq("user_id", userId);
+        await adminClient.from("profiles").update({ avatar_url, full_name }).eq("user_id", userId);
       }
 
-      // Set the user role (trigger creates default 'viewer', update if different)
       if (role !== "viewer") {
-        await adminClient
-          .from("user_roles")
-          .update({ role })
-          .eq("user_id", userId);
+        await adminClient.from("user_roles").update({ role }).eq("user_id", userId);
       }
 
-      // Assign to hospital if provided
-      if (hospital_id) {
+      // Support multi-hospital assignment
+      const hospitalList: string[] = hospital_ids || (hospital_id ? [hospital_id] : []);
+      for (const hId of hospitalList) {
         const accessLevel = role === "admin" ? "admin" : role === "clinician" ? "write" : "view";
-        await adminClient
-          .from("hospital_users")
-          .insert({
-            user_id: userId,
-            hospital_id,
-            access_level: accessLevel,
-          });
+        await adminClient.from("hospital_users").insert({ user_id: userId, hospital_id: hId, access_level: accessLevel });
       }
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          message: `Invitation sent to ${email}`,
-          user: { user_id: userId, email, full_name, role },
-        }),
+        JSON.stringify({ success: true, message: `Invitation sent to ${email}`, user: { user_id: userId, email, full_name, role } }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ---- UPDATE USER ----
+    if (action === "update_user") {
+      const { target_user_id, role, hospital_ids } = body;
+
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: "Missing target_user_id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Update role
+      if (role && ["admin", "clinician", "viewer"].includes(role)) {
+        await adminClient.from("user_roles").update({ role }).eq("user_id", target_user_id);
+      }
+
+      // Update hospital assignments - replace all
+      if (Array.isArray(hospital_ids)) {
+        // Remove existing assignments
+        await adminClient.from("hospital_users").delete().eq("user_id", target_user_id);
+
+        // Insert new assignments
+        const accessLevel = role === "admin" ? "admin" : role === "clinician" ? "write" : "view";
+        for (const hId of hospital_ids) {
+          await adminClient.from("hospital_users").insert({ user_id: target_user_id, hospital_id: hId, access_level: accessLevel });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "User updated" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ---- DEACTIVATE USER ----
+    if (action === "deactivate_user") {
+      const { target_user_id } = body;
+
+      if (!target_user_id) {
+        return new Response(JSON.stringify({ error: "Missing target_user_id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Prevent self-deactivation
+      if (target_user_id === caller.id) {
+        return new Response(JSON.stringify({ error: "Cannot deactivate your own account" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: banError } = await adminClient.auth.admin.updateUserById(target_user_id, {
+        ban_duration: "876600h", // ~100 years
+      });
+
+      if (banError) {
+        return new Response(JSON.stringify({ error: banError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "User deactivated" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ---- RESEND INVITE ----
+    if (action === "resend_invite") {
+      const { email } = body;
+
+      if (!email) {
+        return new Response(JSON.stringify({ error: "Missing email" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email);
+
+      if (inviteError) {
+        return new Response(JSON.stringify({ error: inviteError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: `Invitation resent to ${email}` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

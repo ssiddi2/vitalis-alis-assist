@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital, Hospital } from '@/contexts/HospitalContext';
@@ -10,10 +9,10 @@ import {
   ChevronRight, 
   Wifi, 
   LogOut,
-  Loader2
 } from 'lucide-react';
 import alisLogo from '@/assets/alis-logo.png';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
+import { HospitalCardSkeleton } from '@/components/ui/skeleton-patterns';
 
 const EMR_CONFIG = {
   epic: { 
@@ -38,14 +37,8 @@ const EMR_CONFIG = {
 
 export default function HospitalSelector() {
   const navigate = useNavigate();
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { user, signOut } = useAuth();
   const { hospitals, setSelectedHospital, loading, error } = useHospital();
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
 
   const handleSelectHospital = (hospital: Hospital) => {
     setSelectedHospital(hospital);
@@ -56,17 +49,6 @@ export default function HospitalSelector() {
     await signOut();
     navigate('/auth');
   };
-
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading facilities...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -118,7 +100,11 @@ export default function HospitalSelector() {
 
             {/* Hospital Grid - Single column on mobile */}
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {hospitals.map((hospital) => {
+              {loading ? (
+                <>
+                  {[1, 2, 3].map(i => <HospitalCardSkeleton key={i} />)}
+                </>
+              ) : hospitals.map((hospital) => {
                 const emrConfig = EMR_CONFIG[hospital.emr_system];
                 
                 return (
