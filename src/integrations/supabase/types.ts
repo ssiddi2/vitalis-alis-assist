@@ -730,6 +730,50 @@ export type Database = {
           },
         ]
       }
+      order_sets: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          hospital_id: string | null
+          id: string
+          name: string
+          orders_template: Json
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          hospital_id?: string | null
+          id?: string
+          name: string
+          orders_template?: Json
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          hospital_id?: string | null
+          id?: string
+          name?: string
+          orders_template?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_sets_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_allergies: {
         Row: {
           allergen: string

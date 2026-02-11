@@ -15,6 +15,8 @@ import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPanel from "./pages/AdminPanel";
+import BillingDashboard from "./pages/BillingDashboard";
+import QualityDashboard from "./pages/QualityDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -45,6 +47,8 @@ const App = () => (
                   <Route path="/census" element={<ProtectedRoute><PatientCensus /></ProtectedRoute>} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
+                  <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
+                  <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
