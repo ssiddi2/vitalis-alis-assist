@@ -7,17 +7,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import { User, LogOut, Shield, Building2, ChevronLeft } from 'lucide-react';
+import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
 import { MobileMenu } from './MobileMenu';
 import { NotificationCenter } from './NotificationCenter';
+import { EMRSyncBadge } from './EMRSyncBadge';
+import { AmbientStatusIndicator } from './AmbientStatusIndicator';
 import alisLogo from '@/assets/alis-logo.png';
 
 export function TopBar() {
   const [currentTime, setCurrentTime] = useState('');
+  const [isAmbient, setIsAmbient] = useState(false);
   const { user, role, signOut, isAdmin } = useAuth();
   const { selectedHospital, setSelectedHospital } = useHospital();
   const navigate = useNavigate();
@@ -104,12 +107,25 @@ export function TopBar() {
       </div>
 
       {/* Desktop Controls */}
-      <div className="hidden lg:flex items-center gap-3">
-        {/* AI Status Indicator */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
-          <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-          <span className="text-xs font-medium text-primary">AI Powered</span>
-        </div>
+      <div className="hidden lg:flex items-center gap-2">
+        {/* EMR Sync Badge */}
+        {selectedHospital && (
+          <EMRSyncBadge
+            emrSystem={selectedHospital.emr_system}
+            connectionStatus={selectedHospital.connection_status}
+          />
+        )}
+
+        {/* Ambient Mode */}
+        <AmbientStatusIndicator isAmbient={isAmbient} onToggle={() => setIsAmbient(prev => !prev)} />
+
+        {/* Nav Links */}
+        <button onClick={() => navigate('/billing')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+          <DollarSign className="w-3 h-3" /> RCM
+        </button>
+        <button onClick={() => navigate('/quality')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+          <BarChart3 className="w-3 h-3" /> Quality
+        </button>
 
         {/* Notifications */}
         <NotificationCenter />
