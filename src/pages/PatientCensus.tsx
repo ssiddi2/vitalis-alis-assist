@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { usePatients, DBPatient } from '@/hooks/usePatients';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
-import { ArrowLeft, Users, Loader2 } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
+import { PatientCardSkeleton } from '@/components/ui/skeleton-patterns';
 
 const statusColors: Record<string, string> = {
   critical: 'bg-critical',
@@ -24,14 +24,15 @@ const EMR_BADGE: Record<string, { label: string; className: string }> = {
 
 export default function PatientCensus() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { selectedHospital, setSelectedPatientId } = useHospital();
   const { patientsByUnit, loading } = usePatients(selectedHospital?.id);
 
-  useEffect(() => {
-    if (!authLoading && !user) navigate('/auth');
-    else if (!authLoading && !selectedHospital) navigate('/');
-  }, [user, authLoading, selectedHospital, navigate]);
+  // If no hospital selected, go back to selector
+  if (!selectedHospital) {
+    navigate('/');
+    return null;
+  }
 
   const handleSelectPatient = (patient: DBPatient) => {
     setSelectedPatientId(patient.id);
@@ -41,14 +42,6 @@ export default function PatientCensus() {
   const unitEntries = Object.entries(patientsByUnit).sort(([a], [b]) => a.localeCompare(b));
   const totalPatients = unitEntries.reduce((sum, [, pts]) => sum + pts.length, 0);
   const emr = selectedHospital ? EMR_BADGE[selectedHospital.emr_system] : null;
-
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -87,7 +80,11 @@ export default function PatientCensus() {
         {/* Census Grid */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <div className="max-w-6xl mx-auto space-y-6">
-            {unitEntries.map(([unit, patients]) => {
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {Array.from({ length: 8 }).map((_, i) => <PatientCardSkeleton key={i} />)}
+              </div>
+            ) : unitEntries.map(([unit, patients]) => {
               const criticalCount = patients.filter(p => p.status === 'critical').length;
               const warningCount = patients.filter(p => p.status === 'warning').length;
 
@@ -149,7 +146,7 @@ export default function PatientCensus() {
               );
             })}
 
-            {unitEntries.length === 0 && (
+            {!loading && unitEntries.length === 0 && (
               <div className="text-center py-16">
                 <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-muted-foreground">No patients found for this facility</p>

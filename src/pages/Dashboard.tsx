@@ -56,14 +56,12 @@ const Dashboard = () => {
     setSelectedPatient(null);
   }, [selectedHospital?.id]);
 
-  // Redirect if not authenticated or no hospital/patient selected
+  // Redirect if no hospital selected
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    } else if (!authLoading && user && !selectedHospital) {
+    if (!selectedHospital) {
       navigate('/');
     }
-  }, [user, authLoading, selectedHospital, navigate]);
+  }, [selectedHospital, navigate]);
 
   // Sync selected patient back to context for consistency
   useEffect(() => {
