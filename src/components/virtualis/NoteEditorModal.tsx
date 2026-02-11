@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, FileSignature, Shield, Save } from 'lucide-react';
+import { Check, FileSignature, Shield, Save, Mic } from 'lucide-react';
+import { VoiceDictationButton } from './VoiceDictationButton';
 import { ClinicalNote, NoteType } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { supabase } from '@/integrations/supabase/client';
@@ -129,10 +130,16 @@ export function NoteEditorModal({
             { label: 'Plan', value: plan, setter: setPlan, placeholder: 'Treatment plan and next steps...' },
           ] as const).map(({ label, value, setter, placeholder }) => (
             <div key={label}>
-              <label className="text-xs font-semibold text-foreground mb-1 block">
-                {label.charAt(0)}
-                <span className="text-muted-foreground font-normal"> — {label}</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-foreground">
+                  {label.charAt(0)}
+                  <span className="text-muted-foreground font-normal"> — {label}</span>
+                </label>
+                <VoiceDictationButton
+                  onTranscript={(text) => setter(prev => (prev ? prev + ' ' : '') + text)}
+                  size="sm"
+                />
+              </div>
               <Textarea
                 value={value}
                 onChange={(e) => setter(e.target.value)}

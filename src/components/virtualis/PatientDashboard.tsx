@@ -6,6 +6,7 @@ import { PatientHeader } from './PatientHeader';
 import { InsightCard } from './InsightCard';
 import { ClinicalTrends } from './ClinicalTrends';
 import { ClinicalNotesDisplay } from './ClinicalNotesDisplay';
+import { ImagingPanel, ImagingStudy } from './ImagingPanel';
 import { Brain, TrendingUp, FileText, Stethoscope } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
@@ -14,9 +15,10 @@ interface PatientDashboardProps {
   insights: ClinicalInsight[];
   trends: ClinicalTrend[];
   clinicalNotes: ClinicalNote[];
+  imagingStudies?: ImagingStudy[];
 }
 
-export function PatientDashboard({ patient, insights, trends, clinicalNotes }: PatientDashboardProps) {
+export function PatientDashboard({ patient, insights, trends, clinicalNotes, imagingStudies = [] }: PatientDashboardProps) {
   const { logView } = useAuditLog();
 
   useEffect(() => {
@@ -106,6 +108,9 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes }: P
             </div>
           </section>
         )}
+
+        {/* Imaging / Radiology */}
+        <ImagingPanel studies={imagingStudies} />
 
         {/* Clinical Notes */}
         <section>

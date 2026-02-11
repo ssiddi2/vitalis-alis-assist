@@ -5,9 +5,10 @@ import { ChatMessage } from './ChatMessage';
 import { TypingIndicator } from './TypingIndicator';
 import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { ClinicalNotesPanel } from './ClinicalNotesPanel';
-import { BillingPanel } from './BillingPanel';
+import { ChargeReviewPanel } from './ChargeReviewPanel';
 import { Button } from '@/components/ui/button';
 import { Send, PanelLeftClose, PanelLeft, Zap, Stethoscope, MessageSquare, FileText, ClipboardList, BarChart3, HeartPulse } from 'lucide-react';
+import { VoiceDictationButton } from './VoiceDictationButton';
 import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
 
@@ -112,7 +113,7 @@ export function ALISPanel({
               patientId={patientId}
               clinicianName={clinicianName}
             />
-            <BillingPanel billingEvents={billingEvents} patientId={patientId} />
+            <ChargeReviewPanel billingEvents={billingEvents} patientId={patientId} />
           </div>
         </div>
       )}
@@ -227,13 +228,19 @@ export function ALISPanel({
             ))}
           </div>
           <div className="flex gap-2 items-end">
+            <VoiceDictationButton
+              onTranscript={(text) => {
+                setInputValue(prev => (prev ? prev + ' ' : '') + text);
+              }}
+              size="default"
+            />
             <div className="flex-1 relative">
               <textarea
                 ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask ALIS anything..."
+                placeholder="Ask ALIS anything or dictate..."
                 rows={1}
                 className="w-full px-3 py-2 xl:py-2.5 pr-10 bg-secondary/50 border border-border rounded-xl text-xs xl:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 style={{ minHeight: '40px', maxHeight: '100px' }}

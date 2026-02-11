@@ -35,7 +35,7 @@ const Dashboard = () => {
 
   // Fetch details for selected patient
   const {
-    clinicalNotes, insights, trends, stagedOrders, billingEvents,
+    clinicalNotes, insights, trends, stagedOrders, billingEvents, imagingStudies,
     loading: detailsLoading, setStagedOrders,
   } = usePatientDetails(selectedPatient?.id);
 
@@ -159,6 +159,7 @@ const Dashboard = () => {
             insights={insights}
             trends={trends}
             clinicalNotes={clinicalNotes}
+            imagingStudies={imagingStudies as any}
           />
         ) : (
           <div className="flex items-center justify-center text-muted-foreground">
