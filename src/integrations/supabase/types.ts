@@ -14,6 +14,82 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          encounter_id: string | null
+          encounter_type: Database["public"]["Enums"]["encounter_type"]
+          end_time: string
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          provider_id: string
+          recurring_rule: Json | null
+          start_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+          visit_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          encounter_id?: string | null
+          encounter_type?: Database["public"]["Enums"]["encounter_type"]
+          end_time: string
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          provider_id: string
+          recurring_rule?: Json | null
+          start_time: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+          visit_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          encounter_id?: string | null
+          encounter_type?: Database["public"]["Enums"]["encounter_type"]
+          end_time?: string
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          provider_id?: string
+          recurring_rule?: Json | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+          visit_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action_type: Database["public"]["Enums"]["audit_action_type"]
@@ -220,6 +296,7 @@ export type Database = {
           content: Json
           conversation_id: string | null
           created_at: string
+          encounter_id: string | null
           id: string
           note_type: Database["public"]["Enums"]["note_type"]
           patient_id: string
@@ -232,6 +309,7 @@ export type Database = {
           content?: Json
           conversation_id?: string | null
           created_at?: string
+          encounter_id?: string | null
           id?: string
           note_type?: Database["public"]["Enums"]["note_type"]
           patient_id: string
@@ -244,6 +322,7 @@ export type Database = {
           content?: Json
           conversation_id?: string | null
           created_at?: string
+          encounter_id?: string | null
           id?: string
           note_type?: Database["public"]["Enums"]["note_type"]
           patient_id?: string
@@ -257,6 +336,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_notes_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
             referencedColumns: ["id"]
           },
           {
@@ -517,6 +603,85 @@ export type Database = {
           },
         ]
       }
+      encounters: {
+        Row: {
+          billing_event_id: string | null
+          check_in_at: string | null
+          check_out_at: string | null
+          chief_complaint: string | null
+          created_at: string
+          duration_minutes: number | null
+          encounter_type: Database["public"]["Enums"]["encounter_type"]
+          hospital_id: string
+          id: string
+          patient_id: string
+          provider_id: string
+          room_number: string | null
+          scheduled_at: string | null
+          status: Database["public"]["Enums"]["encounter_status"]
+          updated_at: string
+          visit_reason: string | null
+        }
+        Insert: {
+          billing_event_id?: string | null
+          check_in_at?: string | null
+          check_out_at?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          encounter_type?: Database["public"]["Enums"]["encounter_type"]
+          hospital_id: string
+          id?: string
+          patient_id: string
+          provider_id: string
+          room_number?: string | null
+          scheduled_at?: string | null
+          status?: Database["public"]["Enums"]["encounter_status"]
+          updated_at?: string
+          visit_reason?: string | null
+        }
+        Update: {
+          billing_event_id?: string | null
+          check_in_at?: string | null
+          check_out_at?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          encounter_type?: Database["public"]["Enums"]["encounter_type"]
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          provider_id?: string
+          room_number?: string | null
+          scheduled_at?: string | null
+          status?: Database["public"]["Enums"]["encounter_status"]
+          updated_at?: string
+          visit_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encounters_billing_event_id_fkey"
+            columns: ["billing_event_id"]
+            isOneToOne: false
+            referencedRelation: "billing_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounters_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounters_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospital_users: {
         Row: {
           access_level: string
@@ -644,6 +809,62 @@ export type Database = {
           },
         ]
       }
+      immunizations: {
+        Row: {
+          administered_by: string | null
+          administered_date: string
+          created_at: string
+          cvx_code: string | null
+          id: string
+          lot_number: string | null
+          manufacturer: string | null
+          next_due_date: string | null
+          patient_id: string
+          route: string | null
+          site: string | null
+          updated_at: string
+          vaccine_name: string
+        }
+        Insert: {
+          administered_by?: string | null
+          administered_date?: string
+          created_at?: string
+          cvx_code?: string | null
+          id?: string
+          lot_number?: string | null
+          manufacturer?: string | null
+          next_due_date?: string | null
+          patient_id: string
+          route?: string | null
+          site?: string | null
+          updated_at?: string
+          vaccine_name: string
+        }
+        Update: {
+          administered_by?: string | null
+          administered_date?: string
+          created_at?: string
+          cvx_code?: string | null
+          id?: string
+          lot_number?: string | null
+          manufacturer?: string | null
+          next_due_date?: string | null
+          patient_id?: string
+          route?: string | null
+          site?: string | null
+          updated_at?: string
+          vaccine_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "immunizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -672,6 +893,50 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      note_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          encounter_type: Database["public"]["Enums"]["encounter_type"] | null
+          hospital_id: string | null
+          id: string
+          name: string
+          specialty: string | null
+          template_content: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          encounter_type?: Database["public"]["Enums"]["encounter_type"] | null
+          hospital_id?: string | null
+          id?: string
+          name: string
+          specialty?: string | null
+          template_content?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          encounter_type?: Database["public"]["Enums"]["encounter_type"] | null
+          hospital_id?: string | null
+          id?: string
+          name?: string
+          specialty?: string | null
+          template_content?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_templates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -950,15 +1215,22 @@ export type Database = {
           admission_diagnosis: string | null
           age: number
           attending_physician: string | null
-          bed: string
+          bed: string | null
           care_team: Json | null
           created_at: string
+          emergency_contact: Json | null
           expected_los: number
           hospital_id: string | null
           id: string
-          location: string
+          insurance_id: string | null
+          insurance_provider: string | null
+          location: string | null
           mrn: string
           name: string
+          patient_type: Database["public"]["Enums"]["patient_type"] | null
+          pcp_provider_id: string | null
+          preferred_language: string | null
+          preferred_pharmacy: string | null
           sex: string
           status: string | null
           unit: string | null
@@ -969,15 +1241,22 @@ export type Database = {
           admission_diagnosis?: string | null
           age: number
           attending_physician?: string | null
-          bed: string
+          bed?: string | null
           care_team?: Json | null
           created_at?: string
+          emergency_contact?: Json | null
           expected_los?: number
           hospital_id?: string | null
           id?: string
-          location: string
+          insurance_id?: string | null
+          insurance_provider?: string | null
+          location?: string | null
           mrn: string
           name: string
+          patient_type?: Database["public"]["Enums"]["patient_type"] | null
+          pcp_provider_id?: string | null
+          preferred_language?: string | null
+          preferred_pharmacy?: string | null
           sex: string
           status?: string | null
           unit?: string | null
@@ -988,15 +1267,22 @@ export type Database = {
           admission_diagnosis?: string | null
           age?: number
           attending_physician?: string | null
-          bed?: string
+          bed?: string | null
           care_team?: Json | null
           created_at?: string
+          emergency_contact?: Json | null
           expected_los?: number
           hospital_id?: string | null
           id?: string
-          location?: string
+          insurance_id?: string | null
+          insurance_provider?: string | null
+          location?: string | null
           mrn?: string
           name?: string
+          patient_type?: Database["public"]["Enums"]["patient_type"] | null
+          pcp_provider_id?: string | null
+          preferred_language?: string | null
+          preferred_pharmacy?: string | null
           sex?: string
           status?: string | null
           unit?: string | null
@@ -1008,6 +1294,87 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescriptions: {
+        Row: {
+          created_at: string
+          dea_schedule: string | null
+          dose: string | null
+          encounter_id: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          medication_name: string
+          patient_id: string
+          pharmacy_name: string | null
+          pharmacy_npi: string | null
+          prescriber_id: string
+          quantity: number | null
+          refills: number | null
+          route: string | null
+          sig: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["prescription_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dea_schedule?: string | null
+          dose?: string | null
+          encounter_id?: string | null
+          end_date?: string | null
+          frequency?: string | null
+          id?: string
+          medication_name: string
+          patient_id: string
+          pharmacy_name?: string | null
+          pharmacy_npi?: string | null
+          prescriber_id: string
+          quantity?: number | null
+          refills?: number | null
+          route?: string | null
+          sig?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["prescription_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dea_schedule?: string | null
+          dose?: string | null
+          encounter_id?: string | null
+          end_date?: string | null
+          frequency?: string | null
+          id?: string
+          medication_name?: string
+          patient_id?: string
+          pharmacy_name?: string | null
+          pharmacy_npi?: string | null
+          prescriber_id?: string
+          quantity?: number | null
+          refills?: number | null
+          route?: string | null
+          sig?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["prescription_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -1039,11 +1406,81 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals: {
+        Row: {
+          completed_date: string | null
+          created_at: string
+          encounter_id: string | null
+          id: string
+          notes: string | null
+          patient_id: string
+          reason: string
+          referred_to_provider: string | null
+          referred_to_specialty: string
+          referring_provider_id: string
+          report_received: boolean | null
+          scheduled_date: string | null
+          status: Database["public"]["Enums"]["referral_status"]
+          updated_at: string
+          urgency: Database["public"]["Enums"]["referral_urgency"]
+        }
+        Insert: {
+          completed_date?: string | null
+          created_at?: string
+          encounter_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          reason: string
+          referred_to_provider?: string | null
+          referred_to_specialty: string
+          referring_provider_id: string
+          report_received?: boolean | null
+          scheduled_date?: string | null
+          status?: Database["public"]["Enums"]["referral_status"]
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["referral_urgency"]
+        }
+        Update: {
+          completed_date?: string | null
+          created_at?: string
+          encounter_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          reason?: string
+          referred_to_provider?: string | null
+          referred_to_specialty?: string
+          referring_provider_id?: string
+          report_received?: boolean | null
+          scheduled_date?: string | null
+          status?: Database["public"]["Enums"]["referral_status"]
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["referral_urgency"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staged_orders: {
         Row: {
           conversation_id: string | null
           created_at: string
           created_by: string | null
+          encounter_id: string | null
           id: string
           order_data: Json
           order_type: string
@@ -1056,6 +1493,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           created_by?: string | null
+          encounter_id?: string | null
           id?: string
           order_data?: Json
           order_type: string
@@ -1068,6 +1506,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           created_by?: string | null
+          encounter_id?: string | null
           id?: string
           order_data?: Json
           order_type?: string
@@ -1082,6 +1521,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staged_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
             referencedColumns: ["id"]
           },
           {
@@ -1243,6 +1689,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "clinician" | "viewer"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "checked_in"
+        | "completed"
+        | "cancelled"
+        | "no_show"
       audit_action_type:
         | "view"
         | "create"
@@ -1259,9 +1712,32 @@ export type Database = {
       consult_status: "pending" | "accepted" | "completed" | "cancelled"
       consult_urgency: "routine" | "urgent" | "stat"
       emr_system: "epic" | "meditech" | "cerner"
+      encounter_status:
+        | "scheduled"
+        | "checked_in"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "no_show"
+      encounter_type:
+        | "office_visit"
+        | "telehealth"
+        | "follow_up"
+        | "annual_physical"
+        | "urgent"
+        | "procedure"
       note_status: "draft" | "pending_signature" | "signed" | "amended"
       note_type: "progress" | "consult" | "discharge" | "procedure"
       order_status: "staged" | "approved" | "sent" | "cancelled"
+      patient_type: "inpatient" | "outpatient" | "both"
+      prescription_status: "draft" | "signed" | "sent" | "filled" | "cancelled"
+      referral_status:
+        | "draft"
+        | "sent"
+        | "scheduled"
+        | "completed"
+        | "cancelled"
+      referral_urgency: "routine" | "urgent" | "stat"
       team_message_type: "text" | "handoff" | "urgent" | "order_link"
     }
     CompositeTypes: {
@@ -1391,6 +1867,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "clinician", "viewer"],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "checked_in",
+        "completed",
+        "cancelled",
+        "no_show",
+      ],
       audit_action_type: [
         "view",
         "create",
@@ -1408,9 +1892,29 @@ export const Constants = {
       consult_status: ["pending", "accepted", "completed", "cancelled"],
       consult_urgency: ["routine", "urgent", "stat"],
       emr_system: ["epic", "meditech", "cerner"],
+      encounter_status: [
+        "scheduled",
+        "checked_in",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "no_show",
+      ],
+      encounter_type: [
+        "office_visit",
+        "telehealth",
+        "follow_up",
+        "annual_physical",
+        "urgent",
+        "procedure",
+      ],
       note_status: ["draft", "pending_signature", "signed", "amended"],
       note_type: ["progress", "consult", "discharge", "procedure"],
       order_status: ["staged", "approved", "sent", "cancelled"],
+      patient_type: ["inpatient", "outpatient", "both"],
+      prescription_status: ["draft", "signed", "sent", "filled", "cancelled"],
+      referral_status: ["draft", "sent", "scheduled", "completed", "cancelled"],
+      referral_urgency: ["routine", "urgent", "stat"],
       team_message_type: ["text", "handoff", "urgent", "order_link"],
     },
   },
