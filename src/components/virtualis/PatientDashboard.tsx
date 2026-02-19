@@ -7,6 +7,7 @@ import { PatientChartTabs } from './PatientChartTabs';
 import { ImagingStudy } from './ImagingPanel';
 import { Stethoscope } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { ActiveEncounter } from '@/hooks/useActiveEncounter';
 
 interface PatientDashboardProps {
   patient: DBPatient;
@@ -14,9 +15,11 @@ interface PatientDashboardProps {
   trends: ClinicalTrend[];
   clinicalNotes: ClinicalNote[];
   imagingStudies?: ImagingStudy[];
+  encounter?: ActiveEncounter | null;
+  encounterDuration?: string;
 }
 
-export function PatientDashboard({ patient, insights, trends, clinicalNotes, imagingStudies = [] }: PatientDashboardProps) {
+export function PatientDashboard({ patient, insights, trends, clinicalNotes, imagingStudies = [], encounter, encounterDuration }: PatientDashboardProps) {
   const { logView } = useAuditLog();
 
   useEffect(() => {
@@ -47,9 +50,9 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes, ima
       <div className="absolute inset-0 grid-pattern pointer-events-none opacity-50" />
       
       <div className="relative max-w-4xl mx-auto lg:mx-0">
-        <PatientHeader patient={headerPatient} />
+        <PatientHeader patient={headerPatient} encounter={encounter} encounterDuration={encounterDuration} />
 
-        {(patient.attending_physician || patient.unit) && (
+        {!encounter && (patient.attending_physician || patient.unit) && (
           <div className="mb-4 flex items-center gap-3 flex-wrap">
             {patient.attending_physician && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/50 border border-border">

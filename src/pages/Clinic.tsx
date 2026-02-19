@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -34,7 +35,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 
 export default function Clinic() {
   const navigate = useNavigate();
-  const { selectedHospital, setSelectedPatientId } = useHospital();
+  const { selectedHospital, setSelectedPatientId, setActiveEncounterId } = useHospital();
   const { createEncounter } = useEncounters(selectedHospital?.id);
 
   const today = new Date();
@@ -65,14 +66,41 @@ export default function Clinic() {
         scheduled_at: appt.start_time,
       });
 
-      // Link appointment to encounter
+      // Encounter created with check_in status via createEncounter
+
       toast.success(`${appt.patient?.name || 'Patient'} checked in`);
     } catch (err) {
       toast.error('Check-in failed');
     }
   };
 
-  const handleStartVisit = (appt: typeof appointments[0]) => {
+  const handleStartVisit = async (appt: typeof appointments[0]) => {
+    // Find the active encounter for this appointment
+    try {
+      const { data: encounter } = await supabase
+        .from('encounters')
+        .select('id')
+        .eq('patient_id', appt.patient_id)
+        .eq('hospital_id', appt.hospital_id)
+        .in('status', ['scheduled', 'checked_in', 'in_progress'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (encounter) {
+        // Mark encounter as in_progress
+        await supabase
+          .from('encounters')
+          .update({ status: 'in_progress', check_in_at: new Date().toISOString() })
+          .eq('id', encounter.id)
+          .is('check_in_at', null); // only set if not already set
+
+        setActiveEncounterId(encounter.id);
+      }
+    } catch {
+      // No encounter found, navigate without encounter context
+    }
+
     setSelectedPatientId(appt.patient_id);
     navigate('/dashboard');
   };
