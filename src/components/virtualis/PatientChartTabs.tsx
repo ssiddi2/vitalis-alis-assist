@@ -14,7 +14,8 @@ import { AllergiesPanel } from './AllergiesPanel';
 import { ProblemListPanel } from './ProblemListPanel';
 import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { BillingPanel } from './BillingPanel';
-import { Brain, TrendingUp, FileText, Scan, FlaskConical, HeartPulse, Pill, ShieldAlert, ClipboardList, PackageCheck, DollarSign } from 'lucide-react';
+import { PrescriptionsPanel } from './PrescriptionsPanel';
+import { Brain, TrendingUp, FileText, Scan, FlaskConical, HeartPulse, Pill, ShieldAlert, ClipboardList, PackageCheck, DollarSign, FileSignature } from 'lucide-react';
 
 interface PatientChartTabsProps {
   patientId: string;
@@ -53,6 +54,9 @@ export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, i
         <TabsTrigger value="imaging" className="text-[11px] gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
           <Scan className="w-3 h-3" /> Imaging
           {imagingStudies.length > 0 && <span className="text-[9px] px-1 rounded-full bg-muted text-muted-foreground">{imagingStudies.length}</span>}
+        </TabsTrigger>
+        <TabsTrigger value="rx" className="text-[11px] gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <FileSignature className="w-3 h-3" /> eRx
         </TabsTrigger>
       </TabsList>
 
@@ -117,6 +121,11 @@ export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, i
       {/* Imaging */}
       <TabsContent value="imaging" className="mt-4">
         <ImagingPanel studies={imagingStudies} />
+      </TabsContent>
+
+      {/* Prescriptions (eRx) */}
+      <TabsContent value="rx" className="mt-4">
+        <PrescriptionsPanel patientId={patientId} />
       </TabsContent>
     </Tabs>
   );

@@ -17,6 +17,8 @@ import ResetPassword from "./pages/ResetPassword";
 import AdminPanel from "./pages/AdminPanel";
 import BillingDashboard from "./pages/BillingDashboard";
 import QualityDashboard from "./pages/QualityDashboard";
+import Schedule from "./pages/Schedule";
+import Clinic from "./pages/Clinic";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -49,6 +51,8 @@ const App = () => (
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
                   <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
                   <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />
+                  <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+                  <Route path="/clinic" element={<ProtectedRoute><Clinic /></ProtectedRoute>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

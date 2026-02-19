@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3 } from 'lucide-react';
+import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, CalendarDays, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
@@ -120,6 +120,12 @@ export function TopBar() {
         <AmbientStatusIndicator isAmbient={isAmbient} onToggle={() => setIsAmbient(prev => !prev)} />
 
         {/* Nav Links */}
+        <button onClick={() => navigate('/schedule')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+          <CalendarDays className="w-3 h-3" /> Schedule
+        </button>
+        <button onClick={() => navigate('/clinic')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+          <Users className="w-3 h-3" /> Clinic
+        </button>
         <button onClick={() => navigate('/billing')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
           <DollarSign className="w-3 h-3" /> RCM
         </button>
