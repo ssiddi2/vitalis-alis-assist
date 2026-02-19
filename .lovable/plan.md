@@ -1,188 +1,180 @@
 
 
-# Integrating VirtualisOne Features into Virtualis
+# Standalone Outpatient EMR Expansion Plan
 
-## Gap Analysis: What We Have vs. What's Listed
+## Overview
 
-### Already Implemented (no work needed)
-- Auth with role-based access (Physician/Admin/Clinician/Viewer)
-- Multi-hospital support with hospital selection/switching
-- RLS-secured database + role-based route guards
-- Patient census with search
-- SOAP Notes (AI-enhanced via ALIS `create_note` tool)
-- Progress Notes (NoteEditorModal, ProgressNoteModal)
-- ALIS AI chat with patient context (ALISPanel + alis-chat edge function)
-- AI order recommendations (ALIS `stage_order` tool)
-- Medical coding assistant (ALIS `suggest_billing_codes` tool)
-- Billing panel with CPT/ICD-10 codes
-- Charge review panel with status tracking
-- Lab ordering via staged orders
-- Imaging ordering via staged orders
-- Radiology/imaging panel + report viewer
-- Team messaging (TeamChatPanel)
-- Consult requests (ConsultRequestModal)
-- Direct messages (DirectMessageSidebar)
-- Hospital selector/switcher
-- Voice dictation button (VoiceDictationButton)
-- Order entry modal (OrderEntryModal)
-- Notification center (NotificationCenter)
-- Audit log viewer (useAuditLog)
-- Skeleton loaders
-- Error boundaries
-- Mobile optimization (MobileALISSheet, MobileALISFab)
-- HIPAA-compliant session timeout (InactivityGuard)
-- Admin panel with user management
+Transform Virtualis from an inpatient EMR overlay into a full standalone EMR capable of handling outpatient clinics, primary care offices, and specialty practices. This builds on the existing clinical intelligence layer (ALIS, CPOE, Billing) while adding the core ambulatory workflows that are missing.
 
-### Missing Features to Build (prioritized by clinical value)
+## Phase 1: Data Foundation (Database Schema)
 
----
+### New Tables
 
-## Phase 1: Enhanced Patient Workspace (Epic-Style Chart)
+**encounters** -- The core outpatient visit record (replaces the inpatient admission model)
+- id, patient_id, provider_id (user), hospital_id
+- encounter_type: enum (office_visit, telehealth, follow_up, annual_physical, urgent, procedure)
+- visit_reason, chief_complaint
+- scheduled_at, check_in_at, check_out_at
+- status: enum (scheduled, checked_in, in_progress, completed, cancelled, no_show)
+- duration_minutes, room_number
+- billing_event_id (links to existing billing_events)
 
-The current PatientDashboard shows insights, trends, imaging, and notes. What's missing is a **tabbed chart view** with dedicated sections like a real EMR workspace.
+**appointments** -- Scheduling layer
+- id, patient_id, provider_id, hospital_id
+- encounter_type, visit_reason
+- start_time, end_time, duration_minutes
+- status: enum (scheduled, confirmed, checked_in, completed, cancelled, no_show)
+- recurring_rule (JSONB for repeat visits)
+- notes
 
-**What to add:**
-- Tabbed navigation within PatientDashboard: Summary | Labs | Vitals | Meds | Allergies | Problems | Notes | Imaging | Orders | Billing
-- **Labs tab**: Vertical lab result display with trending sparklines, abnormal flagging, and historical comparison
-- **Vitals tab**: Time-series vitals chart (HR, BP, SpO2, Temp, RR) using the existing `patient_vitals` table
-- **Medications tab**: Active medication list with drug name, dose, route, frequency, start date
-- **Allergies tab**: Allergy list with severity and reaction type
-- **Problem List tab**: Active/resolved problem list with ICD-10 codes
+**prescriptions** -- eRx capability
+- id, patient_id, encounter_id, prescriber_id
+- medication_name, dose, frequency, route, quantity, refills
+- pharmacy_name, pharmacy_npi
+- status: enum (draft, signed, sent, filled, cancelled)
+- sig (patient instructions)
+- dea_schedule (for controlled substances)
 
-**Database changes:**
-- New table: `patient_medications` (patient_id, name, dose, route, frequency, start_date, end_date, status, prescriber)
-- New table: `patient_allergies` (patient_id, allergen, reaction, severity, onset_date)
-- New table: `patient_problems` (patient_id, description, icd10_code, status, onset_date, resolved_date)
+**immunizations** -- Vaccine records
+- id, patient_id, vaccine_name, cvx_code
+- administered_date, lot_number, site, route
+- administered_by, manufacturer
+- next_due_date
 
-**New components:**
-- `PatientChartTabs.tsx` -- tab container replacing current linear layout
-- `LabResultsPanel.tsx` -- vertical lab display with trending
-- `VitalsPanel.tsx` -- time-series vitals chart
-- `MedicationsPanel.tsx` -- active med list
-- `AllergiesPanel.tsx` -- allergy display
-- `ProblemListPanel.tsx` -- problem list management
+**referrals** -- Outbound referral tracking (extends existing consult_requests)
+- id, patient_id, encounter_id, referring_provider_id
+- referred_to_provider, referred_to_specialty
+- reason, urgency, status
+- scheduled_date, completed_date, report_received
 
----
+**note_templates** -- Visit-type-specific documentation templates
+- id, name, encounter_type, specialty
+- template_content (JSONB with section structure)
+- created_by, hospital_id
 
-## Phase 2: CPOE Enhancement (Order Sets + Safety Checks)
+### Schema Modifications
 
-The current OrderEntryModal handles individual orders. What's missing is **order sets** and **drug interaction checking**.
+**patients table** -- Add outpatient fields
+- Add: insurance_provider, insurance_id, pcp_provider_id
+- Add: preferred_pharmacy, preferred_language
+- Add: emergency_contact (JSONB)
+- Add: patient_type enum (inpatient, outpatient, both)
+- Existing inpatient fields (bed, unit, admission_day, expected_los) become nullable/optional
 
-**What to add:**
-- **Order Sets Library**: Pre-built order bundles (e.g., "Chest Pain Workup", "Sepsis Bundle", "DVT Prophylaxis") that stage multiple orders at once
-- **Drug Interaction Alerts**: When staging a medication order, check against the patient's active medications for interactions
-- **Order Review Modal**: Before signing, show a consolidated order review with safety flags
+## Phase 2: Core Outpatient Workflows
 
-**Database changes:**
-- New table: `order_sets` (id, name, description, category, orders_template jsonb, hospital_id, created_by)
+### 2a. Scheduling and Calendar
+- New `/schedule` page with a weekly/daily calendar view
+- Appointment creation modal with patient search, visit type picker, provider/room assignment
+- Check-in / check-out flow that transitions appointment to encounter
+- Color-coded status indicators on calendar slots
+- Drag-and-drop rescheduling
 
-**New components:**
-- `OrderSetSelector.tsx` -- searchable order set picker
-- `DrugInteractionAlert.tsx` -- inline warning component
+### 2b. Encounter Workflow
+- New encounter-based flow: Patient arrives -> Check-in -> Rooming -> Provider sees patient -> Document -> Check-out -> Bill
+- The existing PatientDashboard adapts to show encounter context instead of admission context
+- PatientHeader shows visit reason, provider, and encounter duration instead of admission day/LOS
+- Chart tabs remain the same (labs, vitals, meds, etc.) but scoped to encounter when relevant
 
-**Edge function changes:**
-- Add `check_interactions` tool to ALIS so it can warn about drug interactions proactively
+### 2c. Prescription Writing (eRx)
+- New "Prescriptions" tab in PatientChartTabs
+- Prescription entry form: medication search, dose builder, SIG generator
+- ALIS integration: "Prescribe metformin 500mg" -> staged prescription for signature
+- Prescription history view with refill tracking
 
----
+### 2d. Note Templates
+- Template library accessible from the Notes tab
+- Pre-built templates: Annual Physical, Follow-Up, Sick Visit, Procedure Note
+- ALIS can auto-select appropriate template based on encounter type
+- Templates populate the existing NoteEditorModal with pre-filled sections
 
-## Phase 3: Revenue Cycle Management Dashboard
+## Phase 3: Enhanced Features
 
-The current ChargeReviewPanel is inline in the ALIS sidebar. What's missing is a **dedicated RCM page** with analytics.
+### 3a. Patient Registration / Intake
+- Demographics editing form (currently read-only display)
+- Insurance capture fields
+- Consent form tracking
+- Emergency contact management
 
-**What to add:**
-- New `/billing` route with a full billing dashboard page
-- Revenue overview cards: total billed, collected, pending, denied
-- Denial management queue with AI-powered appeal letter generation
-- Collections aging buckets (0-30, 31-60, 61-90, 90+ days)
-- Provider-level revenue breakdown
-- Note-to-billing workflow: auto-trigger code suggestion when a note is signed
+### 3b. Referral Management
+- Extend ConsultRequestModal into a full referral workflow
+- Track referral status: sent, scheduled, completed, report received
+- Referral queue view for office staff
 
-**Database changes:**
-- Add columns to `billing_events`: `denial_reason`, `appeal_status`, `appeal_text`, `payer`, `date_of_service`, `provider_id`
+### 3c. Immunization Tracking
+- New "Immunizations" tab in PatientChartTabs
+- Vaccine administration recording
+- Due-date tracking with overdue alerts
+- ALIS can flag missing vaccinations based on age/conditions
 
-**New components/pages:**
-- `src/pages/BillingDashboard.tsx` -- full RCM page
-- `DenialWorkqueue.tsx` -- denial management list
-- `RevenueChart.tsx` -- revenue analytics using recharts
+### 3d. Preventive Care Dashboard
+- Screening reminders (mammogram, colonoscopy, A1c, etc.)
+- Age/sex/condition-based protocol engine
+- Wellness visit checklist generation
 
----
+## Phase 4: Navigation and UX Changes
 
-## Phase 4: EMR Interoperability Layer
+### Updated App Routes
 
-The current project references EMR systems (Epic, Cerner, Meditech) as metadata on hospitals. What's missing is an **integration architecture**.
+```text
+/                    -- Facility selector (existing)
+/schedule            -- NEW: Provider schedule/calendar
+/census              -- Inpatient census (existing, still available)
+/clinic              -- NEW: Outpatient patient list (today's appointments)
+/dashboard           -- Patient chart (existing, enhanced for encounters)
+/billing             -- Billing dashboard (existing)
+/quality             -- Quality dashboard (existing)
+/admin               -- Admin panel (existing)
+```
 
-**What to add:**
-- EMR Connection modal showing connection status per hospital with sync indicators
-- FHIR resource display (read-only, showing what data would come from the EMR)
-- Sync status panel in the TopBar or PatientHeader showing last EMR sync time
-- Circuit breaker pattern in API calls with retry logic (partially done via `authenticatedFetch`)
+### Navigation Flow Change
 
-**New components:**
-- `EMRSyncBadge.tsx` -- small sync status indicator on PatientHeader
-- `EMRConnectionModal.tsx` -- connection config and status display
+```text
+Current (Inpatient):
+  Facility -> Census -> Patient Dashboard
 
-**No database changes** -- this is a UI/architecture layer that would connect to real FHIR endpoints in production.
+New (Outpatient):
+  Facility -> Schedule/Clinic View -> Check-in -> Encounter Dashboard
 
----
+Both paths converge at the same Patient Dashboard,
+which adapts based on whether context is inpatient or outpatient.
+```
 
-## Phase 5: Ambient Intelligence Enhancement
+### TopBar Updates
+- Add encounter timer (time since check-in)
+- Show encounter type badge instead of EMR sync badge when in standalone mode
+- Toggle between "Inpatient" and "Outpatient" views at facility level
 
-VoiceDictationButton exists but uses basic Web Speech API. What's missing is **ambient listening mode**.
+## Technical Considerations
 
-**What to add:**
-- "Hey ALIS" wake word detection (or a toggle for ambient mode)
-- Ambient status indicator showing listening state
-- Voice command library: "ALIS, order a CBC", "ALIS, draft a progress note"
-- Floating AI panel that persists across page navigation
+### Database
+- All new tables get RLS policies following existing patterns (hospital_users join for access control)
+- Encounters link to existing clinical_notes, staged_orders, and billing_events via encounter_id foreign keys
+- Audit triggers on all new tables for HIPAA compliance
+- Realtime enabled on appointments table for live schedule updates
 
-**Modified components:**
-- Enhance `VoiceDictationButton.tsx` with ambient mode toggle
-- Add `AmbientStatusIndicator.tsx` to TopBar
-- Make ALISPanel available as a floating overlay (not just in the dashboard grid)
+### ALIS AI Enhancement
+- Encounter-aware context: ALIS knows if this is a follow-up vs. new visit
+- Template suggestion: "This looks like a diabetes follow-up. Want me to use the DM Follow-Up template?"
+- Preventive care prompts: "This patient is due for a colonoscopy screening"
+- Prescription drafting from conversation
 
----
+### Backward Compatibility
+- All existing inpatient workflows remain intact
+- Patient records work across both contexts
+- The `patient_type` field on patients controls which views are available
+- Hospitals can be configured as inpatient-only, outpatient-only, or both
 
-## Phase 6: Quality and Compliance
+## Recommended Build Order
 
-**What to add:**
-- CMS quality measures dashboard showing compliance rates
-- Clinical quality indicators per patient (e.g., DVT prophylaxis given, fall risk assessed)
-- Compliance checklist per encounter
+1. Database schema (encounters, appointments, prescriptions tables)
+2. `/schedule` page with basic calendar
+3. Encounter workflow (check-in to check-out)
+4. Prescription writing tab
+5. Note templates
+6. Immunizations and preventive care
+7. Patient registration/intake forms
+8. Referral management
 
-**New page:**
-- `src/pages/QualityDashboard.tsx`
-
----
-
-## Implementation Sequence
-
-| Phase | Feature | New Tables | New Components | Effort |
-|-------|---------|-----------|----------------|--------|
-| 1 | Patient Chart Tabs | 3 | 6 | High |
-| 2 | CPOE + Order Sets | 1 | 2 | Medium |
-| 3 | RCM Dashboard | 0 (columns) | 3 | Medium |
-| 4 | EMR Interop Layer | 0 | 2 | Low |
-| 5 | Ambient Intelligence | 0 | 2 | Medium |
-| 6 | Quality Dashboard | 0 | 1 | Low |
-
----
-
-## What We Should NOT Build
-
-Staying true to the "intelligence layer, not another EMR" philosophy, we should skip or simplify:
-
-- **Patient Admission Form** -- the source EMR handles admissions; we read ADT data
-- **Emergency Department Dashboard** -- this is an EMR module; we overlay intelligence on existing ER workflows
-- **Nursing Documentation/Flowsheets** -- EMR-native; ALIS can summarize nursing notes pulled from the EMR
-- **Settings Panel / Command Palette / Deployment Checklist** -- admin tooling that adds bloat without clinical value
-- **Welcome Tour / Beta Onboarding** -- can be added later as polish
-- **ROI Calculator / CFO Dashboard** -- executive reporting that can be built once real billing data flows
-
-This keeps Virtualis focused: clinical intelligence, care coordination, and revenue optimization -- powered by ALIS, not replacing the EMR.
-
----
-
-## Recommended Starting Point
-
-**Phase 1 (Patient Chart Tabs)** is the highest impact because it transforms the patient view from a summary dashboard into a full clinical workspace -- the core experience physicians will use all day. This is where the "VirtualisOne" feature set adds the most missing value.
+This is a substantial expansion. I recommend starting with Phase 1 (database) and Phase 2a-2b (scheduling + encounters) as the MVP, which would give you a functional outpatient workflow that leverages all your existing clinical tools.
 
