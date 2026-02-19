@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useALISChat } from '@/hooks/useALISChat';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveEncounter } from '@/hooks/useActiveEncounter';
 import { toast } from 'sonner';
 import { usePatients, DBPatient } from '@/hooks/usePatients';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,7 @@ import { Loader2 } from 'lucide-react';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { selectedHospital, selectedPatientId, setSelectedPatientId } = useHospital();
+  const { selectedHospital, selectedPatientId, setSelectedPatientId, activeEncounterId, setActiveEncounterId } = useHospital();
   
   const [selectedPatient, setSelectedPatient] = useState<DBPatient | null>(null);
   const [showTeamChat, setShowTeamChat] = useState(false);
@@ -39,6 +40,9 @@ const Dashboard = () => {
     loading: detailsLoading, setStagedOrders,
   } = usePatientDetails(selectedPatient?.id);
 
+  // Fetch active encounter if navigating from Clinic
+  const { encounter: activeEncounter, formattedDuration, loading: encounterLoading } = useActiveEncounter(activeEncounterId);
+
   // Auto-select patient from context, or first critical patient
   useEffect(() => {
     if (patients.length > 0 && !selectedPatient) {
@@ -51,9 +55,10 @@ const Dashboard = () => {
     }
   }, [patients, selectedPatient, selectedPatientId]);
 
-  // Reset selected patient when hospital changes
+  // Reset selected patient and encounter when hospital changes
   useEffect(() => {
     setSelectedPatient(null);
+    setActiveEncounterId(null);
   }, [selectedHospital?.id]);
 
   // Redirect if no hospital selected
@@ -145,7 +150,7 @@ const Dashboard = () => {
           <PatientListSidebar
             patientsByUnit={patientsByUnit}
             selectedPatientId={selectedPatient?.id}
-            onSelectPatient={setSelectedPatient}
+            onSelectPatient={(p) => { setSelectedPatient(p); setActiveEncounterId(null); }}
             loading={patientsLoading}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(prev => !prev)}
@@ -160,6 +165,8 @@ const Dashboard = () => {
             trends={trends}
             clinicalNotes={clinicalNotes}
             imagingStudies={imagingStudies as any}
+            encounter={activeEncounter}
+            encounterDuration={formattedDuration}
           />
         ) : (
           <div className="flex items-center justify-center text-muted-foreground">
