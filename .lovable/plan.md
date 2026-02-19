@@ -165,16 +165,15 @@ which adapts based on whether context is inpatient or outpatient.
 - The `patient_type` field on patients controls which views are available
 - Hospitals can be configured as inpatient-only, outpatient-only, or both
 
-## Recommended Build Order
+## Build Progress
 
-1. Database schema (encounters, appointments, prescriptions tables)
-2. `/schedule` page with basic calendar
-3. Encounter workflow (check-in to check-out)
-4. Prescription writing tab
-5. Note templates
-6. Immunizations and preventive care
-7. Patient registration/intake forms
-8. Referral management
-
-This is a substantial expansion. I recommend starting with Phase 1 (database) and Phase 2a-2b (scheduling + encounters) as the MVP, which would give you a functional outpatient workflow that leverages all your existing clinical tools.
-
+- [x] 1. Database schema (encounters, appointments, prescriptions, immunizations, referrals, note_templates)
+- [x] 2. `/schedule` page with weekly/daily calendar view + appointment creation modal
+- [x] 3. `/clinic` page with today's appointments, check-in/check-out workflow
+- [x] 4. Prescription writing (eRx) tab in PatientChartTabs
+- [x] 5. Navigation updates (TopBar links to Schedule/Clinic, App.tsx routes)
+- [ ] 6. Note templates
+- [ ] 7. Immunizations and preventive care
+- [ ] 8. Patient registration/intake forms
+- [ ] 9. Referral management
+- [ ] 10. Encounter-aware PatientDashboard (show visit context vs admission context)
