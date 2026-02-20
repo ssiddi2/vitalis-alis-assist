@@ -15,7 +15,8 @@ import { ProblemListPanel } from './ProblemListPanel';
 import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { BillingPanel } from './BillingPanel';
 import { PrescriptionsPanel } from './PrescriptionsPanel';
-import { Brain, TrendingUp, FileText, Scan, FlaskConical, HeartPulse, Pill, ShieldAlert, ClipboardList, PackageCheck, DollarSign, FileSignature } from 'lucide-react';
+import { ImmunizationsPanel } from './ImmunizationsPanel';
+import { Brain, TrendingUp, FileText, Scan, FlaskConical, HeartPulse, Pill, ShieldAlert, ClipboardList, PackageCheck, DollarSign, FileSignature, Syringe } from 'lucide-react';
 
 interface PatientChartTabsProps {
   patientId: string;
@@ -57,6 +58,9 @@ export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, i
         </TabsTrigger>
         <TabsTrigger value="rx" className="text-[11px] gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
           <FileSignature className="w-3 h-3" /> eRx
+        </TabsTrigger>
+        <TabsTrigger value="immunizations" className="text-[11px] gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <Syringe className="w-3 h-3" /> Vaccines
         </TabsTrigger>
       </TabsList>
 
@@ -115,7 +119,7 @@ export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, i
 
       {/* Notes */}
       <TabsContent value="notes" className="mt-4">
-        <ClinicalNotesDisplay notes={clinicalNotes} />
+        <ClinicalNotesDisplay notes={clinicalNotes} patientId={patientId} />
       </TabsContent>
 
       {/* Imaging */}
@@ -126,6 +130,11 @@ export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, i
       {/* Prescriptions (eRx) */}
       <TabsContent value="rx" className="mt-4">
         <PrescriptionsPanel patientId={patientId} />
+      </TabsContent>
+
+      {/* Immunizations */}
+      <TabsContent value="immunizations" className="mt-4">
+        <ImmunizationsPanel patientId={patientId} />
       </TabsContent>
     </Tabs>
   );
