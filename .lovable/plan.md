@@ -1,87 +1,100 @@
 
+# Make Virtualis A++++ -- Seed Data and Complete Missing Features
 
-# Wire Up Encounter-Aware Patient Dashboard
+## Overview
+The architecture and schema are solid, but every outpatient table is empty and a few UI features are missing. This plan seeds realistic demo data and fills the remaining gaps to make the full outpatient workflow demonstrable end-to-end.
 
-## What This Solves
-When a clinician clicks "Start Visit" from the Clinic page, the Patient Dashboard currently shows inpatient-specific fields (Admission Day, Expected LOS, Bed) instead of the encounter context (Visit Reason, Encounter Type, Duration Timer). This plan bridges that gap.
+## Step 1: Seed Demo Data (Database Migration)
 
-## Changes
+Populate the outpatient tables with realistic clinical data so Schedule, Clinic, and eRx pages are immediately functional.
 
-### 1. Add Encounter Context to HospitalContext
-Add `activeEncounterId` state alongside the existing `selectedPatientId` so the encounter context travels from Clinic to Dashboard without URL hacks.
+### Appointments (12-15 records)
+- Spread across today and this week
+- Mix of statuses: scheduled, confirmed, checked_in, completed
+- Various encounter types: office_visit, follow_up, telehealth, annual_physical, urgent
+- Linked to existing patients (23 patients across 3 hospitals)
+- Assigned to the first available user as provider_id (or use a placeholder approach with a function)
 
-- New state: `activeEncounterId: string | null`
-- New setter: `setActiveEncounterId`
-- Exposed via context provider
+### Encounters (3-4 records)
+- Match the checked_in/completed appointments
+- Include visit reasons, chief complaints, room numbers
+- One active "in_progress" encounter for immediate demo
 
-### 2. Update Clinic Page to Pass Encounter ID
-When creating an encounter on check-in, store the encounter ID. When "Start Visit" is clicked, set both the patient ID and the encounter ID in the context before navigating.
+### Prescriptions (5-8 records)
+- Common medications: Metformin 500mg, Lisinopril 10mg, Atorvastatin 20mg, Amoxicillin 500mg, Omeprazole 20mg
+- Mix of statuses: draft, signed, sent
+- Proper SIG text (e.g., "Take 1 tablet by mouth twice daily with meals")
 
-- `handleCheckIn`: save the created encounter ID (already returned from `createEncounter`)
-- `handleStartVisit`: look up or fetch the active encounter for that appointment, call `setActiveEncounterId(encounterId)` before `navigate('/dashboard')`
+### Note Templates (5 records)
+- Annual Physical (with ROS, exam, screening sections)
+- Follow-Up Visit (focused SOAP)
+- Sick Visit (acute care template)
+- Procedure Note (pre/intra/post sections)
+- Telehealth Visit (virtual visit adapted template)
 
-### 3. Create useActiveEncounter Hook
-A small hook that fetches the encounter record from the database when `activeEncounterId` is set, providing:
-- `encounter` object (type, visit_reason, chief_complaint, check_in_at, status, room_number)
-- `elapsedMinutes` (live timer computed from check_in_at)
-- Loading state
+Each template has structured JSONB content with section headers and placeholder text.
 
-### 4. Adapt PatientDashboard to Accept Encounter
-- Add optional `encounterId` prop to `PatientDashboard`
-- Dashboard.tsx reads `activeEncounterId` from context and passes it down
-- When an encounter is active, PatientHeader renders encounter-specific fields instead of inpatient fields
+### Immunizations (8-10 records)
+- Common vaccines: Influenza, COVID-19, Tdap, Pneumococcal, Hepatitis B
+- Spread across multiple patients
+- Some with upcoming next_due_dates to demo overdue alerts
 
-### 5. Make PatientHeader Encounter-Aware
-The header will detect whether encounter context is provided and switch its bottom info grid:
+## Step 2: Add Immunizations Tab to Patient Chart
 
-**Inpatient mode (no encounter):**
-- Location/Bed | Admission Day | Expected LOS | Admission Diagnosis
+Add an "Immunizations" tab to `PatientChartTabs.tsx` with a new `ImmunizationsPanel.tsx` component.
 
-**Outpatient/Encounter mode:**
-- Visit Type badge | Visit Reason | Room | Duration Timer (live, updating every minute)
+### ImmunizationsPanel features:
+- Table view of administered vaccines (name, date, lot, site, administered_by)
+- "Overdue" badge for vaccines past their next_due_date
+- "Add Vaccine" button with a form modal (vaccine name, date, lot number, site, route, manufacturer)
+- Uses a new `useImmunizations.ts` hook for CRUD operations
 
-The top section (name, age, sex, MRN, Active badge) stays the same in both modes.
+### Files:
+- Create `src/hooks/useImmunizations.ts`
+- Create `src/components/virtualis/ImmunizationsPanel.tsx`
+- Edit `src/components/virtualis/PatientChartTabs.tsx` (add tab)
 
-### 6. Clear Encounter on Patient Switch
-When a different patient is selected from the sidebar (inpatient flow), clear `activeEncounterId` so the dashboard reverts to inpatient mode. This ensures backward compatibility.
+## Step 3: Add Note Template Picker to Notes Tab
+
+Enhance the existing Notes UI to allow selecting a pre-built template when creating a new note.
+
+### Changes:
+- Add a "New Note from Template" button to `ClinicalNotesDisplay.tsx`
+- Create a `TemplatePickerModal.tsx` that lists available templates from the database
+- When selected, opens the existing `NoteEditorModal` pre-populated with the template's section structure
+- Uses a `useNoteTemplates.ts` hook
+
+### Files:
+- Create `src/hooks/useNoteTemplates.ts`
+- Create `src/components/virtualis/TemplatePickerModal.tsx`
+- Edit `src/components/virtualis/ClinicalNotesDisplay.tsx` (add template button)
 
 ## Technical Details
 
-### Files Modified
-- `src/contexts/HospitalContext.tsx` -- add activeEncounterId state
-- `src/pages/Clinic.tsx` -- pass encounter ID on navigation
-- `src/pages/Dashboard.tsx` -- read encounter from context, pass to PatientDashboard
-- `src/components/virtualis/PatientDashboard.tsx` -- accept optional encounterId, pass to header
-- `src/components/virtualis/PatientHeader.tsx` -- dual-mode rendering (inpatient vs encounter)
-- `src/types/clinical.ts` -- extend Patient type with optional encounter fields
+### Database Migration
+A single migration seeds all demo data. It will:
+1. Look up existing patient IDs and hospital IDs dynamically
+2. Use a CTE or DO block to assign provider_id from existing users
+3. Insert appointments for today and surrounding days
+4. Insert matching encounters for checked-in appointments
+5. Insert sample prescriptions
+6. Insert note templates (not patient-specific, so no patient_id needed)
+7. Insert immunization records for select patients
 
-### New Files
-- `src/hooks/useActiveEncounter.ts` -- fetches encounter by ID, computes elapsed time
+### New Hooks
+- `useImmunizations(patientId)`: fetch, create immunization records with RLS-aware queries
+- `useNoteTemplates(hospitalId?)`: fetch templates, optionally filtered by encounter_type
 
-### Duration Timer Implementation
-Uses a `setInterval` (every 60 seconds) to update elapsed time from `check_in_at`. Displays as "12m", "1h 23m", etc. Cleans up on unmount.
+### Component Architecture
+- `ImmunizationsPanel` follows the same pattern as `AllergiesPanel` / `MedicationsPanel` (table + add modal)
+- `TemplatePickerModal` is a simple dialog with a list of template cards, each showing name, encounter_type, and specialty
 
-### Data Flow
+### No Breaking Changes
+- All existing tabs and workflows remain untouched
+- New tabs are additive
+- Demo data uses existing patient/hospital IDs
 
-```text
-Clinic Page
-  |-- handleCheckIn() --> createEncounter() --> saves encounterId
-  |-- handleStartVisit() --> setActiveEncounterId(id) + setSelectedPatientId(id) + navigate('/dashboard')
-
-Dashboard Page
-  |-- reads activeEncounterId from HospitalContext
-  |-- useActiveEncounter(activeEncounterId) --> { encounter, elapsedMinutes }
-  |-- passes encounter to PatientDashboard
-
-PatientDashboard
-  |-- passes encounter to PatientHeader
-
-PatientHeader
-  |-- if encounter: shows Visit Type, Reason, Room, Timer
-  |-- else: shows Location, Bed, Admission Day, LOS
-```
-
-### Backward Compatibility
-- All existing inpatient workflows are untouched
-- Selecting a patient from the sidebar clears the encounter context
-- The PatientHeader gracefully falls back to inpatient mode when no encounter is present
+## Build Order
+1. Database migration (seed all demo data)
+2. `useImmunizations` hook + `ImmunizationsPanel` component + add tab
+3. `useNoteTemplates` hook + `TemplatePickerModal` + wire into Notes tab
