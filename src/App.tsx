@@ -44,6 +44,7 @@ const App = () => (
               <ConnectionStatus />
               <InactivityGuard>
                 <Routes>
+                  <Route path="/product" element={<Product />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<ProtectedRoute><HospitalSelector /></ProtectedRoute>} />
