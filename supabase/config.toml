@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.alis-chat]
 verify_jwt = false
+
+[functions.consultation-ai]
+verify_jwt = false
