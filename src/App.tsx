@@ -20,6 +20,7 @@ import QualityDashboard from "./pages/QualityDashboard";
 import Schedule from "./pages/Schedule";
 import Clinic from "./pages/Clinic";
 import NotFound from "./pages/NotFound";
+import Product from "./pages/Product";
 
 const queryClient = new QueryClient({
   defaultOptions: {
