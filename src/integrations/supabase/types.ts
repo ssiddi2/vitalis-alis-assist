@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_intelligence_log: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          insight_type: string
+          model_version: string | null
+          target: Database["public"]["Enums"]["consultation_insight_target"]
+          thread_id: string
+          trigger_message_id: string | null
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          id?: string
+          insight_type?: string
+          model_version?: string | null
+          target: Database["public"]["Enums"]["consultation_insight_target"]
+          thread_id: string
+          trigger_message_id?: string | null
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          insight_type?: string
+          model_version?: string | null
+          target?: Database["public"]["Enums"]["consultation_insight_target"]
+          thread_id?: string
+          trigger_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_intelligence_log_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_intelligence_log_trigger_message_id_fkey"
+            columns: ["trigger_message_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           created_at: string
@@ -474,6 +522,184 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultation_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          sender_id: string
+          sender_role: Database["public"]["Enums"]["consultation_sender_role"]
+          thread_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          sender_id: string
+          sender_role: Database["public"]["Enums"]["consultation_sender_role"]
+          thread_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          sender_id?: string
+          sender_role?: Database["public"]["Enums"]["consultation_sender_role"]
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultation_notes: {
+        Row: {
+          clinical_summary: string | null
+          consultation_question: string | null
+          created_at: string
+          generated_by: string
+          id: string
+          patient_id: string
+          signed_at: string | null
+          signed_by: string | null
+          specialist_recommendation: string | null
+          status: Database["public"]["Enums"]["note_status"]
+          thread_id: string
+          treatment_plan: string | null
+          updated_at: string
+        }
+        Insert: {
+          clinical_summary?: string | null
+          consultation_question?: string | null
+          created_at?: string
+          generated_by?: string
+          id?: string
+          patient_id: string
+          signed_at?: string | null
+          signed_by?: string | null
+          specialist_recommendation?: string | null
+          status?: Database["public"]["Enums"]["note_status"]
+          thread_id: string
+          treatment_plan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clinical_summary?: string | null
+          consultation_question?: string | null
+          created_at?: string
+          generated_by?: string
+          id?: string
+          patient_id?: string
+          signed_at?: string | null
+          signed_by?: string | null
+          specialist_recommendation?: string | null
+          status?: Database["public"]["Enums"]["note_status"]
+          thread_id?: string
+          treatment_plan?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultation_notes_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultation_threads: {
+        Row: {
+          ai_participant_id: string
+          consult_request_id: string | null
+          created_at: string
+          hospital_id: string
+          id: string
+          patient_id: string
+          primary_clinician_id: string
+          reason: string
+          shared_context: Json
+          specialist_id: string | null
+          specialty: string
+          status: Database["public"]["Enums"]["consultation_thread_status"]
+          updated_at: string
+        }
+        Insert: {
+          ai_participant_id?: string
+          consult_request_id?: string | null
+          created_at?: string
+          hospital_id: string
+          id?: string
+          patient_id: string
+          primary_clinician_id: string
+          reason: string
+          shared_context?: Json
+          specialist_id?: string | null
+          specialty: string
+          status?: Database["public"]["Enums"]["consultation_thread_status"]
+          updated_at?: string
+        }
+        Update: {
+          ai_participant_id?: string
+          consult_request_id?: string | null
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          primary_clinician_id?: string
+          reason?: string
+          shared_context?: Json
+          specialist_id?: string | null
+          specialty?: string
+          status?: Database["public"]["Enums"]["consultation_thread_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_threads_consult_request_id_fkey"
+            columns: ["consult_request_id"]
+            isOneToOne: false
+            referencedRelation: "consult_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultation_threads_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultation_threads_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultation_threads_specialist_id_fkey"
+            columns: ["specialist_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
             referencedColumns: ["id"]
           },
         ]
@@ -1711,6 +1937,9 @@ export type Database = {
       chat_role: "clinician" | "consultant" | "alis"
       consult_status: "pending" | "accepted" | "completed" | "cancelled"
       consult_urgency: "routine" | "urgent" | "stat"
+      consultation_insight_target: "primary_clinician" | "specialist" | "shared"
+      consultation_sender_role: "primary_clinician" | "specialist" | "ai"
+      consultation_thread_status: "active" | "completed" | "cancelled"
       emr_system: "epic" | "meditech" | "cerner"
       encounter_status:
         | "scheduled"
@@ -1891,6 +2120,13 @@ export const Constants = {
       chat_role: ["clinician", "consultant", "alis"],
       consult_status: ["pending", "accepted", "completed", "cancelled"],
       consult_urgency: ["routine", "urgent", "stat"],
+      consultation_insight_target: [
+        "primary_clinician",
+        "specialist",
+        "shared",
+      ],
+      consultation_sender_role: ["primary_clinician", "specialist", "ai"],
+      consultation_thread_status: ["active", "completed", "cancelled"],
       emr_system: ["epic", "meditech", "cerner"],
       encounter_status: [
         "scheduled",
