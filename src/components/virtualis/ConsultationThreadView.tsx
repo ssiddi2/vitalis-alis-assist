@@ -201,7 +201,7 @@ export function ConsultationThreadView({
             {note ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">Consultation Note</span>
                   <Badge variant="secondary" className="text-xs">{note.status}</Badge>
                 </div>
