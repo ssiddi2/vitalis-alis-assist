@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClinicalInsight, ClinicalTrend } from '@/types/clinical';
 import { ClinicalNote } from '@/types/hospital';
@@ -16,17 +15,19 @@ import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { BillingPanel } from './BillingPanel';
 import { PrescriptionsPanel } from './PrescriptionsPanel';
 import { ImmunizationsPanel } from './ImmunizationsPanel';
-import { Brain, TrendingUp, FileText, Scan, FlaskConical, HeartPulse, Pill, ShieldAlert, ClipboardList, PackageCheck, DollarSign, FileSignature, Syringe } from 'lucide-react';
+import { ConsultationThreadView } from './ConsultationThreadView';
+import { Brain, TrendingUp, FileText, Scan, FlaskConical, HeartPulse, Pill, ShieldAlert, ClipboardList, PackageCheck, DollarSign, FileSignature, Syringe, Stethoscope } from 'lucide-react';
 
 interface PatientChartTabsProps {
   patientId: string;
+  hospitalId?: string;
   insights: ClinicalInsight[];
   trends: ClinicalTrend[];
   clinicalNotes: ClinicalNote[];
   imagingStudies: ImagingStudy[];
 }
 
-export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, imagingStudies }: PatientChartTabsProps) {
+export function PatientChartTabs({ patientId, hospitalId, insights, trends, clinicalNotes, imagingStudies }: PatientChartTabsProps) {
   return (
     <Tabs defaultValue="summary" className="w-full">
       <TabsList className="w-full flex-wrap h-auto gap-1 bg-secondary/50 p-1.5 rounded-xl border border-border/50">
@@ -62,6 +63,9 @@ export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, i
         <TabsTrigger value="immunizations" className="text-[11px] gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
           <Syringe className="w-3 h-3" /> Vaccines
         </TabsTrigger>
+        <TabsTrigger value="consults" className="text-[11px] gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <Stethoscope className="w-3 h-3" /> Consults
+        </TabsTrigger>
       </TabsList>
 
       {/* Summary Tab */}
@@ -92,49 +96,45 @@ export function PatientChartTabs({ patientId, insights, trends, clinicalNotes, i
         )}
       </TabsContent>
 
-      {/* Labs */}
       <TabsContent value="labs" className="mt-4">
         <LabResultsPanel patientId={patientId} />
       </TabsContent>
 
-      {/* Vitals */}
       <TabsContent value="vitals" className="mt-4">
         <VitalsPanel trends={trends} />
       </TabsContent>
 
-      {/* Meds */}
       <TabsContent value="meds" className="mt-4">
         <MedicationsPanel patientId={patientId} />
       </TabsContent>
 
-      {/* Allergies */}
       <TabsContent value="allergies" className="mt-4">
         <AllergiesPanel patientId={patientId} />
       </TabsContent>
 
-      {/* Problems */}
       <TabsContent value="problems" className="mt-4">
         <ProblemListPanel patientId={patientId} />
       </TabsContent>
 
-      {/* Notes */}
       <TabsContent value="notes" className="mt-4">
         <ClinicalNotesDisplay notes={clinicalNotes} patientId={patientId} />
       </TabsContent>
 
-      {/* Imaging */}
       <TabsContent value="imaging" className="mt-4">
         <ImagingPanel studies={imagingStudies} />
       </TabsContent>
 
-      {/* Prescriptions (eRx) */}
       <TabsContent value="rx" className="mt-4">
         <PrescriptionsPanel patientId={patientId} />
       </TabsContent>
 
-      {/* Immunizations */}
       <TabsContent value="immunizations" className="mt-4">
         <ImmunizationsPanel patientId={patientId} />
+      </TabsContent>
+
+      {/* Consultations */}
+      <TabsContent value="consults" className="mt-4">
+        <ConsultationThreadView patientId={patientId} hospitalId={hospitalId} />
       </TabsContent>
     </Tabs>
   );

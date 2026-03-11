@@ -74,6 +74,7 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes, ima
 
         <PatientChartTabs
           patientId={patient.id}
+          hospitalId={patient.hospital_id ?? undefined}
           insights={insights}
           trends={trends}
           clinicalNotes={clinicalNotes}
