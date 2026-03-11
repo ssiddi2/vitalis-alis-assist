@@ -21,6 +21,7 @@ import Schedule from "./pages/Schedule";
 import Clinic from "./pages/Clinic";
 import NotFound from "./pages/NotFound";
 import Product from "./pages/Product";
+import IntegrationSpec from "./pages/IntegrationSpec";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +46,7 @@ const App = () => (
               <InactivityGuard>
                 <Routes>
                   <Route path="/product" element={<Product />} />
+                  <Route path="/integration-spec" element={<IntegrationSpec />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<ProtectedRoute><HospitalSelector /></ProtectedRoute>} />
