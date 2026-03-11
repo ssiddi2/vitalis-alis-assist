@@ -21,6 +21,7 @@ import Schedule from "./pages/Schedule";
 import Clinic from "./pages/Clinic";
 import NotFound from "./pages/NotFound";
 import Product from "./pages/Product";
+import IntegrationSpec from "./pages/IntegrationSpec";
 
 const queryClient = new QueryClient({
   defaultOptions: {
