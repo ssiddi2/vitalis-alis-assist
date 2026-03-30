@@ -47,9 +47,23 @@ export function ALISPanel({
   clinicianName,
 }: ALISPanelProps) {
   const [inputValue, setInputValue] = useState('');
-  const [showSidebar, setShowSidebar] = useState(false); // Default to collapsed on mobile
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [agentId] = useState(() => localStorage.getItem('alis_agent_id') || '');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleVoiceTranscript = useCallback((role: 'user' | 'agent', text: string) => {
+    if (!text) return;
+    onSendMessage(role === 'user' ? text : ''); // user speech triggers send; agent speech is just for display
+  }, [onSendMessage]);
+
+  const { voiceEnabled, isConnecting, isSpeaking, status: voiceStatus, startVoice, stopVoice } = useALISVoice({
+    agentId,
+    patientContext: patientName
+      ? `You are ALIS, an AI clinical assistant with a refined British English accent. You are currently assisting with patient: ${patientName} (ID: ${patientId}). Be concise, professional, and clinically precise.`
+      : undefined,
+    onTranscript: handleVoiceTranscript,
+  });
 
   // Show sidebar by default on larger screens
   useEffect(() => {
