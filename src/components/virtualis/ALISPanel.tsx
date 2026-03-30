@@ -185,8 +185,44 @@ export function ALISPanel({
                   <span className="hidden sm:inline">Consult</span>
                 </Button>
               )}
-              <div className="w-2 h-2 bg-success rounded-full animate-pulse-glow" />
-              <span className="text-[9px] xl:text-[10px] text-muted-foreground font-medium hidden sm:block">Online</span>
+              <Button
+                variant={voiceEnabled ? 'default' : 'outline'}
+                size="sm"
+                onClick={voiceEnabled ? stopVoice : startVoice}
+                disabled={isConnecting || !agentId}
+                className={cn(
+                  'h-7 xl:h-8 text-[10px] xl:text-xs px-2 xl:px-3',
+                  voiceEnabled && 'bg-primary text-primary-foreground'
+                )}
+                title={!agentId ? 'Set Agent ID in localStorage key "alis_agent_id"' : undefined}
+              >
+                {isConnecting ? (
+                  <Mic className="h-3 w-3 animate-pulse" />
+                ) : voiceEnabled ? (
+                  <Volume2 className="h-3 w-3" />
+                ) : (
+                  <VolumeX className="h-3 w-3" />
+                )}
+                <span className="hidden sm:inline">
+                  {isConnecting ? 'Connecting...' : voiceEnabled ? 'Voice On' : 'Voice'}
+                </span>
+              </Button>
+              {voiceEnabled && (
+                <span className={cn(
+                  'text-[9px] font-semibold px-1.5 py-0.5 rounded-full',
+                  isSpeaking
+                    ? 'bg-primary/15 text-primary animate-pulse'
+                    : 'bg-success/15 text-success'
+                )}>
+                  {isSpeaking ? 'Speaking' : 'Listening'}
+                </span>
+              )}
+              {!voiceEnabled && (
+                <>
+                  <div className="w-2 h-2 bg-success rounded-full animate-pulse-glow" />
+                  <span className="text-[9px] xl:text-[10px] text-muted-foreground font-medium hidden sm:block">Online</span>
+                </>
+              )}
             </div>
           </div>
         </div>
