@@ -48,7 +48,7 @@ export function ALISPanel({
 }: ALISPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [showSidebar, setShowSidebar] = useState(false);
-  const [agentId] = useState(() => localStorage.getItem('alis_agent_id') || '');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,8 +57,7 @@ export function ALISPanel({
     onSendMessage(role === 'user' ? text : ''); // user speech triggers send; agent speech is just for display
   }, [onSendMessage]);
 
-  const { voiceEnabled, isConnecting, isSpeaking, status: voiceStatus, startVoice, stopVoice } = useALISVoice({
-    agentId,
+  const { voiceEnabled, isConnecting, isSpeaking, startVoice, stopVoice } = useALISVoice({
     patientContext: patientName
       ? `You are ALIS, an AI clinical assistant with a refined British English accent. You are currently assisting with patient: ${patientName} (ID: ${patientId}). Be concise, professional, and clinically precise.`
       : undefined,
@@ -189,12 +188,11 @@ export function ALISPanel({
                 variant={voiceEnabled ? 'default' : 'outline'}
                 size="sm"
                 onClick={voiceEnabled ? stopVoice : startVoice}
-                disabled={isConnecting || !agentId}
+                disabled={isConnecting}
                 className={cn(
                   'h-7 xl:h-8 text-[10px] xl:text-xs px-2 xl:px-3',
                   voiceEnabled && 'bg-primary text-primary-foreground'
                 )}
-                title={!agentId ? 'Set Agent ID in localStorage key "alis_agent_id"' : undefined}
               >
                 {isConnecting ? (
                   <Mic className="h-3 w-3 animate-pulse" />
