@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatMessage as ChatMessageType } from '@/types/clinical';
 import { StagedOrder, ClinicalNote, BillingEvent } from '@/types/hospital';
 import { ChatMessage } from './ChatMessage';
@@ -7,10 +7,11 @@ import { StagedOrdersPanel } from './StagedOrdersPanel';
 import { ClinicalNotesPanel } from './ClinicalNotesPanel';
 import { ChargeReviewPanel } from './ChargeReviewPanel';
 import { Button } from '@/components/ui/button';
-import { Send, PanelLeftClose, PanelLeft, Zap, Stethoscope, MessageSquare, FileText, ClipboardList, BarChart3, HeartPulse } from 'lucide-react';
+import { Send, PanelLeftClose, PanelLeft, Zap, Stethoscope, MessageSquare, FileText, ClipboardList, BarChart3, HeartPulse, Volume2, VolumeX, Mic } from 'lucide-react';
 import { VoiceDictationButton } from './VoiceDictationButton';
 import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
+import { useALISVoice } from '@/hooks/useALISVoice';
 
 interface ALISPanelProps {
   messages: ChatMessageType[];
