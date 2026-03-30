@@ -48,7 +48,7 @@ export function ALISPanel({
 }: ALISPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [showSidebar, setShowSidebar] = useState(false);
-  const [agentId] = useState(() => localStorage.getItem('alis_agent_id') || '');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
