@@ -57,8 +57,7 @@ export function ALISPanel({
     onSendMessage(role === 'user' ? text : ''); // user speech triggers send; agent speech is just for display
   }, [onSendMessage]);
 
-  const { voiceEnabled, isConnecting, isSpeaking, status: voiceStatus, startVoice, stopVoice } = useALISVoice({
-    agentId,
+  const { voiceEnabled, isConnecting, isSpeaking, startVoice, stopVoice } = useALISVoice({
     patientContext: patientName
       ? `You are ALIS, an AI clinical assistant with a refined British English accent. You are currently assisting with patient: ${patientName} (ID: ${patientId}). Be concise, professional, and clinically precise.`
       : undefined,
