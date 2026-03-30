@@ -22,12 +22,12 @@ export function useALISVoice({ agentId, patientContext, onTranscript }: UseALISV
     onDisconnect: () => {
       setVoiceEnabled(false);
     },
-    onMessage: (message) => {
-      if (message.type === 'user_transcript' && onTranscript) {
-        onTranscript('user', (message as any).user_transcription_event?.user_transcript ?? '');
+    onMessage: (message: any) => {
+      if (message?.type === 'user_transcript' && onTranscript) {
+        onTranscript('user', message.user_transcription_event?.user_transcript ?? '');
       }
-      if (message.type === 'agent_response' && onTranscript) {
-        onTranscript('agent', (message as any).agent_response_event?.agent_response ?? '');
+      if (message?.type === 'agent_response' && onTranscript) {
+        onTranscript('agent', message.agent_response_event?.agent_response ?? '');
       }
     },
     onError: (error) => {
