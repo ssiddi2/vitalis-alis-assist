@@ -188,12 +188,11 @@ export function ALISPanel({
                 variant={voiceEnabled ? 'default' : 'outline'}
                 size="sm"
                 onClick={voiceEnabled ? stopVoice : startVoice}
-                disabled={isConnecting || !agentId}
+                disabled={isConnecting}
                 className={cn(
                   'h-7 xl:h-8 text-[10px] xl:text-xs px-2 xl:px-3',
                   voiceEnabled && 'bg-primary text-primary-foreground'
                 )}
-                title={!agentId ? 'Set Agent ID in localStorage key "alis_agent_id"' : undefined}
               >
                 {isConnecting ? (
                   <Mic className="h-3 w-3 animate-pulse" />
