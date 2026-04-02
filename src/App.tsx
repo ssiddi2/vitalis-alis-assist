@@ -47,6 +47,7 @@ const App = () => (
               <InactivityGuard>
                 <Routes>
                   <Route path="/product" element={<Product />} />
+                  <Route path="/roi-calculator" element={<ROICalculator />} />
                   <Route path="/integration-spec" element={<IntegrationSpec />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
