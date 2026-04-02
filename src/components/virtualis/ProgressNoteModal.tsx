@@ -1,4 +1,5 @@
 import { ProgressNote } from '@/types/clinical';
+import { useWorkflowMetricsContext } from './PatientDashboard';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,14 @@ export function ProgressNoteModal({
   note,
   onSign,
 }: ProgressNoteModalProps) {
+  const metrics = useWorkflowMetricsContext();
+
+  const handleSign = () => {
+    metrics?.increment('notes');
+    metrics?.recordStep('note_signed');
+    onSign();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col rounded-2xl border-border shadow-elevated">
@@ -67,7 +76,7 @@ export function ProgressNoteModal({
           <Button variant="outline" onClick={onClose} className="rounded-xl">
             Edit Note
           </Button>
-          <Button onClick={onSign} className="rounded-xl btn-primary-gradient gap-2">
+          <Button onClick={handleSign} className="rounded-xl btn-primary-gradient gap-2">
             <Pen className="w-4 h-4" />
             Sign & Commit to EMR
           </Button>

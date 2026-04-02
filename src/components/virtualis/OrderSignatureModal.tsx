@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Check, FileSignature, Shield } from 'lucide-react';
 import { StagedOrder } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useWorkflowMetricsContext } from './PatientDashboard';
 import { cn } from '@/lib/utils';
 
 interface OrderSignatureModalProps {
@@ -25,6 +26,7 @@ export function OrderSignatureModal({
 }: OrderSignatureModalProps) {
   const [signed, setSigned] = useState(false);
   const { logAction } = useAuditLog();
+  const metrics = useWorkflowMetricsContext();
 
   if (!order) return null;
 
@@ -33,6 +35,7 @@ export function OrderSignatureModal({
 
   const handleSign = () => {
     setSigned(true);
+    metrics?.increment('ordersSigned');
 
     if (patientId) {
       logAction('sign', 'staged_order', order.id, patientId, {

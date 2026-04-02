@@ -1882,6 +1882,82 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_metrics: {
+        Row: {
+          billing_codes_suggested: number
+          click_count: number
+          created_at: string
+          encounter_id: string | null
+          hospital_id: string | null
+          id: string
+          notes_generated: number
+          orders_signed: number
+          orders_staged: number
+          patient_id: string
+          time_on_task_seconds: number
+          updated_at: string
+          user_id: string
+          voice_commands_used: number
+          workflow_steps: Json
+        }
+        Insert: {
+          billing_codes_suggested?: number
+          click_count?: number
+          created_at?: string
+          encounter_id?: string | null
+          hospital_id?: string | null
+          id?: string
+          notes_generated?: number
+          orders_signed?: number
+          orders_staged?: number
+          patient_id: string
+          time_on_task_seconds?: number
+          updated_at?: string
+          user_id: string
+          voice_commands_used?: number
+          workflow_steps?: Json
+        }
+        Update: {
+          billing_codes_suggested?: number
+          click_count?: number
+          created_at?: string
+          encounter_id?: string | null
+          hospital_id?: string | null
+          id?: string
+          notes_generated?: number
+          orders_signed?: number
+          orders_staged?: number
+          patient_id?: string
+          time_on_task_seconds?: number
+          updated_at?: string
+          user_id?: string
+          voice_commands_used?: number
+          workflow_steps?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_metrics_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_metrics_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_metrics_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, createContext, useContext } from 'react';
 import { ClinicalInsight, ClinicalTrend } from '@/types/clinical';
 import { ClinicalNote } from '@/types/hospital';
 import { DBPatient } from '@/hooks/usePatients';
@@ -8,6 +8,11 @@ import { ImagingStudy } from './ImagingPanel';
 import { Stethoscope } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActiveEncounter } from '@/hooks/useActiveEncounter';
+import { useWorkflowMetrics } from '@/hooks/useWorkflowMetrics';
+
+type MetricsCtx = ReturnType<typeof useWorkflowMetrics>;
+const WorkflowMetricsContext = createContext<MetricsCtx | null>(null);
+export const useWorkflowMetricsContext = () => useContext(WorkflowMetricsContext);
 
 interface PatientDashboardProps {
   patient: DBPatient;
@@ -21,6 +26,7 @@ interface PatientDashboardProps {
 
 export function PatientDashboard({ patient, insights, trends, clinicalNotes, imagingStudies = [], encounter, encounterDuration }: PatientDashboardProps) {
   const { logView } = useAuditLog();
+  const metrics = useWorkflowMetrics(patient?.id, patient?.hospital_id ?? undefined, encounter?.id);
 
   useEffect(() => {
     if (patient?.id) {
@@ -46,6 +52,7 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes, ima
   };
 
   return (
+    <WorkflowMetricsContext.Provider value={metrics}>
     <div className="bg-background p-4 sm:p-6 lg:p-8 overflow-y-auto relative pb-24 lg:pb-8 h-full">
       <div className="absolute inset-0 grid-pattern pointer-events-none opacity-50" />
       
@@ -82,5 +89,6 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes, ima
         />
       </div>
     </div>
+    </WorkflowMetricsContext.Provider>
   );
 }
