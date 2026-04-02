@@ -76,7 +76,7 @@ export function ProgressNoteModal({
           <Button variant="outline" onClick={onClose} className="rounded-xl">
             Edit Note
           </Button>
-          <Button onClick={onSign} className="rounded-xl btn-primary-gradient gap-2">
+          <Button onClick={handleSign} className="rounded-xl btn-primary-gradient gap-2">
             <Pen className="w-4 h-4" />
             Sign & Commit to EMR
           </Button>

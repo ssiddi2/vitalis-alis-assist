@@ -35,6 +35,7 @@ export function OrderSignatureModal({
 
   const handleSign = () => {
     setSigned(true);
+    metrics?.increment('ordersSigned');
 
     if (patientId) {
       logAction('sign', 'staged_order', order.id, patientId, {

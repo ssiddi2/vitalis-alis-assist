@@ -89,5 +89,6 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes, ima
         />
       </div>
     </div>
+    </WorkflowMetricsContext.Provider>
   );
 }
