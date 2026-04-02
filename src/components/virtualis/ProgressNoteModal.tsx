@@ -25,6 +25,14 @@ export function ProgressNoteModal({
   note,
   onSign,
 }: ProgressNoteModalProps) {
+  const metrics = useWorkflowMetricsContext();
+
+  const handleSign = () => {
+    metrics?.increment('notes');
+    metrics?.recordStep('note_signed');
+    onSign();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col rounded-2xl border-border shadow-elevated">
