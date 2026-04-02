@@ -61,7 +61,7 @@ export function useWorkflowMetrics(patientId: string | undefined, hospitalId?: s
       orders_signed: counters.current.ordersSigned,
       billing_codes_suggested: counters.current.billing,
       voice_commands_used: counters.current.voice,
-      workflow_steps: steps.current as unknown as Record<string, unknown>[],
+      workflow_steps: JSON.parse(JSON.stringify(steps.current)),
     }).eq('id', metricId.current);
   }, []);
 
