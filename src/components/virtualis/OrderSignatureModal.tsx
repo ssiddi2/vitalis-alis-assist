@@ -26,6 +26,7 @@ export function OrderSignatureModal({
 }: OrderSignatureModalProps) {
   const [signed, setSigned] = useState(false);
   const { logAction } = useAuditLog();
+  const metrics = useWorkflowMetricsContext();
 
   if (!order) return null;
 
