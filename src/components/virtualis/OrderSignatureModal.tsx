@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Check, FileSignature, Shield } from 'lucide-react';
 import { StagedOrder } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useWorkflowMetricsContext } from './PatientDashboard';
 import { cn } from '@/lib/utils';
 
 interface OrderSignatureModalProps {
