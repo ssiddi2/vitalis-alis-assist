@@ -1,4 +1,5 @@
 import { ProgressNote } from '@/types/clinical';
+import { useWorkflowMetricsContext } from './PatientDashboard';
 import {
   Dialog,
   DialogContent,
