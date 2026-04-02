@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, createContext, useContext } from 'react';
 import { ClinicalInsight, ClinicalTrend } from '@/types/clinical';
 import { ClinicalNote } from '@/types/hospital';
 import { DBPatient } from '@/hooks/usePatients';
@@ -8,6 +8,11 @@ import { ImagingStudy } from './ImagingPanel';
 import { Stethoscope } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActiveEncounter } from '@/hooks/useActiveEncounter';
+import { useWorkflowMetrics } from '@/hooks/useWorkflowMetrics';
+
+type MetricsCtx = ReturnType<typeof useWorkflowMetrics>;
+const WorkflowMetricsContext = createContext<MetricsCtx | null>(null);
+export const useWorkflowMetricsContext = () => useContext(WorkflowMetricsContext);
 
 interface PatientDashboardProps {
   patient: DBPatient;
