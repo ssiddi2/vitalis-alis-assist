@@ -26,6 +26,7 @@ interface PatientDashboardProps {
 
 export function PatientDashboard({ patient, insights, trends, clinicalNotes, imagingStudies = [], encounter, encounterDuration }: PatientDashboardProps) {
   const { logView } = useAuditLog();
+  const metrics = useWorkflowMetrics(patient?.id, patient?.hospital_id ?? undefined, encounter?.id);
 
   useEffect(() => {
     if (patient?.id) {
