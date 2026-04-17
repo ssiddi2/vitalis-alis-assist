@@ -47,20 +47,22 @@ export function VitalsPanel({ trends }: VitalsPanelProps) {
         <span className="text-[10px] text-muted-foreground ml-auto">Last recorded: 2h ago</span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
         {vitals.map((vital) => {
           const Icon = vital.icon;
           return (
             <div
               key={vital.label}
-              className={cn('p-4 rounded-xl border', statusColors[vital.status])}
+              className={cn('p-3 sm:p-4 rounded-xl border min-w-0', statusColors[vital.status])}
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1.5">
                 <Icon className="w-4 h-4 text-muted-foreground" />
                 <div className={cn('w-2 h-2 rounded-full', statusDot[vital.status])} />
               </div>
-              <p className="text-2xl font-bold text-foreground font-mono">{vital.value}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{vital.label} · {vital.unit}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground font-mono tabular-nums truncate">{vital.value}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 truncate" title={`${vital.label} · ${vital.unit}`}>
+                {vital.label} · {vital.unit}
+              </p>
             </div>
           );
         })}
@@ -71,9 +73,9 @@ export function VitalsPanel({ trends }: VitalsPanelProps) {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Trend Summary</p>
           <div className="space-y-1">
             {trends.map((t) => (
-              <div key={t.id} className="flex justify-between text-xs">
-                <span className="text-foreground">{t.label}</span>
-                <span className="text-muted-foreground font-mono">{t.value} {t.change && `(${t.change})`}</span>
+              <div key={t.id} className="flex justify-between gap-2 text-xs">
+                <span className="text-foreground truncate">{t.label}</span>
+                <span className="text-muted-foreground font-mono tabular-nums whitespace-nowrap">{t.value} {t.change && `(${t.change})`}</span>
               </div>
             ))}
           </div>
