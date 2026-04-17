@@ -17,7 +17,8 @@ import { ConsultRequestModal } from '@/components/virtualis/ConsultRequestModal'
 import { MobileALISFab } from '@/components/virtualis/MobileALISFab';
 import { MobileALISSheet } from '@/components/virtualis/MobileALISSheet';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
-import { Loader2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Loader2, Users } from 'lucide-react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -207,6 +208,32 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Tablet/Mobile Patient Switcher (hidden on lg+) */}
+      <Sheet open={mobileCensusOpen} onOpenChange={setMobileCensusOpen}>
+        <SheetTrigger asChild>
+          <button
+            className="lg:hidden fixed left-4 bottom-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full glass-strong border border-border shadow-elevated text-xs font-semibold text-foreground hover:bg-secondary/50 transition-colors"
+            aria-label="Open patient list"
+          >
+            <Users className="w-4 h-4 text-primary" />
+            Census
+          </button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-[300px] sm:w-[340px] flex flex-col">
+          <SheetHeader className="px-4 py-3 border-b border-border">
+            <SheetTitle className="text-sm">Patient Census</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden">
+            <PatientListSidebar
+              patientsByUnit={patientsByUnit}
+              selectedPatientId={selectedPatient?.id}
+              onSelectPatient={(p) => { setSelectedPatient(p); setActiveEncounterId(null); setMobileCensusOpen(false); }}
+              loading={patientsLoading}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Mobile FAB for ALIS */}
       <MobileALISFab 
