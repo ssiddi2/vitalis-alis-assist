@@ -30,6 +30,7 @@ const Dashboard = () => {
   const [mobileALISOpen, setMobileALISOpen] = useState(false);
   const [mobileShowTeamChat, setMobileShowTeamChat] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileCensusOpen, setMobileCensusOpen] = useState(false);
 
   // Fetch patients for selected hospital
   const { patients, patientsByUnit, loading: patientsLoading } = usePatients(selectedHospital?.id);
@@ -142,8 +143,8 @@ const Dashboard = () => {
       <div className={cn(
         "flex-1 grid grid-cols-1 min-h-0 transition-all duration-200",
         sidebarCollapsed
-          ? "lg:grid-cols-[48px_1fr_420px] xl:grid-cols-[48px_1fr_700px]"
-          : "lg:grid-cols-[240px_1fr_420px] xl:grid-cols-[260px_1fr_700px]"
+          ? "lg:grid-cols-[48px_1fr_360px] xl:grid-cols-[48px_1fr_440px] 2xl:grid-cols-[48px_1fr_560px]"
+          : "lg:grid-cols-[200px_1fr_360px] xl:grid-cols-[220px_1fr_440px] 2xl:grid-cols-[260px_1fr_560px]"
       )}>
         {/* Patient List Sidebar (hidden on mobile) */}
         <div className="hidden lg:block h-[calc(100vh-57px)] border-r border-border overflow-hidden">
