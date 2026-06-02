@@ -16,7 +16,7 @@ import { MobileMenu } from './MobileMenu';
 import { NotificationCenter } from './NotificationCenter';
 import { EMRSyncBadge } from './EMRSyncBadge';
 import { AmbientStatusIndicator } from './AmbientStatusIndicator';
-import alisLogo from '@/assets/alis-logo.png';
+import virtualisOneLogo from '@/assets/virtualis-one-logo.png.asset.json';
 
 export function TopBar() {
   const [currentTime, setCurrentTime] = useState('');
@@ -82,8 +82,7 @@ export function TopBar() {
       {/* Logo and Hospital */}
       <div className="flex items-center gap-2 sm:gap-4 min-w-0">
         <div className="flex items-center gap-2 flex-shrink-0">
-          <img src={alisLogo} alt="ALIS" className="h-8 sm:h-10" />
-          <span className="hidden sm:block text-lg font-bold text-foreground">ALIS</span>
+          <img src={virtualisOneLogo.url} alt="VirtualisOne" className="h-8 sm:h-10" />
         </div>
         
         {selectedHospital && (
