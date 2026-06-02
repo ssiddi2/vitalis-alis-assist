@@ -10,7 +10,7 @@ import {
   Wifi, 
   LogOut,
 } from 'lucide-react';
-import alisLogo from '@/assets/alis-logo.png';
+import virtualisOneLogo from '@/assets/virtualis-one-logo.png.asset.json';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { HospitalCardSkeleton } from '@/components/ui/skeleton-patterns';
 
@@ -59,8 +59,7 @@ export default function HospitalSelector() {
         {/* Header */}
         <header className="glass-strong border-b border-border px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <img src={alisLogo} alt="ALIS" className="h-10 sm:h-12" />
-            <span className="text-lg sm:text-xl font-bold text-foreground">ALIS</span>
+            <img src={virtualisOneLogo.url} alt="VirtualisOne" className="h-10 sm:h-12" />
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <span className="text-xs sm:text-sm text-muted-foreground hidden sm:block">

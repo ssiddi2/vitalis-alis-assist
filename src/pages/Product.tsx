@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
-import alisLogo from '@/assets/alis-logo.png';
+import virtualisOneLogo from '@/assets/virtualis-one-logo.png.asset.json';
 import {
   Mic, FileText, ClipboardList, DollarSign, TrendingUp, MonitorSmartphone,
   Shield, ArrowRight, Ear, Brain, Zap, ExternalLink
@@ -37,8 +37,7 @@ export default function Product() {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
-          <img src={alisLogo} alt="ALIS" className="h-9 w-9 object-contain" />
-          <span className="font-semibold text-lg tracking-tight text-foreground">ALIS</span>
+          <img src={virtualisOneLogo.url} alt="VirtualisOne" className="h-10 object-contain" />
         </div>
         <Link to="/auth">
           <Button variant="outline" size="sm">Sign In</Button>
