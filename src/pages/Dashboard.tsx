@@ -63,12 +63,12 @@ const Dashboard = () => {
     setActiveEncounterId(null);
   }, [selectedHospital?.id]);
 
-  // Redirect if no hospital selected
+  // Redirect if no hospital selected (only after context finished loading)
   useEffect(() => {
-    if (!selectedHospital) {
+    if (!hospitalLoading && !selectedHospital) {
       navigate('/');
     }
-  }, [selectedHospital, navigate]);
+  }, [selectedHospital, hospitalLoading, navigate]);
 
   // Sync selected patient back to context for consistency
   useEffect(() => {
