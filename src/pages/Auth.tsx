@@ -10,6 +10,7 @@ import virtualisOneLogo from '@/assets/virtualis-one-logo.png.asset.json';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
+import { AnimatedLogo } from '@/components/virtualis/AnimatedLogo';
 
 export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
