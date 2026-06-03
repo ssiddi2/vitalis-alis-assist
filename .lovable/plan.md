@@ -1,28 +1,40 @@
+# Make the VirtualisOne Logo Bigger & Futuristic on Sign-In
 
-# Rebrand to VirtualisOne (keep ALIS for Copilot)
+Goal: demo-ready hero logo on `/auth` — larger, with subtle futuristic motion. No layout breakage on mobile (current viewport 440px).
 
-Positioning: **VirtualisOne** = the universal EMR platform. **ALIS** = the AI copilot inside it.
+## Changes (single file: `src/pages/Auth.tsx`)
 
-## Asset
-- Upload `Untitled design.png` to Lovable Assets as `src/assets/virtualis-one-logo.png.asset.json`.
-- Keep existing `src/assets/alis-logo.png` untouched — still used wherever ALIS the assistant appears.
+### Desktop hero (left panel)
+- Logo size: `h-40` → `h-64` (with `max-w-[80%]`)
+- Wrap in animated container:
+  - **Pulsing aura**: dual conic/blur orbs behind logo, slow counter-rotating (20s + 30s), primary→info gradient
+  - **Orbit ring**: thin dashed SVG ring rotating 40s
+  - **Float**: logo itself uses `animate-float` (already in tailwind config) for gentle Y bob
+  - **Shimmer sweep**: diagonal gradient overlay sweeping every 6s (mask to logo bounds)
+- Entrance: `animate-scale-in` + `animate-fade-in`
 
-## Swap logo → VirtualisOne (product/platform branding)
-| File | Change |
-|---|---|
-| `src/pages/Auth.tsx` | Replace the 3 `alisLogo` uses (left hero, mobile header, form card icon) with VirtualisOne logo. Update copy: H1 "Welcome to VirtualisOne", subhead "Universal EMR Intelligence Platform — powered by ALIS". |
-| `index.html` | `<title>` → "VirtualisOne — Universal EMR Intelligence Platform". Meta description + OG title/description updated. Favicon stays (already the V mark). |
-| `src/pages/Product.tsx` | Hero logo + product name → VirtualisOne; tagline "Powered by ALIS". |
-| `src/pages/HospitalSelector.tsx` | Header logo → VirtualisOne (if present). |
-| `src/components/virtualis/TopBar.tsx` | App brand mark → VirtualisOne wordmark/icon. |
-| `src/pages/ROICalculator.tsx`, `src/pages/IntegrationSpec.tsx` | Any top-of-page brand logo → VirtualisOne. |
+### Mobile header (shown <lg)
+- Logo size: `h-24` → `h-36`
+- Same float + glow aura (lighter — single blur orb, no orbit ring to keep perf on mobile)
+- Drop the redundant small logo inside the form card's 20×20 icon box (form card already has H2 "Welcome back" — the icon feels redundant once the header logo is bigger). Replace with a slim animated accent bar OR keep it but smaller (`h-12 w-12`, no box).
 
-## Keep ALIS logo (assistant identity)
-- `ALISPanel`, `ChatMessage`, `TypingIndicator`, `MobileALISFab`, `AmbientStatusIndicator`, `VoiceDictationButton`, any "Ask ALIS" affordance.
+### Implementation notes
+- All animations via Tailwind utility classes + a tiny inline `<style>` block (or extend `tailwind.config.ts` keyframes for `spin-slow`, `spin-reverse-slow`, `shimmer-sweep`). Prefer extending config so it's reusable.
+- New keyframes to add:
+  - `spin-slow` (40s linear infinite)
+  - `spin-reverse-slow` (30s linear infinite reverse)
+  - `aura-pulse` (4s ease-in-out — scale 1→1.15, opacity 0.4→0.7)
+- Respect `prefers-reduced-motion` — wrap motion in a media query (Tailwind `motion-safe:`).
+- Uses existing semantic tokens (`primary`, `info`) — no new colors.
 
 ## Out of scope
-- No backend, routing, or feature changes.
-- No favicon change (current V mark already aligns).
-- No design-token color changes.
+- No copy changes, no form changes, no other pages (Product, HospitalSelector, TopBar logos unchanged).
+- No new dependencies (pure CSS/Tailwind, no framer-motion needed for this).
 
-Confirm and I'll implement.
+## Files touched
+| File | Change |
+|---|---|
+| `src/pages/Auth.tsx` | Enlarge logos, wrap in animated aura/orbit/float container |
+| `tailwind.config.ts` | Add 3 keyframes + animation utilities |
+
+Confirm and I'll build it.
