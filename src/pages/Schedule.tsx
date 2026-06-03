@@ -69,7 +69,8 @@ export default function Schedule() {
     notes: '',
   });
 
-  if (!selectedHospital) { navigate('/'); return null; }
+  if (!selectedHospital && !hospitalLoading) return <Navigate to="/" replace />;
+  if (!selectedHospital) return null;
 
   const getAppointmentsForSlot = (day: Date, hour: number) => {
     return appointments.filter(appt => {
