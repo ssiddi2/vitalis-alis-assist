@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useEncounters } from '@/hooks/useEncounters';
@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 
 export default function Clinic() {
   const navigate = useNavigate();
-  const { selectedHospital, setSelectedPatientId, setActiveEncounterId } = useHospital();
+  const { selectedHospital, setSelectedPatientId, setActiveEncounterId, loading: hospitalLoading } = useHospital();
   const { createEncounter } = useEncounters(selectedHospital?.id);
 
   const today = new Date();
@@ -51,7 +51,8 @@ export default function Clinic() {
     return { waiting, upcoming, completed };
   }, [appointments]);
 
-  if (!selectedHospital) { navigate('/'); return null; }
+  if (!selectedHospital && !hospitalLoading) return <Navigate to="/" replace />;
+  if (!selectedHospital) return null;
 
   const handleCheckIn = async (appt: typeof appointments[0]) => {
     try {

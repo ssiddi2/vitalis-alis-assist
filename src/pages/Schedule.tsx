@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAppointments, DBAppointment } from '@/hooks/useAppointments';
 import { usePatients } from '@/hooks/usePatients';
@@ -40,7 +40,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function Schedule() {
   const navigate = useNavigate();
-  const { selectedHospital } = useHospital();
+  const { selectedHospital, loading: hospitalLoading } = useHospital();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'week' | 'day'>('week');
   const [newApptOpen, setNewApptOpen] = useState(false);
@@ -69,7 +69,8 @@ export default function Schedule() {
     notes: '',
   });
 
-  if (!selectedHospital) { navigate('/'); return null; }
+  if (!selectedHospital && !hospitalLoading) return <Navigate to="/" replace />;
+  if (!selectedHospital) return null;
 
   const getAppointmentsForSlot = (day: Date, hour: number) => {
     return appointments.filter(appt => {

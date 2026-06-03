@@ -23,7 +23,7 @@ import { Loader2, Users } from 'lucide-react';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { selectedHospital, selectedPatientId, setSelectedPatientId, activeEncounterId, setActiveEncounterId } = useHospital();
+  const { selectedHospital, selectedPatientId, setSelectedPatientId, activeEncounterId, setActiveEncounterId, loading: hospitalLoading } = useHospital();
   
   const [selectedPatient, setSelectedPatient] = useState<DBPatient | null>(null);
   const [showTeamChat, setShowTeamChat] = useState(false);
@@ -63,12 +63,12 @@ const Dashboard = () => {
     setActiveEncounterId(null);
   }, [selectedHospital?.id]);
 
-  // Redirect if no hospital selected
+  // Redirect if no hospital selected (only after context finished loading)
   useEffect(() => {
-    if (!selectedHospital) {
+    if (!hospitalLoading && !selectedHospital) {
       navigate('/');
     }
-  }, [selectedHospital, navigate]);
+  }, [selectedHospital, hospitalLoading, navigate]);
 
   // Sync selected patient back to context for consistency
   useEffect(() => {
