@@ -25,13 +25,12 @@ const EMR_BADGE: Record<string, { label: string; className: string }> = {
 export default function PatientCensus() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { selectedHospital, setSelectedPatientId } = useHospital();
+  const { selectedHospital, setSelectedPatientId, loading: hospitalLoading } = useHospital();
   const { patientsByUnit, loading } = usePatients(selectedHospital?.id);
 
-  // If no hospital selected, go back to selector
-  if (!selectedHospital) {
-    navigate('/');
-    return null;
+  // If hospital context has finished loading and there's no selection, go pick one.
+  if (!selectedHospital && !hospitalLoading) {
+    return <Navigate to="/" replace />;
   }
 
   const handleSelectPatient = (patient: DBPatient) => {
