@@ -48,7 +48,7 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
   const {
     thread, messages, insights, note,
     loading, sending,
-    sendMessage, generateNote, createThread, simulateSpecialistReply,
+    sendMessage, generateNote, createThread,
   } = useConsultationThread(activeThreadId);
 
   const [input, setInput] = useState('');
@@ -143,11 +143,6 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
           </div>
           <p className="text-xs text-muted-foreground truncate">{thread.reason}</p>
         </div>
-        {!isCompleted && (
-          <Button size="sm" variant="outline" onClick={simulateSpecialistReply} disabled={sending} title="Demo: simulate the specialist's next reply">
-            <Stethoscope className="h-3 w-3 mr-1" />Reply as Dr. Das
-          </Button>
-        )}
         {!isCompleted && !note && (
           <Button size="sm" variant="outline" onClick={generateNote} disabled={loading}>
             <FileText className="h-3 w-3 mr-1" />Generate Note
