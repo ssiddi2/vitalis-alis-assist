@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import virtualisOneLogo from '@/assets/virtualis-one-logo.png.asset.json';
+
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
+import { AnimatedLogo } from '@/components/virtualis/AnimatedLogo';
 
 export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -70,9 +71,8 @@ export default function Auth() {
         {/* Left side - Branding */}
         <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12">
           <div className="text-center max-w-lg">
-            <div className="mb-12 relative">
-              <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150" />
-              <img src={virtualisOneLogo.url} alt="VirtualisOne" className="h-40 mx-auto relative z-10 drop-shadow-lg" />
+            <div className="mb-10 flex justify-center animate-fade-in">
+              <AnimatedLogo size={280} />
             </div>
             <div className="space-y-6">
               <h1 className="text-5xl font-bold text-foreground tracking-tight">Welcome to VirtualisOne</h1>
@@ -95,16 +95,13 @@ export default function Auth() {
         {/* Right side - Auth form */}
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
-            <div className="lg:hidden mb-8 text-center">
-              <img src={virtualisOneLogo.url} alt="VirtualisOne" className="h-24 mx-auto drop-shadow-lg" />
-              <p className="text-sm text-muted-foreground mt-2">Universal EMR Intelligence Platform</p>
+            <div className="lg:hidden mb-6 flex flex-col items-center">
+              <AnimatedLogo size={160} compact />
+              <p className="text-sm text-muted-foreground -mt-2">Universal EMR Intelligence Platform</p>
             </div>
 
             <div className="glass-strong rounded-3xl p-8 shadow-elevated border border-border/50">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/10 to-info/10 flex items-center justify-center shadow-lg border border-primary/20 p-2">
-                  <img src={virtualisOneLogo.url} alt="VirtualisOne" className="h-full w-full object-contain" />
-                </div>
                 <h2 className="text-2xl font-bold text-foreground">
                   {isForgotPassword ? 'Reset Password' : 'Welcome back'}
                 </h2>

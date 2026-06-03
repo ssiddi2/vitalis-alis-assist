@@ -94,10 +94,31 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "aura-pulse": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.45" },
+          "50%": { transform: "scale(1.15)", opacity: "0.75" },
+        },
+        "logo-float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "shimmer-sweep": {
+          "0%": { transform: "translateX(-150%) skewX(-12deg)" },
+          "100%": { transform: "translateX(250%) skewX(-12deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "spin-slow": "spin-slow 40s linear infinite",
+        "spin-reverse-slow": "spin-slow 30s linear infinite reverse",
+        "aura-pulse": "aura-pulse 4s ease-in-out infinite",
+        "logo-float": "logo-float 6s ease-in-out infinite",
+        "shimmer-sweep": "shimmer-sweep 5s ease-in-out infinite",
       },
     },
   },
