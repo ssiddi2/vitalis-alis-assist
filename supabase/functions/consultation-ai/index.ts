@@ -123,6 +123,22 @@ serve(async (req) => {
           content: welcomeContent,
         });
 
+        // Auto-introduce the on-call specialist (e.g. Dr. Das for Cardiology)
+        const specialistSys = specialistSystemPrompt(specialty, sharedContext);
+        const specialist = SPECIALIST_ROSTER[specialty];
+        if (specialistSys && specialist) {
+          const intro = await callAI([
+            { role: "system", content: specialistSys },
+            { role: "user", content: `Consult reason: ${reason}. Acknowledge the consult, note one or two key data points from the chart you'll focus on, and ask a focused clarifying question.` },
+          ]) as string;
+          await db.from("consultation_messages").insert({
+            thread_id: thread.id,
+            sender_id: specialist.id,
+            sender_role: "specialist",
+            content: intro,
+          });
+        }
+
         // Generate initial role-differentiated insights
         const [primaryInsight, specialistInsight] = await Promise.all([
           callAI([
