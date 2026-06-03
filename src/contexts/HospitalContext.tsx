@@ -28,24 +28,51 @@ interface HospitalContextType {
 
 const HospitalContext = createContext<HospitalContextType | undefined>(undefined);
 
+const HOSPITAL_KEY = 'virtualis.selectedHospitalId';
+const PATIENT_KEY = 'virtualis.selectedPatientId';
+
+const readStored = (key: string): string | null => {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+};
+const writeStored = (key: string, value: string | null) => {
+  try {
+    if (value) sessionStorage.setItem(key, value);
+    else sessionStorage.removeItem(key);
+  } catch { /* ignore */ }
+};
+
 export function HospitalProvider({ children }: { children: ReactNode }) {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
-  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  // Hydrate from sessionStorage as a stub; reconciled once hospitals load.
+  const [selectedHospital, setSelectedHospitalState] = useState<Hospital | null>(() => {
+    const id = readStored(HOSPITAL_KEY);
+    return id ? ({ id } as Hospital) : null;
+  });
+  const [selectedPatientId, setSelectedPatientIdState] = useState<string | null>(
+    () => readStored(PATIENT_KEY)
+  );
   const [activeEncounterId, setActiveEncounterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
 
+  const setSelectedHospital = (h: Hospital | null) => {
+    setSelectedHospitalState(h);
+    writeStored(HOSPITAL_KEY, h?.id ?? null);
+  };
+  const setSelectedPatientId = (id: string | null) => {
+    setSelectedPatientIdState(id);
+    writeStored(PATIENT_KEY, id);
+  };
+
   useEffect(() => {
     async function fetchHospitals() {
-      // Wait for auth to finish loading
-      if (authLoading) {
-        return;
-      }
+      if (authLoading) return;
 
       if (!user) {
         setHospitals([]);
+        setSelectedHospitalState(null);
+        writeStored(HOSPITAL_KEY, null);
         setLoading(false);
         return;
       }
@@ -54,21 +81,12 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         setError(null);
 
-        console.log('Fetching hospitals for user:', user.id);
-
-        // Fetch hospitals - admins see all, others see based on hospital_users
         const { data: hospitalsData, error: hospitalsError } = await supabase
           .from('hospitals')
           .select('*');
-        
-        if (hospitalsError) {
-          console.error('Hospitals query error:', hospitalsError);
-          throw hospitalsError;
-        }
 
-        console.log('Hospitals fetched:', hospitalsData?.length || 0);
+        if (hospitalsError) throw hospitalsError;
 
-        // Fetch patient counts per hospital
         const hospitalsWithCounts = await Promise.all(
           (hospitalsData || []).map(async (hospital) => {
             const { count: patientCount } = await supabase
@@ -91,6 +109,16 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
         );
 
         setHospitals(hospitalsWithCounts);
+
+        // Reconcile any hydrated stub against the freshly fetched list.
+        setSelectedHospitalState((prev) => {
+          if (!prev) return prev;
+          const full = hospitalsWithCounts.find((h) => h.id === prev.id);
+          if (full) return full;
+          // Hydrated id no longer accessible — clear it.
+          writeStored(HOSPITAL_KEY, null);
+          return null;
+        });
       } catch (err) {
         console.error('Error fetching hospitals:', err);
         setError(err instanceof Error ? err.message : 'Failed to load hospitals');
