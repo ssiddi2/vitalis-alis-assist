@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useEncounters } from '@/hooks/useEncounters';
