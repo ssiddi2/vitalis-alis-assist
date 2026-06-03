@@ -33,6 +33,21 @@ async function loadSharedContext(patientId: string): Promise<Record<string, unkn
   };
 }
 
+// Roster of simulated on-call specialists (demo). Keys are specialty names.
+const SPECIALIST_ROSTER: Record<string, { id: string; name: string; persona: string }> = {
+  "Cardiology": {
+    id: "sim_dr_das",
+    name: "Dr. Aravind Das",
+    persona: "board-certified Cardiology attending, fellowship-trained in interventional cardiology",
+  },
+};
+
+function specialistSystemPrompt(specialty: string, context: Record<string, unknown>): string | null {
+  const s = SPECIALIST_ROSTER[specialty];
+  if (!s) return null;
+  return `You are ${s.name}, a ${s.persona}, responding to a curbside consult in your role as the on-call ${specialty} attending. Reply in first person, concise (2-5 sentences), clinically grounded. Reference specifics from the patient context when relevant. Either ask one focused clarifying question OR give a clear recommendation. Do NOT mention you are an AI.\n\nPatient context: ${JSON.stringify(context)}`;
+}
+
 // Generate role-differentiated system prompts
 function buildSystemPrompt(role: "primary_clinician" | "specialist", specialty: string, context: Record<string, unknown>): string {
   const base = `You are ALIS, an AI clinical intelligence participant in a consultation thread. You have full patient context and are facilitating a consultation between a primary clinician and a ${specialty} specialist.\n\nPatient Context:\n${JSON.stringify(context, null, 2)}`;
@@ -107,6 +122,22 @@ serve(async (req) => {
           sender_role: "ai",
           content: welcomeContent,
         });
+
+        // Auto-introduce the on-call specialist (e.g. Dr. Das for Cardiology)
+        const specialistSys = specialistSystemPrompt(specialty, sharedContext);
+        const specialist = SPECIALIST_ROSTER[specialty];
+        if (specialistSys && specialist) {
+          const intro = await callAI([
+            { role: "system", content: specialistSys },
+            { role: "user", content: `Consult reason: ${reason}. Acknowledge the consult, note one or two key data points from the chart you'll focus on, and ask a focused clarifying question.` },
+          ]) as string;
+          await db.from("consultation_messages").insert({
+            thread_id: thread.id,
+            sender_id: specialist.id,
+            sender_role: "specialist",
+            content: intro,
+          });
+        }
 
         // Generate initial role-differentiated insights
         const [primaryInsight, specialistInsight] = await Promise.all([
@@ -205,7 +236,29 @@ serve(async (req) => {
           });
         }
 
-        return jsonRes({ message: msg, aiResponse: aiMsg });
+        // Auto-reply from the simulated on-call specialist when the primary clinician posts
+        let specialistMsg = null;
+        const specialistSys = specialistSystemPrompt(thread.specialty, sharedContext);
+        const specialist = SPECIALIST_ROSTER[thread.specialty];
+        if (senderRole === "primary_clinician" && specialistSys && specialist) {
+          const specReply = await callAI([
+            { role: "system", content: specialistSys },
+            ...historyMessages,
+            { role: "user", content: `[primary_clinician]: ${content}` },
+            { role: "user", content: "Generate your next reply in the thread." },
+          ]) as string;
+          if (specReply && specReply.trim().length > 5) {
+            const { data } = await db.from("consultation_messages").insert({
+              thread_id: threadId,
+              sender_id: specialist.id,
+              sender_role: "specialist",
+              content: specReply,
+            }).select().single();
+            specialistMsg = data;
+          }
+        }
+
+        return jsonRes({ message: msg, aiResponse: aiMsg, specialistMsg });
       }
 
       // ── Generate consultation note ──
@@ -274,59 +327,6 @@ serve(async (req) => {
         return jsonRes({ sharedContext });
       }
 
-      // ── Simulate a specialist reply (demo: Dr. Das, Cardiology) ──
-      case "simulate_specialist_reply": {
-        if (!threadId) return jsonRes({ error: "Missing threadId" }, 400);
-
-        const { data: thread } = await db.from("consultation_threads")
-          .select("*").eq("id", threadId).single();
-        if (!thread) return jsonRes({ error: "Thread not found" }, 404);
-
-        const { data: history } = await db.from("consultation_messages")
-          .select("*").eq("thread_id", threadId).order("created_at");
-
-        const sharedContext = thread.shared_context as Record<string, unknown>;
-        const persona = `You are Dr. Aravind Das, a board-certified ${thread.specialty || "Cardiology"} attending physician responding to a curbside consult. Reply in first person, concise, clinically grounded, 2-5 sentences. Reference specifics from the patient context when relevant. Ask one focused clarifying question OR give a clear recommendation. Do NOT mention you are an AI.`;
-
-        const historyMessages = (history || []).map((m: { sender_role: string; content: string }) => ({
-          role: m.sender_role === "ai" ? "assistant" : "user",
-          content: `[${m.sender_role}]: ${m.content}`,
-        }));
-
-        const reply = await callAI([
-          { role: "system", content: persona },
-          { role: "system", content: `Patient context: ${JSON.stringify(sharedContext)}` },
-          ...historyMessages,
-          { role: "user", content: "Generate Dr. Das's next reply in the thread." },
-        ]) as string;
-
-        const { data: msg, error } = await db.from("consultation_messages").insert({
-          thread_id: threadId,
-          sender_id: "sim_dr_das",
-          sender_role: "specialist",
-          content: reply,
-        }).select().single();
-        if (error) throw error;
-
-        // Refresh ALIS insight for primary clinician
-        const insight = await callAI([
-          { role: "system", content: buildSystemPrompt("primary_clinician", thread.specialty, sharedContext) },
-          ...historyMessages,
-          { role: "assistant", content: `[specialist Dr. Das]: ${reply}` },
-          { role: "user", content: "Summarize the specialist's input and next actions for the primary clinician." },
-        ]) as string;
-
-        await db.from("ai_intelligence_log").insert({
-          thread_id: threadId,
-          trigger_message_id: msg.id,
-          target: "primary_clinician",
-          insight_type: "specialist_reply_summary",
-          content: { text: insight },
-          model_version: "gemini-2.5-flash",
-        });
-
-        return jsonRes({ message: msg });
-      }
 
       // ── Suggest urgency for a consult based on reason + specialty ──
       case "suggest_urgency": {

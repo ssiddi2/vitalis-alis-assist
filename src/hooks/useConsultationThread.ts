@@ -134,29 +134,6 @@ export function useConsultationThread(threadId?: string) {
     }
   }, [thread?.id]);
 
-  // Simulate a specialist (Dr. Das) reply for demo purposes
-  const simulateSpecialistReply = useCallback(async () => {
-    if (!thread?.id) return null;
-    setSending(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-      const res = await supabase.functions.invoke(FUNC, {
-        body: { action: 'simulate_specialist_reply', threadId: thread.id },
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.error) throw res.error;
-      await fetchThread(thread.id);
-      toast.success('Dr. Das replied');
-      return res.data.message;
-    } catch {
-      toast.error('Failed to simulate specialist reply');
-      return null;
-    } finally {
-      setSending(false);
-    }
-  }, [thread?.id, fetchThread]);
-
   // Suggest urgency via AI
   const suggestUrgency = useCallback(async (params: { specialty: string; reason: string }) => {
     try {
@@ -211,7 +188,6 @@ export function useConsultationThread(threadId?: string) {
     sendMessage,
     generateNote,
     fetchThread,
-    simulateSpecialistReply,
     suggestUrgency,
   };
 }
