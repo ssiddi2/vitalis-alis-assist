@@ -48,7 +48,7 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
   const {
     thread, messages, insights, note,
     loading, sending,
-    sendMessage, generateNote, createThread,
+    sendMessage, generateNote, createThread, simulateSpecialistReply,
   } = useConsultationThread(activeThreadId);
 
   const [input, setInput] = useState('');
@@ -143,6 +143,11 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
           </div>
           <p className="text-xs text-muted-foreground truncate">{thread.reason}</p>
         </div>
+        {!isCompleted && (
+          <Button size="sm" variant="outline" onClick={simulateSpecialistReply} disabled={sending} title="Demo: simulate the specialist's next reply">
+            <Stethoscope className="h-3 w-3 mr-1" />Reply as Dr. Das
+          </Button>
+        )}
         {!isCompleted && !note && (
           <Button size="sm" variant="outline" onClick={generateNote} disabled={loading}>
             <FileText className="h-3 w-3 mr-1" />Generate Note
@@ -166,6 +171,8 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
                 const config = roleConfig[msg.sender_role];
                 const Icon = config.icon;
                 const isOwn = msg.sender_id === user?.id;
+                const isSimDas = msg.sender_id === 'sim_dr_das';
+                const displayLabel = isSimDas ? 'Dr. Das · Cardiology' : config.label;
                 return (
                   <div key={msg.id} className={cn("flex gap-2", isOwn && "flex-row-reverse")}>
                     <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0", config.color)}>
@@ -173,7 +180,7 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
                     </div>
                     <div className={cn("max-w-[75%]", isOwn && "text-right")}>
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-xs font-medium">{config.label}</span>
+                        <span className="text-xs font-medium">{displayLabel}</span>
                         <span className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(msg.created_at))} ago
                         </span>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useConsultRequests } from '@/hooks/useConsultRequests';
 import { useConsultationThread } from '@/hooks/useConsultationThread';
 import { useHospital } from '@/contexts/HospitalContext';
@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Brain, Clock, Stethoscope } from 'lucide-react';
+import { AlertTriangle, Brain, Clock, Stethoscope, Sparkles, Loader2 } from 'lucide-react';
 import type { ConsultUrgency } from '@/types/team';
 
 interface ConsultRequestModalProps {
@@ -39,12 +39,38 @@ const URGENCY_CONFIG: Record<ConsultUrgency, { label: string; color: string; ico
 export function ConsultRequestModal({ isOpen, onClose, patientId, patientName }: ConsultRequestModalProps) {
   const { selectedHospital } = useHospital();
   const { createConsult, loading } = useConsultRequests();
-  const { createThread, loading: threadLoading } = useConsultationThread();
+  const { createThread, loading: threadLoading, suggestUrgency } = useConsultationThread();
 
   const [specialty, setSpecialty] = useState('');
   const [urgency, setUrgency] = useState<ConsultUrgency>('routine');
   const [reason, setReason] = useState('');
   const [startAIThread, setStartAIThread] = useState(true);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggested, setSuggested] = useState<ConsultUrgency | null>(null);
+  const [userOverrode, setUserOverrode] = useState(false);
+
+  // Debounced AI urgency suggestion when reason + specialty are set
+  useEffect(() => {
+    if (!specialty || reason.trim().length < 15) {
+      setSuggested(null);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      setSuggesting(true);
+      const result = await suggestUrgency({ specialty, reason: reason.trim() });
+      setSuggesting(false);
+      if (result) {
+        setSuggested(result);
+        if (!userOverrode) setUrgency(result);
+      }
+    }, 700);
+    return () => clearTimeout(handle);
+  }, [specialty, reason, suggestUrgency, userOverrode]);
+
+  const handleUrgencyChange = (u: ConsultUrgency) => {
+    setUserOverrode(true);
+    setUrgency(u);
+  };
 
   const handleSubmit = async () => {
     if (!specialty || !reason.trim() || !selectedHospital?.id) return;
@@ -100,12 +126,25 @@ export function ConsultRequestModal({ isOpen, onClose, patientId, patientName }:
           </div>
 
           <div className="space-y-2">
-            <Label>Urgency</Label>
+            <div className="flex items-center justify-between">
+              <Label>Acuity</Label>
+              {suggesting && (
+                <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />ALIS triaging…
+                </span>
+              )}
+              {!suggesting && suggested && (
+                <span className="text-[11px] text-primary inline-flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  ALIS suggests {URGENCY_CONFIG[suggested].label}{userOverrode && urgency !== suggested ? ' (overridden)' : ''}
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
               {(Object.keys(URGENCY_CONFIG) as ConsultUrgency[]).map(u => {
                 const config = URGENCY_CONFIG[u];
                 return (
-                  <Button key={u} type="button" variant={urgency === u ? 'default' : 'outline'} size="sm" onClick={() => setUrgency(u)} className="flex-1">
+                  <Button key={u} type="button" variant={urgency === u ? 'default' : 'outline'} size="sm" onClick={() => handleUrgencyChange(u)} className="flex-1">
                     {config.icon}<span className="ml-1">{config.label}</span>
                   </Button>
                 );
