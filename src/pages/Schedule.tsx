@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useAppointments, DBAppointment } from '@/hooks/useAppointments';
 import { usePatients } from '@/hooks/usePatients';
