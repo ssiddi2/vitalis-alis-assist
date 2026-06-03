@@ -23,7 +23,7 @@ import { Loader2, Users } from 'lucide-react';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { selectedHospital, selectedPatientId, setSelectedPatientId, activeEncounterId, setActiveEncounterId } = useHospital();
+  const { selectedHospital, selectedPatientId, setSelectedPatientId, activeEncounterId, setActiveEncounterId, loading: hospitalLoading } = useHospital();
   
   const [selectedPatient, setSelectedPatient] = useState<DBPatient | null>(null);
   const [showTeamChat, setShowTeamChat] = useState(false);
