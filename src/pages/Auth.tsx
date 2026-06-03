@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import virtualisOneLogo from '@/assets/virtualis-one-logo.png.asset.json';
+
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
