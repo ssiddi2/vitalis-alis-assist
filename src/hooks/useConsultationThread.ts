@@ -188,7 +188,6 @@ export function useConsultationThread(threadId?: string) {
     sendMessage,
     generateNote,
     fetchThread,
-    simulateSpecialistReply,
     suggestUrgency,
   };
 }
