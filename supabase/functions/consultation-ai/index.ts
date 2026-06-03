@@ -236,7 +236,29 @@ serve(async (req) => {
           });
         }
 
-        return jsonRes({ message: msg, aiResponse: aiMsg });
+        // Auto-reply from the simulated on-call specialist when the primary clinician posts
+        let specialistMsg = null;
+        const specialistSys = specialistSystemPrompt(thread.specialty, sharedContext);
+        const specialist = SPECIALIST_ROSTER[thread.specialty];
+        if (senderRole === "primary_clinician" && specialistSys && specialist) {
+          const specReply = await callAI([
+            { role: "system", content: specialistSys },
+            ...historyMessages,
+            { role: "user", content: `[primary_clinician]: ${content}` },
+            { role: "user", content: "Generate your next reply in the thread." },
+          ]) as string;
+          if (specReply && specReply.trim().length > 5) {
+            const { data } = await db.from("consultation_messages").insert({
+              thread_id: threadId,
+              sender_id: specialist.id,
+              sender_role: "specialist",
+              content: specReply,
+            }).select().single();
+            specialistMsg = data;
+          }
+        }
+
+        return jsonRes({ message: msg, aiResponse: aiMsg, specialistMsg });
       }
 
       // ── Generate consultation note ──
