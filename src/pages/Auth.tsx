@@ -71,9 +71,8 @@ export default function Auth() {
         {/* Left side - Branding */}
         <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12">
           <div className="text-center max-w-lg">
-            <div className="mb-12 relative">
-              <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150" />
-              <img src={virtualisOneLogo.url} alt="VirtualisOne" className="h-40 mx-auto relative z-10 drop-shadow-lg" />
+            <div className="mb-10 flex justify-center animate-fade-in">
+              <AnimatedLogo size={280} />
             </div>
             <div className="space-y-6">
               <h1 className="text-5xl font-bold text-foreground tracking-tight">Welcome to VirtualisOne</h1>
