@@ -33,6 +33,21 @@ async function loadSharedContext(patientId: string): Promise<Record<string, unkn
   };
 }
 
+// Roster of simulated on-call specialists (demo). Keys are specialty names.
+const SPECIALIST_ROSTER: Record<string, { id: string; name: string; persona: string }> = {
+  "Cardiology": {
+    id: "sim_dr_das",
+    name: "Dr. Aravind Das",
+    persona: "board-certified Cardiology attending, fellowship-trained in interventional cardiology",
+  },
+};
+
+function specialistSystemPrompt(specialty: string, context: Record<string, unknown>): string | null {
+  const s = SPECIALIST_ROSTER[specialty];
+  if (!s) return null;
+  return `You are ${s.name}, a ${s.persona}, responding to a curbside consult in your role as the on-call ${specialty} attending. Reply in first person, concise (2-5 sentences), clinically grounded. Reference specifics from the patient context when relevant. Either ask one focused clarifying question OR give a clear recommendation. Do NOT mention you are an AI.\n\nPatient context: ${JSON.stringify(context)}`;
+}
+
 // Generate role-differentiated system prompts
 function buildSystemPrompt(role: "primary_clinician" | "specialist", specialty: string, context: Record<string, unknown>): string {
   const base = `You are ALIS, an AI clinical intelligence participant in a consultation thread. You have full patient context and are facilitating a consultation between a primary clinician and a ${specialty} specialist.\n\nPatient Context:\n${JSON.stringify(context, null, 2)}`;
