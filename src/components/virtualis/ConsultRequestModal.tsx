@@ -126,12 +126,25 @@ export function ConsultRequestModal({ isOpen, onClose, patientId, patientName }:
           </div>
 
           <div className="space-y-2">
-            <Label>Urgency</Label>
+            <div className="flex items-center justify-between">
+              <Label>Acuity</Label>
+              {suggesting && (
+                <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />ALIS triaging…
+                </span>
+              )}
+              {!suggesting && suggested && (
+                <span className="text-[11px] text-primary inline-flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  ALIS suggests {URGENCY_CONFIG[suggested].label}{userOverrode && urgency !== suggested ? ' (overridden)' : ''}
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
               {(Object.keys(URGENCY_CONFIG) as ConsultUrgency[]).map(u => {
                 const config = URGENCY_CONFIG[u];
                 return (
-                  <Button key={u} type="button" variant={urgency === u ? 'default' : 'outline'} size="sm" onClick={() => setUrgency(u)} className="flex-1">
+                  <Button key={u} type="button" variant={urgency === u ? 'default' : 'outline'} size="sm" onClick={() => handleUrgencyChange(u)} className="flex-1">
                     {config.icon}<span className="ml-1">{config.label}</span>
                   </Button>
                 );
