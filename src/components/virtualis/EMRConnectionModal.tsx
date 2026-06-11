@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Wifi, WifiOff, RefreshCw, Server, CheckCircle2, XCircle, Clock, Shield } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Server, CheckCircle2, Shield, Activity, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EMRConnectionModalProps {
   open: boolean;
@@ -14,40 +15,48 @@ interface EMRConnectionModalProps {
   };
 }
 
-const FHIR_RESOURCES = [
-  { name: 'Patient Demographics', status: 'synced', count: 248 },
-  { name: 'Encounters', status: 'synced', count: 1842 },
-  { name: 'Observations (Vitals)', status: 'synced', count: 12340 },
-  { name: 'DiagnosticReport', status: 'synced', count: 3421 },
-  { name: 'MedicationRequest', status: 'partial', count: 892 },
-  { name: 'AllergyIntolerance', status: 'synced', count: 456 },
-  { name: 'Condition (Problems)', status: 'synced', count: 1567 },
-  { name: 'Procedure', status: 'pending', count: 0 },
-];
-
-const statusConfig = {
-  synced: { icon: CheckCircle2, color: 'text-success', label: 'Synced' },
-  partial: { icon: Clock, color: 'text-warning', label: 'Partial' },
-  pending: { icon: XCircle, color: 'text-muted-foreground', label: 'Pending' },
-};
+interface SyncPayload {
+  server: string;
+  fhir_version: string;
+  synced_at: string;
+  latency_ms: number;
+  resources: { name: string; count: number }[];
+  sample_patient: { id: string; name: string; gender: string; birthDate: string | null; lastUpdated: string | null } | null;
+}
 
 export function EMRConnectionModal({ open, onOpenChange, hospital }: EMRConnectionModalProps) {
   const isConnected = hospital?.connection_status === 'connected';
+  const [data, setData] = useState<SyncPayload | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const { data: res, error } = await supabase.functions.invoke<SyncPayload>('fhir-sync', { body: {} });
+      if (!error && res) setData(res);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && isConnected && !data) sync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isConnected]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass border-border/50">
+      <DialogContent className="sm:max-w-lg glass border-border/50 max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Server className="h-5 w-5 text-primary" />
             EMR Connection
           </DialogTitle>
           <DialogDescription>
-            FHIR R4 integration status for {hospital?.name || 'this facility'}
+            Live FHIR R4 integration · {hospital?.name || 'this facility'}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Connection Status */}
         <div className={cn(
           'flex items-center gap-3 p-4 rounded-xl border',
           isConnected ? 'bg-success/5 border-success/20' : 'bg-critical/5 border-critical/20'
@@ -57,44 +66,84 @@ export function EMRConnectionModal({ open, onOpenChange, hospital }: EMRConnecti
             <p className="text-sm font-semibold text-foreground">
               {hospital?.emr_system?.toUpperCase()} {isConnected ? 'Connected' : 'Disconnected'}
             </p>
-            <p className="text-[10px] text-muted-foreground">
-              {isConnected ? 'Bidirectional FHIR R4 · Circuit breaker: closed' : 'Check network or credentials'}
+            <p className="text-[10px] text-muted-foreground font-mono truncate">
+              {data?.server || 'Bidirectional FHIR R4 · Circuit breaker: closed'}
             </p>
           </div>
           <div className={cn('w-3 h-3 rounded-full', isConnected ? 'bg-success animate-pulse' : 'bg-critical')} />
         </div>
 
-        {/* FHIR Resources */}
+        {data && (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-2 rounded-lg bg-secondary/30">
+              <p className="text-[9px] uppercase text-muted-foreground">FHIR</p>
+              <p className="text-sm font-mono text-foreground">{data.fhir_version}</p>
+            </div>
+            <div className="p-2 rounded-lg bg-secondary/30">
+              <p className="text-[9px] uppercase text-muted-foreground">Latency</p>
+              <p className="text-sm font-mono text-foreground">{data.latency_ms}ms</p>
+            </div>
+            <div className="p-2 rounded-lg bg-secondary/30">
+              <p className="text-[9px] uppercase text-muted-foreground">Synced</p>
+              <p className="text-sm font-mono text-foreground">{new Date(data.synced_at).toLocaleTimeString()}</p>
+            </div>
+          </div>
+        )}
+
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Shield className="w-3.5 h-3.5 text-primary" />
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">FHIR Resources</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              FHIR Resources {data ? '· Live counts' : ''}
+            </p>
           </div>
           <div className="space-y-1.5">
-            {FHIR_RESOURCES.map(r => {
-              const cfg = statusConfig[r.status as keyof typeof statusConfig];
-              const Icon = cfg.icon;
-              return (
-                <div key={r.name} className="flex items-center justify-between p-2 rounded-lg bg-secondary/30">
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn('w-3 h-3', cfg.color)} />
-                    <span className="text-xs text-foreground">{r.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {r.count > 0 && (
-                      <span className="text-[10px] font-mono text-muted-foreground">{r.count.toLocaleString()}</span>
-                    )}
-                    <span className={cn('text-[9px] font-medium', cfg.color)}>{cfg.label}</span>
-                  </div>
+            {(data?.resources || []).map(r => (
+              <div key={r.name} className="flex items-center justify-between p-2 rounded-lg bg-secondary/30">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3 h-3 text-success" />
+                  <span className="text-xs text-foreground">{r.name}</span>
                 </div>
-              );
-            })}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-muted-foreground">{r.count.toLocaleString()}</span>
+                  <span className="text-[9px] font-medium text-success">Synced</span>
+                </div>
+              </div>
+            ))}
+            {!data && syncing && (
+              <div className="flex items-center justify-center p-4 text-xs text-muted-foreground gap-2">
+                <Activity className="w-3 h-3 animate-pulse" /> Querying FHIR endpoint…
+              </div>
+            )}
           </div>
         </div>
 
+        {data?.sample_patient && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <User className="w-3.5 h-3.5 text-primary" />
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Live Patient Sample
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 space-y-1">
+              <p className="text-xs font-semibold text-foreground">{data.sample_patient.name}</p>
+              <p className="text-[10px] text-muted-foreground font-mono">
+                ID: {data.sample_patient.id} · {data.sample_patient.gender}
+                {data.sample_patient.birthDate ? ` · DOB ${data.sample_patient.birthDate}` : ''}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 h-9 text-xs rounded-lg gap-1.5" disabled={!isConnected}>
-            <RefreshCw className="w-3 h-3" /> Force Sync
+          <Button
+            variant="outline"
+            className="flex-1 h-9 text-xs rounded-lg gap-1.5"
+            disabled={!isConnected || syncing}
+            onClick={sync}
+          >
+            <RefreshCw className={cn('w-3 h-3', syncing && 'animate-spin')} /> {syncing ? 'Syncing…' : 'Force Sync'}
           </Button>
           <Button variant="outline" className="flex-1 h-9 text-xs rounded-lg" onClick={() => onOpenChange(false)}>
             Close
