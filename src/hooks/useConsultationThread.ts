@@ -122,10 +122,29 @@ export function useConsultationThread(threadId?: string) {
       });
 
       if (res.error) throw res.error;
-      setNote(res.data.note as ConsultationNote);
+      const generated = res.data.note as ConsultationNote;
+      setNote(generated);
       setThread(prev => prev ? { ...prev, status: 'completed' } : null);
       toast.success('Consultation note generated');
-      return res.data.note;
+
+      // Best-effort EHR write-back when launched from SMART
+      try {
+        const { loadSmartSession } = await import('@/lib/smart');
+        const { writeCommunicationToEhr, writeNoteToEhr } = await import('@/lib/ehrWriteback');
+        const smart = loadSmartSession();
+        if (smart?.patient_id) {
+          const summary = [
+            `Question: ${generated.consultation_question}`,
+            `Summary: ${generated.clinical_summary}`,
+            `Recommendation: ${generated.specialist_recommendation}`,
+            `Plan: ${generated.treatment_plan}`,
+          ].join('\n\n');
+          void writeCommunicationToEhr(smart.patient_id, summary, `${thread.specialty} consult`);
+          void writeNoteToEhr(smart.patient_id, `${thread.specialty} Consultation Note`, summary);
+        }
+      } catch { /* non-fatal */ }
+
+      return generated;
     } catch (err) {
       toast.error('Failed to generate note');
       return null;

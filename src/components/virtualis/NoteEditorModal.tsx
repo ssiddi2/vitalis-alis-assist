@@ -8,6 +8,8 @@ import { ClinicalNote, NoteType } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { loadSmartSession } from '@/lib/smart';
+import { writeNoteToEhr } from '@/lib/ehrWriteback';
 import { cn } from '@/lib/utils';
 
 const NOTE_TYPE_LABELS: Record<NoteType, string> = {
@@ -98,6 +100,12 @@ export function NoteEditorModal({
         signed_by: clinicianName,
         signature_method: 'electronic',
       });
+    }
+
+    const smart = loadSmartSession();
+    if (smart?.patient_id) {
+      const body = `Subjective:\n${subjective}\n\nObjective:\n${objective}\n\nAssessment:\n${assessment}\n\nPlan:\n${plan}`;
+      void writeNoteToEhr(smart.patient_id, NOTE_TYPE_LABELS[note.note_type] || 'Clinical Note', body);
     }
 
     setTimeout(() => {
