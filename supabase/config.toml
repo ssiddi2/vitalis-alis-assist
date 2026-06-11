@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.fhir-sync]
 verify_jwt = false
+
+[functions.fhir-writeback]
+verify_jwt = false

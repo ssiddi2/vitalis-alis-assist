@@ -32,7 +32,7 @@ export const SMART_CLIENT_ID =
   (import.meta.env.VITE_SMART_CLIENT_ID as string) || 'alis-demo-client';
 
 export const SMART_SCOPES =
-  'launch openid fhirUser patient/Patient.read patient/Observation.read patient/Condition.read patient/MedicationRequest.read patient/AllergyIntolerance.read';
+  'launch openid fhirUser offline_access patient/Patient.read patient/Observation.read patient/Condition.read patient/MedicationRequest.read patient/AllergyIntolerance.read user/DocumentReference.write user/MedicationRequest.write user/ServiceRequest.write user/Communication.write';
 
 export interface SmartSession {
   iss: string;
