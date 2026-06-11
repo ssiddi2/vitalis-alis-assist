@@ -23,6 +23,9 @@ import NotFound from "./pages/NotFound";
 import Product from "./pages/Product";
 import IntegrationSpec from "./pages/IntegrationSpec";
 import ROICalculator from "./pages/ROICalculator";
+import SmartLaunch from "./pages/SmartLaunch";
+import SmartCallback from "./pages/SmartCallback";
+import { SmartContextBanner } from "@/components/virtualis/SmartContextBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,11 +47,14 @@ const App = () => (
           <AuthProvider>
             <HospitalProvider>
               <ConnectionStatus />
+              <SmartContextBanner />
               <InactivityGuard>
                 <Routes>
                   <Route path="/product" element={<Product />} />
                   <Route path="/roi-calculator" element={<ROICalculator />} />
                   <Route path="/integration-spec" element={<ProtectedRoute><IntegrationSpec /></ProtectedRoute>} />
+                  <Route path="/smart/launch" element={<SmartLaunch />} />
+                  <Route path="/smart/callback" element={<SmartCallback />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<ProtectedRoute><HospitalSelector /></ProtectedRoute>} />
