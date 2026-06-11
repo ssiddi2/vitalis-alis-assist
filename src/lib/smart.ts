@@ -40,6 +40,12 @@ export interface SmartSession {
   patient_id?: string;
   encounter_id?: string;
   patient?: Record<string, unknown>;
+  bundle?: {
+    conditions?: Record<string, unknown>[];
+    medications?: Record<string, unknown>[];
+    allergies?: Record<string, unknown>[];
+    vitals?: Record<string, unknown>[];
+  };
   expires_at: number;
 }
 
