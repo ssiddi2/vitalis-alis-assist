@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ChatMessage } from '@/types/clinical';
 import { toast } from 'sonner';
+import { loadSmartSession } from '@/lib/smart';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/alis-chat`;
 
@@ -39,6 +40,18 @@ export function useALISChat(options: UseALISChatOptions = {}) {
     setIsStreaming(true);
 
     try {
+      const smart = loadSmartSession();
+      const mergedContext = smart
+        ? {
+            ...(options.patientContext || {}),
+            smart_on_fhir: {
+              source: smart.iss,
+              patient: smart.patient,
+              ...smart.bundle,
+            },
+          }
+        : options.patientContext;
+
       const response = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -50,7 +63,7 @@ export function useALISChat(options: UseALISChatOptions = {}) {
             role: m.role === 'alis' ? 'assistant' : m.role,
             content: m.content,
           })),
-          patientContext: options.patientContext,
+          patientContext: mergedContext,
         }),
       });
 
