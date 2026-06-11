@@ -5,6 +5,8 @@ import { Check, FileSignature, Shield } from 'lucide-react';
 import { StagedOrder } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useWorkflowMetricsContext } from './PatientDashboard';
+import { loadSmartSession } from '@/lib/smart';
+import { writeMedicationOrderToEhr, writeServiceRequestToEhr } from '@/lib/ehrWriteback';
 import { cn } from '@/lib/utils';
 
 interface OrderSignatureModalProps {
@@ -43,6 +45,13 @@ export function OrderSignatureModal({
         priority,
         signed_by: clinicianName,
       });
+    }
+
+    // Fire-and-forget EHR write-back when launched from a SMART session
+    const smart = loadSmartSession();
+    if (smart?.patient_id) {
+      const writer = order.order_type === 'medication' ? writeMedicationOrderToEhr : writeServiceRequestToEhr;
+      void writer(smart.patient_id, name, order.rationale || undefined);
     }
 
     setTimeout(() => {
