@@ -37,18 +37,40 @@ serve(async (req) => {
     if (!tokRes.ok) return json({ error: "Token exchange failed", status: tokRes.status, body: tokText }, 400);
     const tok = JSON.parse(tokText);
 
-    // Best-effort: fetch the launched Patient resource for immediate context
-    let patient_resource: unknown = null;
-    if (tok.patient && iss && tok.access_token) {
+    // Best-effort: fetch launched Patient + a small clinical bundle for AI context
+    const base = (iss || "").replace(/\/$/, "");
+    const fhirGet = async (path: string) => {
       try {
-        const pr = await fetch(`${iss.replace(/\/$/, "")}/Patient/${tok.patient}`, {
+        const r = await fetch(`${base}/${path}`, {
           headers: { Authorization: `Bearer ${tok.access_token}`, Accept: "application/fhir+json" },
         });
-        if (pr.ok) patient_resource = await pr.json();
-      } catch { /* ignore */ }
+        return r.ok ? await r.json() : null;
+      } catch { return null; }
+    };
+
+    let patient_resource: unknown = null;
+    let bundle: Record<string, unknown> = {};
+    if (tok.patient && base && tok.access_token) {
+      const pid = tok.patient;
+      const [pt, cond, meds, allg, obs] = await Promise.all([
+        fhirGet(`Patient/${pid}`),
+        fhirGet(`Condition?patient=${pid}&clinical-status=active&_count=20`),
+        fhirGet(`MedicationRequest?patient=${pid}&status=active&_count=20`),
+        fhirGet(`AllergyIntolerance?patient=${pid}&_count=20`),
+        fhirGet(`Observation?patient=${pid}&category=vital-signs&_count=10&_sort=-date`),
+      ]);
+      patient_resource = pt;
+      const entries = (b: { entry?: { resource?: unknown }[] } | null) =>
+        (b?.entry || []).map((e) => e.resource).filter(Boolean);
+      bundle = {
+        conditions: entries(cond as never),
+        medications: entries(meds as never),
+        allergies: entries(allg as never),
+        vitals: entries(obs as never),
+      };
     }
 
-    return json({ ...tok, patient_resource });
+    return json({ ...tok, patient_resource, bundle });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
   }

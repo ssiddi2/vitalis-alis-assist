@@ -38,6 +38,7 @@ export default function SmartCallback() {
         const t = data as {
           access_token: string; patient?: string; encounter?: string;
           expires_in?: number; patient_resource?: Record<string, unknown>;
+          bundle?: SmartSession['bundle'];
         };
 
         const session: SmartSession = {
@@ -46,6 +47,7 @@ export default function SmartCallback() {
           patient_id: t.patient,
           encounter_id: t.encounter,
           patient: t.patient_resource,
+          bundle: t.bundle,
           expires_at: Date.now() + (t.expires_in ?? 3600) * 1000,
         };
         sessionStorage.setItem(SMART_STORAGE_KEY, JSON.stringify(session));
