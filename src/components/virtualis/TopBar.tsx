@@ -11,6 +11,7 @@ import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, Ca
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
+import { isAmbulatory } from '@/config/deployment';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
 import { MobileMenu } from './MobileMenu';
 import { NotificationCenter } from './NotificationCenter';
@@ -85,7 +86,7 @@ export function TopBar() {
           <img src={virtualisOneIcon.url} alt="VirtualisOne" className="h-7 sm:h-8 w-auto" />
         </div>
         
-        {selectedHospital && (
+        {selectedHospital && !isAmbulatory && (
           <>
             <div className="w-px h-6 sm:h-8 bg-border hidden sm:block" />
             <button
@@ -102,6 +103,11 @@ export function TopBar() {
               </span>
             </button>
           </>
+        )}
+        {selectedHospital && isAmbulatory && (
+          <span className="hidden sm:inline text-xs sm:text-sm font-medium text-foreground truncate max-w-[200px]">
+            {selectedHospital.name}
+          </span>
         )}
       </div>
 
@@ -128,9 +134,11 @@ export function TopBar() {
         <button onClick={() => navigate('/billing')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
           <DollarSign className="w-3 h-3" /> RCM
         </button>
-        <button onClick={() => navigate('/quality')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
-          <BarChart3 className="w-3 h-3" /> Quality
-        </button>
+        {!isAmbulatory && (
+          <button onClick={() => navigate('/quality')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+            <BarChart3 className="w-3 h-3" /> Quality
+          </button>
+        )}
 
         {/* Notifications */}
         <NotificationCenter />
