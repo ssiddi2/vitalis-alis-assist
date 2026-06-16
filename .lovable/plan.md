@@ -1,84 +1,96 @@
-## Goal
-One continuous, click-through demo that exercises every shipped capability and proves the system can both pull from and write back to a real FHIR EHR (Epic when a client ID is configured, SMART Health IT public sandbox otherwise).
 
-## The demo flow (one script, ~8 minutes)
+# 6-Week Lightweight EMR — Go-Live Plan
 
-```text
-1. Clinician opens ALIS from inside the EHR
-   └─ /smart/launch  (Epic if VITE_SMART_CLIENT_ID set, else SMART Health IT)
-       └─ PKCE → token exchange → Patient + Conditions + Meds + Allergies + Vitals pulled
-       └─ Banner shows "SMART-on-FHIR · <patient name>"
+**Target customer:** Single primary care clinic, 1–5 providers
+**Billing:** Superbill PDF only (export to outside biller)
+**eRx:** Print/fax only (no Surescripts)
+**Compliance:** HIPAA-ready + SOC 2 Type I
 
-2. Dashboard lands on the EHR-launched patient
-   └─ Patient header + Epic-style tabs populated from FHIR bundle (not demo DB)
-   └─ ALIS panel auto-greets with real EHR context
+## Reality check
 
-3. AI-mediated cardiology consult
-   └─ "Consult → Cardiology" → Dr. Das auto-joins, acuity auto-suggested
-   └─ Conversation streams; ALIS posts role-specific insights
-   └─ "Generate Note" → structured consultation_note saved
+You already have ~70% of this: patients, encounters, vitals, problems, meds, allergies, immunizations, clinical notes, staged orders, prescriptions, scheduling, billing events, audit logs, RLS, AuthContext, ALIS AI, ElevenLabs voice, FHIR sync. The 6-week effort is **finish, harden, and remove** — not build new.
 
-4. CPOE: stage orders from ALIS recommendations
-   └─ Drug-interaction alerts fire against the FHIR med list
-   └─ Sign orders with PIN
+Cut from scope for v1 (re-enabled post-launch): inpatient flows, multi-hospital UI, consult marketplace, voice dictation polish, RCM analytics depth, PACS/DICOM viewer, integration-spec/ROI marketing pages on the authed app.
 
-5. Documentation: progress note from template, auto-coded for RCM
-   └─ Quality measures + workflow telemetry update live
+## Weekly milestones
 
-6. Outpatient leg: switch to /clinic
-   └─ Pick today's appointment → encounter → SOAP from template → eRx
+### Week 1 — Scope lock & clinic-mode shell
+- Add a `deployment_mode` flag (`ambulatory`) that hides inpatient/multi-hospital/consult-marketplace routes and nav items.
+- Default landing = Schedule (today's appointments) instead of PatientCensus.
+- Single-clinic onboarding wizard: clinic name, NPI, tax ID, address, providers, fee schedule upload (CSV).
+- Strip Demo/Product/IntegrationSpec/ROI from the authed app shell (keep public marketing routes).
 
-7. FHIR write-back (the new bit)
-   └─ Signed consult note → POST DocumentReference
-   └─ Signed orders → POST MedicationRequest / ServiceRequest
-   └─ Consult thread summary → POST Communication
-   └─ Each write surfaces FHIR resource ID + EHR link in a "Sent to EHR" toast
+### Week 2 — Front desk + intake
+- Patient registration form (demographics, insurance card photo upload, consent signature capture).
+- Self-check-in link (tokenized URL, no login) → updates appointment status, captures HPI + ROS via template.
+- Appointment statuses: scheduled → checked-in → roomed → with-provider → checkout → completed.
+- Eligibility: manual entry only (insurance, member ID, group). No 270/271 yet.
 
-8. Wrap: open EMR Connection modal → live counts refresh, "Last write: just now"
-```
+### Week 3 — Visit workflow
+- One-click "Start Visit" from schedule → opens encounter with SOAP template prefilled (chief complaint, vitals, problem list, meds, allergies).
+- Vitals quick-entry (BP, HR, temp, SpO2, weight, height, BMI auto).
+- Problem-oriented note: pick ICD-10 from problem list, append plan per problem.
+- Order entry: labs (LOINC picklist), in-house procedures, referrals. All staged → signed.
+- Rx: pick from formulary, generate printable Rx PDF + eFax via existing eFax stub (use Phaxio or eFax.com — cheapest = Phaxio).
 
-## What gets built
+### Week 4 — Charge capture & superbill
+- At sign-and-close: clinician picks E/M code (99202–99215) with AI suggestion based on note content + time.
+- ICD-10 → CPT linkage UI (drag/drop).
+- Generate Superbill PDF (patient, DOS, provider, dx codes, CPT codes, modifiers, charges from fee schedule) → email/download for outside biller.
+- Patient receipt PDF for copay collected at desk.
+- Daily charge reconciliation report (CSV export).
 
-### A. SMART launch hardening
-- Runtime EHR detection: if `VITE_SMART_CLIENT_ID` is set, launch routes prefer Epic; otherwise auto-redirect bare visits to SMART Health IT App Launcher with our redirect pre-filled, so the demo works with zero config.
-- Expand SMART scopes to include `user/*.write` and the specific write resources we need.
-- Add a `/demo` landing page with one button: **"Launch demo from SMART Health IT"** — kicks off the App Launcher with a pre-selected demo patient. Removes the "find the launcher" friction during a live call.
+### Week 5 — Patient portal (read-only v1) + compliance
+- Tokenized patient portal: view upcoming appointments, after-visit summary PDF, immunization record, lab results (provider-released only), secure message inbox (1-way clinician→patient first).
+- HIPAA: BAA template page, encryption-at-rest verified, audit-log viewer for admins, break-glass logging, session timeout (already have InactivityGuard), MFA for clinicians (TOTP via Supabase).
+- Data export: per-patient CCDA-lite JSON download (right of access).
+- Backup/DR runbook doc + tested restore.
 
-### B. EHR-aware patient view
-- New `useSmartPatient()` hook: when a SMART session exists, the dashboard, header, vitals, problems, meds, allergies panels read from `smart.bundle` instead of Supabase.
-- Visual `EHR` chip on each panel header when the data source is FHIR vs. local DB.
+### Week 6 — Hardening, pilot, go-live
+- Load test with 500 patients / 50 appts/day synthetic data.
+- Penetration test (self-run with OWASP ZAP + manual RLS audit; full external test post-launch).
+- Clinician training mode (sandbox clinic with reset button).
+- In-app help (Intercom-style tooltips on first visit).
+- SOC 2 Type I evidence collection (policies, access reviews, change management — use Vanta or Drata trial).
+- Pilot with 1 provider for 3 days → fix top 10 issues → expand to full clinic.
 
-### C. FHIR write-back service
-- New edge function `fhir-writeback` (one function, three actions):
-  - `write_document_reference` — consult notes & progress notes
-  - `write_medication_request` — signed med orders
-  - `write_communication` — consult thread summaries
-- Uses the SMART session's access_token forwarded from the client; gracefully degrades to "would write" preview when sandbox refuses the scope.
-- Every write logs to `audit_logs` and returns the EHR resource ID.
+## Technical details
 
-### D. Order/note signing hooks
-- After PIN sign in `OrderSignatureModal` and `NoteEditorModal`, if a SMART session is active, fire the matching `fhir-writeback` action and show toast: *"Sent to EHR · DocumentReference/12345"*.
+### Schema additions (minimal — extend existing tables where possible)
+- `clinics` (replaces hospitals UX) — already covered by `hospitals` table, just rename in UI.
+- `fee_schedule` (clinic_id, cpt_code, charge_amount).
+- `patient_insurance` (patient_id, payer_name, member_id, group_number, card_front_url, card_back_url).
+- `superbills` (encounter_id, pdf_url, total_charges, status, generated_at).
+- `portal_tokens` (patient_id, token, expires_at, scope).
+- `mfa_enrollments` (already supported by Supabase Auth — just enable).
 
-### E. Consult flow finish line
-- After `generate_note` in `consultation-ai`, automatically queue a `Communication` write-back so the specialist exchange lands in the EHR.
+All new tables: GRANT to `authenticated` + `service_role`, RLS scoped by `clinic_id` via existing `has_role`/clinic-membership pattern.
 
-### F. Demo Mode toggle
-- New `DemoControlPanel` (admin-only, top-right `Cmd+K → Demo`):
-  - Buttons: *Launch SMART*, *Seed inpatient scenario*, *Seed outpatient scenario*, *Reset*.
-  - Visible only with `?demo=1` or admin role, so it doesn't pollute the real UI.
+### Edge functions to add
+- `generate-superbill` — renders PDF via pdf-lib in Deno.
+- `send-fax` — Phaxio API wrapper.
+- `portal-token` — issue/verify tokenized patient links.
+- `patient-portal-api` — read-only endpoints, token-auth (no JWT).
 
-### G. Telemetry surface
-- New `/demo/dashboard` route that mirrors the existing workflow_metrics in a single big-screen layout — useful to leave open on a second monitor during the pitch.
+Existing functions kept as-is: `alis-chat`, `audit-log`, `admin-create-user`, `elevenlabs-conversation-token`. Disable `fhir-sync`/`fhir-writeback`/`smart-token` for v1 (clinic isn't connecting to another EHR).
 
-## Technical notes
+### Secrets to add later (not in this plan, ask when reached)
+- `PHAXIO_API_KEY` + `PHAXIO_API_SECRET` (week 3)
+- SMTP for portal/clinician notifications if not already wired (week 5)
 
-- Epic write scopes (`user/DocumentReference.write`, `user/MedicationRequest.write`, `user/Communication.write`) must be added to the app registration; if Epic refuses any, fhir-writeback returns `{ status: "skipped", reason }` and the toast says *"EHR refused write scope — note saved locally"* so the demo never breaks.
-- SMART Health IT sandbox accepts writes on most resources without extra registration — that's our fallback path.
-- All EHR calls go server-side through edge functions so the access token is never logged in browser network tab.
-- Zero schema changes required; `audit_logs`, `consultation_notes`, `staged_orders`, `clinical_notes` already cover persistence.
-- No new dependencies. Roughly 1 new edge function + ~4 new small frontend files + edits to 5 existing files.
+### What gets deleted/hidden, not refactored
+Inpatient census, consult marketplace, RCM analytics dashboard, ROI calculator, integration spec, product page — keep code, hide behind `deployment_mode === 'inpatient'` flag so post-launch we re-enable for hospital customers.
 
-## Out of scope for this pass
-- Per-user OAuth for clinicians signing in *to* the EHR from outside (standalone launch). EHR launch only.
-- Bidirectional sync (we push on sign, we pull on launch — no continuous polling).
-- Production-grade PHI handling beyond what's already in place.
+## Hard truths
+
+- **6 weeks is tight but doable** because you're not building from zero. The risk is scope creep, not engineering.
+- **Surescripts in 6 weeks = no.** Vendor onboarding (DoseSpot/RXNT) is 4–8 weeks alone and needs EPCS for controlled substances. Print/fax is your only realistic v1.
+- **Superbill PDF is not billing.** You will not collect a dollar through this EMR at go-live. The clinic's outside biller takes the PDF and submits 837P themselves. That's fine for a pilot, not for scale — plan clearinghouse work for weeks 7–14.
+- **SOC 2 Type I is achievable in 6 weeks** (point-in-time). Type II requires 3–6 months of observation and cannot be compressed.
+- **One pilot clinic, one provider first.** Do not sign 5 clinics for week-6 launch. You need real chart-time feedback before you scale.
+
+## What I need from you to start week 1
+1. Confirm we hide (not delete) inpatient/multi-hospital features behind a flag.
+2. Pilot clinic name + provider count + EHR they're leaving (if any) — affects data migration scope.
+3. Choice of fax vendor: Phaxio (cheap, dev-friendly) vs SR Fax (cheaper, clunky API).
+4. Approval for ~$300/mo tooling: Vanta trial, Phaxio, monitoring (Sentry).
