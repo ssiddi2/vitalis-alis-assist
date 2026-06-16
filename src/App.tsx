@@ -2,13 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { HospitalProvider } from "@/contexts/HospitalContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InactivityGuard } from "@/components/InactivityGuard";
+import { isAmbulatory } from "@/config/deployment";
 import HospitalSelector from "./pages/HospitalSelector";
 import PatientCensus from "./pages/PatientCensus";
 import Dashboard from "./pages/Dashboard";
@@ -59,12 +60,12 @@ const App = () => (
                   <Route path="/demo" element={<Demo />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/" element={<ProtectedRoute><HospitalSelector /></ProtectedRoute>} />
-                  <Route path="/census" element={<ProtectedRoute><PatientCensus /></ProtectedRoute>} />
+                  <Route path="/" element={<ProtectedRoute>{isAmbulatory ? <Navigate to="/schedule" replace /> : <HospitalSelector />}</ProtectedRoute>} />
+                  {!isAmbulatory && <Route path="/census" element={<ProtectedRoute><PatientCensus /></ProtectedRoute>} />}
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
                   <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
-                  <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />
+                  {!isAmbulatory && <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />}
                   <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
                   <Route path="/clinic" element={<ProtectedRoute><Clinic /></ProtectedRoute>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
