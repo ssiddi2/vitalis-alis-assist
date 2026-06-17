@@ -908,6 +908,53 @@ export type Database = {
           },
         ]
       }
+      fee_schedule: {
+        Row: {
+          active: boolean
+          amount: number
+          code: string
+          code_type: string
+          created_at: string
+          description: string
+          hospital_id: string
+          id: string
+          modifier: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          code: string
+          code_type?: string
+          created_at?: string
+          description: string
+          hospital_id: string
+          id?: string
+          modifier?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          code?: string
+          code_type?: string
+          created_at?: string
+          description?: string
+          hospital_id?: string
+          id?: string
+          modifier?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_schedule_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospital_users: {
         Row: {
           access_level: string
@@ -1299,6 +1346,71 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "patient_allergies_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_insurance: {
+        Row: {
+          active: boolean
+          copay_amount: number | null
+          created_at: string
+          effective_date: string | null
+          group_number: string | null
+          id: string
+          member_id: string
+          patient_id: string
+          payer_name: string
+          plan_name: string | null
+          rank: string
+          relationship_to_subscriber: string | null
+          subscriber_dob: string | null
+          subscriber_name: string | null
+          termination_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          copay_amount?: number | null
+          created_at?: string
+          effective_date?: string | null
+          group_number?: string | null
+          id?: string
+          member_id: string
+          patient_id: string
+          payer_name: string
+          plan_name?: string | null
+          rank?: string
+          relationship_to_subscriber?: string | null
+          subscriber_dob?: string | null
+          subscriber_name?: string | null
+          termination_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          copay_amount?: number | null
+          created_at?: string
+          effective_date?: string | null
+          group_number?: string | null
+          id?: string
+          member_id?: string
+          patient_id?: string
+          payer_name?: string
+          plan_name?: string | null
+          rank?: string
+          relationship_to_subscriber?: string | null
+          subscriber_dob?: string | null
+          subscriber_name?: string | null
+          termination_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_insurance_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
@@ -1758,6 +1870,85 @@ export type Database = {
           },
           {
             foreignKeyName: "staged_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      superbills: {
+        Row: {
+          cpt_lines: Json
+          created_at: string
+          encounter_id: string | null
+          generated_at: string | null
+          generated_by: string | null
+          hospital_id: string
+          icd10_codes: string[]
+          id: string
+          insurance_snapshot: Json | null
+          patient_id: string
+          pdf_url: string | null
+          provider_id: string | null
+          service_date: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          cpt_lines?: Json
+          created_at?: string
+          encounter_id?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          hospital_id: string
+          icd10_codes?: string[]
+          id?: string
+          insurance_snapshot?: Json | null
+          patient_id: string
+          pdf_url?: string | null
+          provider_id?: string | null
+          service_date: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          cpt_lines?: Json
+          created_at?: string
+          encounter_id?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          hospital_id?: string
+          icd10_codes?: string[]
+          id?: string
+          insurance_snapshot?: Json | null
+          patient_id?: string
+          pdf_url?: string | null
+          provider_id?: string | null
+          service_date?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "superbills_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "superbills_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "superbills_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
