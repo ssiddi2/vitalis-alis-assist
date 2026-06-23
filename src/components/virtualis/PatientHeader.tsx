@@ -102,6 +102,7 @@ export function PatientHeader({ patient, encounter, encounterDuration }: Patient
             }}
           >
             <Upload className="w-3 h-3" /> Push to EMR
+          </Button>
         </div>
       </div>
       {selectedHospital && (
