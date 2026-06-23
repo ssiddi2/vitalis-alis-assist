@@ -2179,6 +2179,7 @@ export type Database = {
         }
         Returns: string
       }
+      reset_demo_data: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "admin" | "clinician" | "viewer"
