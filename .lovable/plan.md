@@ -1,96 +1,48 @@
+## Goal
+Convince a prospective clinic in 30 minutes that this is a real, working ambulatory EMR — not a slide deck. The proof is letting them watch a patient flow from check-in to signed note to printed superbill, in their browser, against a live database.
 
-# 6-Week Lightweight EMR — Go-Live Plan
+## The 30-minute demo (8 beats)
 
-**Target customer:** Single primary care clinic, 1–5 providers
-**Billing:** Superbill PDF only (export to outside biller)
-**eRx:** Print/fax only (no Surescripts)
-**Compliance:** HIPAA-ready + SOC 2 Type I
+```
+0:00  Open cold      → published URL, sign in
+0:02  Today's schedule → click a patient
+0:05  Chart tour      → problems, meds, allergies, vitals (real DB rows)
+0:09  Start encounter → vitals + HPI
+0:13  ALIS voice      → dictate HPI, watch transcript land in the note
+0:17  Orders + Rx     → stage labs, write a prescription, print preview
+0:22  Sign note       → audit log entry appears
+0:25  Superbill PDF   → pick ICD-10 + CPT, print to PDF, hand it to them
+0:28  "Where's my data?" → show RLS: log in as a different clinic, zero leakage
+0:30  Close
+```
 
-## Reality check
+Each beat is something they can see happen on screen. No "imagine if…" slides.
 
-You already have ~70% of this: patients, encounters, vitals, problems, meds, allergies, immunizations, clinical notes, staged orders, prescriptions, scheduling, billing events, audit logs, RLS, AuthContext, ALIS AI, ElevenLabs voice, FHIR sync. The 6-week effort is **finish, harden, and remove** — not build new.
+## What needs to be true before the demo
 
-Cut from scope for v1 (re-enabled post-launch): inpatient flows, multi-hospital UI, consult marketplace, voice dictation polish, RCM analytics depth, PACS/DICOM viewer, integration-spec/ROI marketing pages on the authed app.
+This is the gap list — what to lock down so the demo doesn't faceplant. Pick the ones that aren't already solid:
 
-## Weekly milestones
+1. **One seeded demo clinic** with: 1 provider account (you), 1 front-desk account, 5–8 patients with realistic problems/meds/allergies/vitals, 3 appointments on "today."
+2. **A second seeded clinic** with 1 patient, used only for the 30-second RLS proof at the end.
+3. **Superbill PDF**: print-to-PDF view exists and renders cleanly. (Schema is in; UI button on the encounter is the missing piece per the last build turn.)
+4. **Prescription print view**: a clean printable Rx (patient, drug, sig, prescriber, DEA blank, signature line). Fax is not needed for the demo — print is enough.
+5. **ALIS voice**: ElevenLabs is reconnected in this workspace (you rejected the connect prompt earlier — needs to be redone) and the dictation button works end-to-end on the note editor.
+6. **Published URL is current** and loads in under 3 seconds cold. Custom domain (`alisai.health`) preferred over the preview URL — looks like a product, not a sandbox.
+7. **Demo-mode guardrails**: hide inpatient nav (already done via `isAmbulatory`), hide anything half-built (consult marketplace, RCM analytics, ROI calculator, integration spec) from the signed-in nav so they don't click into a dead end.
+8. **Reset script**: a single button or SQL snippet that puts the demo clinic back to its starting state in <10 seconds, in case a beat goes sideways and you need to restart.
 
-### Week 1 — Scope lock & clinic-mode shell
-- Add a `deployment_mode` flag (`ambulatory`) that hides inpatient/multi-hospital/consult-marketplace routes and nav items.
-- Default landing = Schedule (today's appointments) instead of PatientCensus.
-- Single-clinic onboarding wizard: clinic name, NPI, tax ID, address, providers, fee schedule upload (CSV).
-- Strip Demo/Product/IntegrationSpec/ROI from the authed app shell (keep public marketing routes).
+## What I need from you to start
 
-### Week 2 — Front desk + intake
-- Patient registration form (demographics, insurance card photo upload, consent signature capture).
-- Self-check-in link (tokenized URL, no login) → updates appointment status, captures HPI + ROS via template.
-- Appointment statuses: scheduled → checked-in → roomed → with-provider → checkout → completed.
-- Eligibility: manual entry only (insurance, member ID, group). No 270/271 yet.
+Pick the cuts — I'll do the rest in build mode:
 
-### Week 3 — Visit workflow
-- One-click "Start Visit" from schedule → opens encounter with SOAP template prefilled (chief complaint, vitals, problem list, meds, allergies).
-- Vitals quick-entry (BP, HR, temp, SpO2, weight, height, BMI auto).
-- Problem-oriented note: pick ICD-10 from problem list, append plan per problem.
-- Order entry: labs (LOINC picklist), in-house procedures, referrals. All staged → signed.
-- Rx: pick from formulary, generate printable Rx PDF + eFax via existing eFax stub (use Phaxio or eFax.com — cheapest = Phaxio).
+- **A. Tightest path (recommended, ~2 hrs of build):** items 1, 3, 7, 8. Skip Rx print and voice — talk over them or show them on the chart but don't demo live. Lowest risk of a broken beat.
+- **B. Full demo (~4–5 hrs of build):** all 8 items, including reconnecting ElevenLabs and wiring the Rx print view.
+- **C. You tell me what to drop.**
 
-### Week 4 — Charge capture & superbill
-- At sign-and-close: clinician picks E/M code (99202–99215) with AI suggestion based on note content + time.
-- ICD-10 → CPT linkage UI (drag/drop).
-- Generate Superbill PDF (patient, DOS, provider, dx codes, CPT codes, modifiers, charges from fee schedule) → email/download for outside biller.
-- Patient receipt PDF for copay collected at desk.
-- Daily charge reconciliation report (CSV export).
+Also confirm:
 
-### Week 5 — Patient portal (read-only v1) + compliance
-- Tokenized patient portal: view upcoming appointments, after-visit summary PDF, immunization record, lab results (provider-released only), secure message inbox (1-way clinician→patient first).
-- HIPAA: BAA template page, encryption-at-rest verified, audit-log viewer for admins, break-glass logging, session timeout (already have InactivityGuard), MFA for clinicians (TOTP via Supabase).
-- Data export: per-patient CCDA-lite JSON download (right of access).
-- Backup/DR runbook doc + tested restore.
+- **When is the demo?** (If it's today, A. If tomorrow+, B is realistic.)
+- **In person or screen-share?** (Screen-share = use the published custom domain. In person on your laptop = preview URL is fine.)
+- **Are they technical?** (Technical buyers want to see the RLS isolation beat. Clinic owners want to see the superbill and the time-to-sign-a-note.)
 
-### Week 6 — Hardening, pilot, go-live
-- Load test with 500 patients / 50 appts/day synthetic data.
-- Penetration test (self-run with OWASP ZAP + manual RLS audit; full external test post-launch).
-- Clinician training mode (sandbox clinic with reset button).
-- In-app help (Intercom-style tooltips on first visit).
-- SOC 2 Type I evidence collection (policies, access reviews, change management — use Vanta or Drata trial).
-- Pilot with 1 provider for 3 days → fix top 10 issues → expand to full clinic.
-
-## Technical details
-
-### Schema additions (minimal — extend existing tables where possible)
-- `clinics` (replaces hospitals UX) — already covered by `hospitals` table, just rename in UI.
-- `fee_schedule` (clinic_id, cpt_code, charge_amount).
-- `patient_insurance` (patient_id, payer_name, member_id, group_number, card_front_url, card_back_url).
-- `superbills` (encounter_id, pdf_url, total_charges, status, generated_at).
-- `portal_tokens` (patient_id, token, expires_at, scope).
-- `mfa_enrollments` (already supported by Supabase Auth — just enable).
-
-All new tables: GRANT to `authenticated` + `service_role`, RLS scoped by `clinic_id` via existing `has_role`/clinic-membership pattern.
-
-### Edge functions to add
-- `generate-superbill` — renders PDF via pdf-lib in Deno.
-- `send-fax` — Phaxio API wrapper.
-- `portal-token` — issue/verify tokenized patient links.
-- `patient-portal-api` — read-only endpoints, token-auth (no JWT).
-
-Existing functions kept as-is: `alis-chat`, `audit-log`, `admin-create-user`, `elevenlabs-conversation-token`. Disable `fhir-sync`/`fhir-writeback`/`smart-token` for v1 (clinic isn't connecting to another EHR).
-
-### Secrets to add later (not in this plan, ask when reached)
-- `PHAXIO_API_KEY` + `PHAXIO_API_SECRET` (week 3)
-- SMTP for portal/clinician notifications if not already wired (week 5)
-
-### What gets deleted/hidden, not refactored
-Inpatient census, consult marketplace, RCM analytics dashboard, ROI calculator, integration spec, product page — keep code, hide behind `deployment_mode === 'inpatient'` flag so post-launch we re-enable for hospital customers.
-
-## Hard truths
-
-- **6 weeks is tight but doable** because you're not building from zero. The risk is scope creep, not engineering.
-- **Surescripts in 6 weeks = no.** Vendor onboarding (DoseSpot/RXNT) is 4–8 weeks alone and needs EPCS for controlled substances. Print/fax is your only realistic v1.
-- **Superbill PDF is not billing.** You will not collect a dollar through this EMR at go-live. The clinic's outside biller takes the PDF and submits 837P themselves. That's fine for a pilot, not for scale — plan clearinghouse work for weeks 7–14.
-- **SOC 2 Type I is achievable in 6 weeks** (point-in-time). Type II requires 3–6 months of observation and cannot be compressed.
-- **One pilot clinic, one provider first.** Do not sign 5 clinics for week-6 launch. You need real chart-time feedback before you scale.
-
-## What I need from you to start week 1
-1. Confirm we hide (not delete) inpatient/multi-hospital features behind a flag.
-2. Pilot clinic name + provider count + EHR they're leaving (if any) — affects data migration scope.
-3. Choice of fax vendor: Phaxio (cheap, dev-friendly) vs SR Fax (cheaper, clunky API).
-4. Approval for ~$300/mo tooling: Vanta trial, Phaxio, monitoring (Sentry).
+Once you answer, I switch to build mode and execute.
