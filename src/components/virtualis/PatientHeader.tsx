@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Patient } from '@/types/clinical';
-import { Clock, MapPin, Calendar, User, Timer, DoorOpen, Stethoscope, Video, RefreshCw, UserCheck, AlertTriangle, FileText, Receipt } from 'lucide-react';
+import { Clock, MapPin, Calendar, User, Timer, DoorOpen, Stethoscope, Video, RefreshCw, UserCheck, AlertTriangle, FileText, Receipt, Upload } from 'lucide-react';
+import { pushChartSnapshot } from '@/lib/universalEmr';
+import { toast } from 'sonner';
 import { ActiveEncounter } from '@/hooks/useActiveEncounter';
 import { SuperbillModal } from './SuperbillModal';
 import { useHospital } from '@/contexts/HospitalContext';
@@ -91,6 +93,16 @@ export function PatientHeader({ patient, encounter, encounterDuration }: Patient
               <Receipt className="w-3 h-3" /> Superbill
             </Button>
           )}
+          <Button
+            size="sm" variant="outline" className="h-7 rounded-lg gap-1.5 text-xs"
+            onClick={async () => {
+              toast.message('Pushing chart to EMR Sandbox…');
+              const n = await pushChartSnapshot(patient.id, patient.name);
+              toast.success(`${n} FHIR resources delivered`);
+            }}
+          >
+            <Upload className="w-3 h-3" /> Push to EMR
+          </Button>
         </div>
       </div>
       {selectedHospital && (

@@ -1,48 +1,72 @@
-## Goal
-Convince a prospective clinic in 30 minutes that this is a real, working ambulatory EMR — not a slide deck. The proof is letting them watch a patient flow from check-in to signed note to printed superbill, in their browser, against a live database.
+# 30-Minute "Universal EMR Interoperability" Demo
 
-## The 30-minute demo (8 beats)
+Goal: prove ALIS can push clinical data into any external EMR. We host a mock universal FHIR R4 endpoint, mirror every signed action there, and give the client two proof surfaces: an in-app "Sent to EMR" panel and a standalone sandbox viewer they can refresh live.
 
-```
-0:00  Open cold      → published URL, sign in
-0:02  Today's schedule → click a patient
-0:05  Chart tour      → problems, meds, allergies, vitals (real DB rows)
-0:09  Start encounter → vitals + HPI
-0:13  ALIS voice      → dictate HPI, watch transcript land in the note
-0:17  Orders + Rx     → stage labs, write a prescription, print preview
-0:22  Sign note       → audit log entry appears
-0:25  Superbill PDF   → pick ICD-10 + CPT, print to PDF, hand it to them
-0:28  "Where's my data?" → show RLS: log in as a different clinic, zero leakage
-0:30  Close
-```
+## What the client will see
 
-Each beat is something they can see happen on screen. No "imagine if…" slides.
+1. In ALIS: sign a note / add a problem / send an Rx / save vitals.
+2. A toast + side panel in ALIS shows the outbound FHIR resource (JSON) + sandbox response + resource ID + a "View in EMR Sandbox" link.
+3. Opening that link (separate tab on `/emr-sandbox`) shows a generic-looking external EMR UI with the just-created DocumentReference / Condition / MedicationRequest / Observation visible at the top of the patient's chart.
+4. Talking point: "swap the endpoint URL + auth header and this same pipeline lands in Epic, Cerner, Athena, Meditech."
 
-## What needs to be true before the demo
+## Build
 
-This is the gap list — what to lock down so the demo doesn't faceplant. Pick the ones that aren't already solid:
+### 1. FHIR ingest endpoint (edge function `fhir-ingest`)
+- POST accepts a FHIR R4 resource or Bundle, validates `resourceType`, stamps `id` + `meta.lastUpdated`, stores in new `fhir_resources` table.
+- GET lists resources by `patient_id` + optional `resourceType`, newest first.
+- No JWT (demo); validates a shared `X-Demo-Token` header set in code so it looks like real auth in the payload panel.
 
-1. **One seeded demo clinic** with: 1 provider account (you), 1 front-desk account, 5–8 patients with realistic problems/meds/allergies/vitals, 3 appointments on "today."
-2. **A second seeded clinic** with 1 patient, used only for the 30-second RLS proof at the end.
-3. **Superbill PDF**: print-to-PDF view exists and renders cleanly. (Schema is in; UI button on the encounter is the missing piece per the last build turn.)
-4. **Prescription print view**: a clean printable Rx (patient, drug, sig, prescriber, DEA blank, signature line). Fax is not needed for the demo — print is enough.
-5. **ALIS voice**: ElevenLabs is reconnected in this workspace (you rejected the connect prompt earlier — needs to be redone) and the dictation button works end-to-end on the note editor.
-6. **Published URL is current** and loads in under 3 seconds cold. Custom domain (`alisai.health`) preferred over the preview URL — looks like a product, not a sandbox.
-7. **Demo-mode guardrails**: hide inpatient nav (already done via `isAmbulatory`), hide anything half-built (consult marketplace, RCM analytics, ROI calculator, integration spec) from the signed-in nav so they don't click into a dead end.
-8. **Reset script**: a single button or SQL snippet that puts the demo clinic back to its starting state in <10 seconds, in case a beat goes sideways and you need to restart.
+### 2. New table `fhir_resources`
+Columns: `patient_id`, `resource_type`, `resource_id` (FHIR id), `payload` (jsonb), `source` (text, default `'alis'`), `hospital_id`. RLS: authenticated read scoped to hospital; insert via service role from edge function.
 
-## What I need from you to start
+### 3. Client helper `src/lib/fhirSync.ts`
+Single function `syncToEMR(resource, patientId)` → POSTs to `fhir-ingest`, returns `{ id, payload, response, viewerUrl }`. Pushes the result into a Zustand store `useEmrSyncFeed` (last 20 events).
 
-Pick the cuts — I'll do the rest in build mode:
+### 4. Wire 4 write points (minimal edits)
+- `SuperbillModal` / note sign in `PatientHeader` → build `DocumentReference` (note text → `content.attachment.data` base64).
+- Problem add (existing problem list component) → `Condition`.
+- Prescription create → `MedicationRequest`.
+- Vitals save → `Observation` (one per vital sign).
 
-- **A. Tightest path (recommended, ~2 hrs of build):** items 1, 3, 7, 8. Skip Rx print and voice — talk over them or show them on the chart but don't demo live. Lowest risk of a broken beat.
-- **B. Full demo (~4–5 hrs of build):** all 8 items, including reconnecting ElevenLabs and wiring the Rx print view.
-- **C. You tell me what to drop.**
+Each call is fire-and-forget; failures show a toast but don't block the clinical write.
 
-Also confirm:
+### 5. In-app proof: `EmrSyncDrawer`
+- Floating "EMR Sync" pill bottom-right of `/dashboard`, badge = unseen count.
+- Drawer lists the last 20 sync events: resource type, patient, timestamp, expandable JSON payload, response status, "Open in Sandbox" button.
 
-- **When is the demo?** (If it's today, A. If tomorrow+, B is realistic.)
-- **In person or screen-share?** (Screen-share = use the published custom domain. In person on your laptop = preview URL is fine.)
-- **Are they technical?** (Technical buyers want to see the RLS isolation beat. Clinic owners want to see the superbill and the time-to-sign-a-note.)
+### 6. Sandbox viewer route `/emr-sandbox`
+- Standalone page styled to look like a generic third-party EMR (neutral gray chrome, "MERIDIAN HEALTH SYSTEM — FHIR R4 Sandbox" header, no ALIS branding).
+- Left: patient picker (queries `fhir_resources` distinct patient_id, joins `patients`).
+- Right: tabbed view — Documents / Problems / Medications / Observations — each pulls from `fhir_resources` filtered by `resource_type`. Auto-refresh every 3s.
+- Renders FHIR fields directly (DocumentReference description + decoded content, Condition.code.text + onset, MedicationRequest.medicationCodeableConcept + dosage, Observation.code + valueQuantity).
 
-Once you answer, I switch to build mode and execute.
+## Files
+
+New:
+- `supabase/functions/fhir-ingest/index.ts`
+- `supabase/migrations/<ts>_fhir_resources.sql`
+- `src/lib/fhirSync.ts`
+- `src/lib/fhirBuilders.ts` (resource constructors)
+- `src/stores/emrSyncFeed.ts`
+- `src/components/virtualis/EmrSyncDrawer.tsx`
+- `src/pages/EmrSandbox.tsx`
+
+Edited:
+- `src/App.tsx` — add `/emr-sandbox` route, mount `EmrSyncDrawer` on dashboard.
+- `src/components/virtualis/PatientHeader.tsx` — call `syncToEMR` on note sign + superbill save.
+- Problem add, prescription create, vitals save components — one-line `syncToEMR(...)` call after successful insert.
+
+## Demo script add-on (last 90 seconds)
+
+> "Everything you just saw — note, diagnosis, Rx, vitals — also fired as FHIR R4 to an external endpoint. Here's the payload we sent [open drawer]. Here's the receiving EMR [open `/emr-sandbox` tab, refresh]. To point this at Epic or Cerner, we change one URL and one auth token."
+
+## Out of scope (call out, don't build)
+
+- Real Epic/Cerner OAuth (needs days of sandbox provisioning).
+- Inbound FHIR (reading external charts into ALIS).
+- HL7 v2 / CDA — mention as available, don't demo.
+
+## Risks
+
+- 30-min window is tight; if anything slips, drop vitals → Observation first, then problems → Condition. DocumentReference + MedicationRequest are the most impressive.
+- `/emr-sandbox` should be opened in a 2nd browser window before the call so refresh shows changes live.

@@ -27,6 +27,7 @@ import ROICalculator from "./pages/ROICalculator";
 import SmartLaunch from "./pages/SmartLaunch";
 import SmartCallback from "./pages/SmartCallback";
 import Demo from "./pages/Demo";
+import EmrSandbox from "./pages/EmrSandbox";
 import { SmartContextBanner } from "@/components/virtualis/SmartContextBanner";
 
 const queryClient = new QueryClient({
@@ -58,6 +59,7 @@ const App = () => (
                   <Route path="/smart/launch" element={<SmartLaunch />} />
                   <Route path="/smart/callback" element={<SmartCallback />} />
                   <Route path="/demo" element={<Demo />} />
+                  <Route path="/emr-sandbox" element={<EmrSandbox />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<ProtectedRoute>{isAmbulatory ? <Navigate to="/schedule" replace /> : <HospitalSelector />}</ProtectedRoute>} />

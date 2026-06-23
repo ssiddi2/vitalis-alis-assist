@@ -53,6 +53,18 @@ export function OrderSignatureModal({
       const writer = order.order_type === 'medication' ? writeMedicationOrderToEhr : writeServiceRequestToEhr;
       void writer(smart.patient_id, name, order.rationale || undefined);
     }
+    // Universal EMR sandbox push (always on for demo)
+    if (patientId) {
+      void import('@/lib/universalEmr').then(({ pushToUniversalEmr, buildMedicationRequest, buildCondition }) => {
+        const resource = order.order_type === 'medication'
+          ? buildMedicationRequest(patientId, name, order.rationale || undefined)
+          : { resourceType: 'ServiceRequest', status: 'active', intent: 'order',
+              code: { text: name }, subject: { reference: `Patient/${patientId}` },
+              authoredOn: new Date().toISOString(),
+              note: order.rationale ? [{ text: order.rationale }] : undefined };
+        void pushToUniversalEmr(resource, { patientId });
+      });
+    }
 
     setTimeout(() => {
       onSign(order.id);

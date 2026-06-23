@@ -17,6 +17,7 @@ import { ConsultRequestModal } from '@/components/virtualis/ConsultRequestModal'
 import { MobileALISFab } from '@/components/virtualis/MobileALISFab';
 import { MobileALISSheet } from '@/components/virtualis/MobileALISSheet';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
+import { EmrSyncDrawer } from '@/components/virtualis/EmrSyncDrawer';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Loader2, Users } from 'lucide-react';
 
@@ -140,6 +141,7 @@ const Dashboard = () => {
     <div className="h-screen bg-background flex flex-col relative overflow-hidden">
       <FuturisticBackground variant="lite" />
       <TopBar />
+      <EmrSyncDrawer />
 
       <div className={cn(
         "flex-1 grid grid-cols-1 min-h-0 transition-all duration-200",

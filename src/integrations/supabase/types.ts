@@ -955,6 +955,39 @@ export type Database = {
           },
         ]
       }
+      fhir_resources: {
+        Row: {
+          created_at: string
+          hospital_id: string | null
+          id: string
+          patient_id: string | null
+          payload: Json
+          resource_id: string
+          resource_type: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          hospital_id?: string | null
+          id?: string
+          patient_id?: string | null
+          payload: Json
+          resource_id: string
+          resource_type: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          hospital_id?: string | null
+          id?: string
+          patient_id?: string | null
+          payload?: Json
+          resource_id?: string
+          resource_type?: string
+          source?: string
+        }
+        Relationships: []
+      }
       hospital_users: {
         Row: {
           access_level: string

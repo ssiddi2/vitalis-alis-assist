@@ -102,10 +102,13 @@ export function NoteEditorModal({
       });
     }
 
+    const body = `Subjective:\n${subjective}\n\nObjective:\n${objective}\n\nAssessment:\n${assessment}\n\nPlan:\n${plan}`;
+    const title = NOTE_TYPE_LABELS[note.note_type] || 'Clinical Note';
     const smart = loadSmartSession();
-    if (smart?.patient_id) {
-      const body = `Subjective:\n${subjective}\n\nObjective:\n${objective}\n\nAssessment:\n${assessment}\n\nPlan:\n${plan}`;
-      void writeNoteToEhr(smart.patient_id, NOTE_TYPE_LABELS[note.note_type] || 'Clinical Note', body);
+    if (smart?.patient_id) void writeNoteToEhr(smart.patient_id, title, body);
+    if (patientId) {
+      const { pushToUniversalEmr, buildDocumentReference } = await import('@/lib/universalEmr');
+      void pushToUniversalEmr(buildDocumentReference(patientId, title, body), { patientId });
     }
 
     setTimeout(() => {
