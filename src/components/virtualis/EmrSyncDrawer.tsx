@@ -12,7 +12,7 @@ export function EmrSyncDrawer() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  useEffect(() => subscribeEmrFeed(setEvents), []);
+  useEffect(() => { const unsub = subscribeEmrFeed(setEvents); return () => { unsub(); }; }, []);
   useEffect(() => { if (open) setSeen(events.length); }, [open, events.length]);
   const unseen = Math.max(0, events.length - seen);
 

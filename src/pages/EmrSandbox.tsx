@@ -21,9 +21,9 @@ export default function EmrSandbox() {
     setLastSync(new Date());
     const pids = Array.from(new Set((data ?? []).map((r) => r.patient_id).filter(Boolean))) as string[];
     if (pids.length) {
-      const { data: pts } = await supabase.from('patients').select('id, first_name, last_name').in('id', pids);
+      const { data: pts } = await supabase.from('patients').select('id, name').in('id', pids);
       const map: Record<string, string> = {};
-      (pts ?? []).forEach((p) => { map[p.id] = `${p.first_name} ${p.last_name}`; });
+      ((pts ?? []) as any[]).forEach((p) => { map[p.id] = p.name; });
       setPatients(map);
       if (!selectedPid && pids[0]) setSelectedPid(pids[0]);
     }
