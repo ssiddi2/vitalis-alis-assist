@@ -251,7 +251,9 @@ export default function Schedule() {
                     )}>
                       {slotAppts.map(appt => (
                         <AppointmentCard key={appt.id} appointment={appt} onSelect={() => {
-                          // Navigate to patient dashboard
+                          setSelectedPatientId(appt.patient_id);
+                          if (appt.encounter_id) setActiveEncounterId(appt.encounter_id);
+                          navigate('/dashboard');
                         }} />
                       ))}
                     </div>
