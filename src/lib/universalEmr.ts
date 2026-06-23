@@ -109,18 +109,18 @@ export const buildObservation = (patientId: string, code: string, display: strin
 export const pushChartSnapshot = async (patientId: string, patientName?: string) => {
   const opts = { patientId, patientName };
   const [problems, meds, vitals] = await Promise.all([
-    supabase.from('patient_problems').select('icd10_code, problem_name, onset_date').eq('patient_id', patientId).eq('status', 'active'),
-    supabase.from('patient_medications').select('medication_name, dosage, frequency').eq('patient_id', patientId).eq('status', 'active'),
+    supabase.from('patient_problems').select('icd10_code, description, onset_date').eq('patient_id', patientId).eq('status', 'active'),
+    supabase.from('patient_medications').select('name, dose, frequency').eq('patient_id', patientId).eq('status', 'active'),
     supabase.from('patient_vitals').select('*').eq('patient_id', patientId).order('recorded_at', { ascending: false }).limit(1),
   ]);
 
   let count = 0;
-  for (const p of problems.data ?? []) {
-    await pushToUniversalEmr(buildCondition(patientId, p.icd10_code ?? '', p.problem_name ?? '', p.onset_date ?? undefined), opts);
+  for (const p of (problems.data ?? []) as any[]) {
+    await pushToUniversalEmr(buildCondition(patientId, p.icd10_code ?? '', p.description ?? '', p.onset_date ?? undefined), opts);
     count++;
   }
-  for (const m of meds.data ?? []) {
-    await pushToUniversalEmr(buildMedicationRequest(patientId, m.medication_name ?? '', [m.dosage, m.frequency].filter(Boolean).join(' ')), opts);
+  for (const m of (meds.data ?? []) as any[]) {
+    await pushToUniversalEmr(buildMedicationRequest(patientId, m.name ?? '', [m.dose, m.frequency].filter(Boolean).join(' ')), opts);
     count++;
   }
   const v = vitals.data?.[0] as any;
