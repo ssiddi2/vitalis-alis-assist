@@ -1,24 +1,29 @@
-# Add EMR Sandbox Access from Login Page
+## Plan: Add Navigation to MobileMenu
 
-Add a single prominent button on `/auth` that opens `/emr-sandbox` in a new tab. No login required to view the sandbox (it's already a public route).
+**Problem:** The mobile menu (`MobileMenu.tsx`) currently only shows AI status, time, and direct messages. On small screens (`< 1024px`), the TopBar navigation links are hidden (`hidden lg:flex`), leaving users unable to navigate between Schedule, Clinic, RCM, Quality, or the EMR Sandbox.
 
-## Change
+**Goal:** Add full navigation links to the mobile sheet so users can navigate on any viewport size.
 
-**`src/pages/Auth.tsx`** — add one button below the existing sign-in form:
+**Implementation:**
+1. **Update `src/components/virtualis/MobileMenu.tsx`**:
+   - Import `useNavigate` from `react-router-dom` and required Lucide icons (`CalendarDays`, `Users`, `DollarSign`, `BarChart3`, `Server`, `Shield`).
+   - Import `useAuth` to conditionally render the Admin Panel link for `isAdmin` users.
+   - Import `isAmbulatory` from `@/config/deployment` to hide the Quality link in ambulatory mode.
+   - Add a new navigation section between the status badges and the Direct Messages section.
+   - Links to include:
+     - **Schedule** (`/schedule`) — `CalendarDays` icon
+     - **Clinic** (`/clinic`) — `Users` icon
+     - **RCM** (`/billing`) — `DollarSign` icon
+     - **Quality** (`/quality`) — `BarChart3` icon (hidden when `isAmbulatory` is true)
+     - **EMR Sandbox** (`/emr-sandbox`) — `Server` icon
+     - **Admin Panel** (`/admin`) — `Shield` icon (visible only to `isAdmin`)
+   - Each nav item will be a button with an icon + label, styled to match the existing glassmorphic aesthetic (rounded-xl, hover states, muted foreground text).
+   - Clicking a nav item will call `navigate()` and close the sheet (`setOpen(false)`).
 
-```tsx
-<a
-  href="/emr-sandbox"
-  target="_blank"
-  rel="noreferrer"
-  className="mt-4 flex items-center justify-center gap-2 w-full h-11 rounded-lg border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-medium text-sm transition-colors"
->
-  <Server className="w-4 h-4" />
-  Open EMR Sandbox (no login required)
-  <ExternalLink className="w-3.5 h-3.5" />
-</a>
-```
+**Files to change:**
+- `src/components/virtualis/MobileMenu.tsx` (only file)
 
-Placed directly under the "Sign in" button, separated by a thin divider with "DEMO" label so it reads as a demo-mode escape hatch rather than a primary auth path.
-
-That's the entire change. No new files, no routing changes, no auth changes.
+**No changes needed to:**
+- `TopBar.tsx` (it already passes `currentTime`)
+- `App.tsx` (routes already exist)
+- Any backend or database code
