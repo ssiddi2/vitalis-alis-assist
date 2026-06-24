@@ -2,17 +2,29 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital, Hospital } from '@/contexts/HospitalContext';
 import { Button } from '@/components/ui/button';
-import { 
-  Building2, 
-  Users, 
-  AlertTriangle, 
-  ChevronRight, 
-  Wifi, 
+import {
+  Building2,
+  Users,
+  AlertTriangle,
+  ChevronRight,
+  Wifi,
   LogOut,
+  CalendarDays,
+  Stethoscope,
+  DollarSign,
+  BarChart3,
+  Server,
+  Rocket,
+  FileText,
+  Calculator,
+  Globe,
+  Shield,
+  LucideIcon,
 } from 'lucide-react';
 import virtualisOneIcon from '@/assets/virtualis-one-icon.png.asset.json';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { HospitalCardSkeleton } from '@/components/ui/skeleton-patterns';
+import { isAmbulatory } from '@/config/deployment';
 
 const EMR_CONFIG = {
   epic: { 
