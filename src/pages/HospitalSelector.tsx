@@ -231,6 +231,26 @@ export default function HospitalSelector() {
               </div>
             )}
 
+            {/* Jump back in */}
+            <section className="mt-10">
+              <h2 className="text-lg font-semibold text-foreground mb-3">Jump back in</h2>
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {jumpTiles.map(renderTile)}
+              </div>
+            </section>
+
+            {/* Tools & Demos */}
+            <section className="mt-10">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Tools &amp; Demos</h2>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Not clinical workflows</span>
+              </div>
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {toolTiles.map(renderTile)}
+              </div>
+            </section>
+
+
             {/* Integration Info */}
             <div className="mt-8 sm:mt-12 text-center">
               <p className="text-[10px] sm:text-xs text-muted-foreground mb-3 sm:mb-4">
