@@ -112,7 +112,7 @@ export function TopBar() {
       </div>
 
       {/* Desktop Controls */}
-      <div className="hidden lg:flex items-center gap-2">
+      <div className="hidden md:flex items-center gap-2">
         {/* EMR Sync Badge */}
         {selectedHospital && (
           <EMRSyncBadge
@@ -125,6 +125,9 @@ export function TopBar() {
         <AmbientStatusIndicator isAmbient={isAmbient} onToggle={() => setIsAmbient(prev => !prev)} />
 
         {/* Nav Links */}
+        <button onClick={() => navigate('/')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+          <Home className="w-3 h-3" /> Home
+        </button>
         <button onClick={() => navigate('/schedule')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
           <CalendarDays className="w-3 h-3" /> Schedule
         </button>
@@ -139,6 +142,39 @@ export function TopBar() {
             <BarChart3 className="w-3 h-3" /> Quality
           </button>
         )}
+
+        {/* Tools dropdown — demo/integration surfaces grouped & labeled */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+              <Wrench className="w-3 h-3" /> Tools
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72 rounded-xl border-border shadow-elevated">
+            <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground">Demos & Integration</div>
+            <DropdownMenuItem onClick={() => navigate('/emr-sandbox')} className="gap-2 cursor-pointer flex-col items-start py-2">
+              <div className="flex items-center gap-2 font-medium"><Server className="w-4 h-4" /> FHIR Data Inspector</div>
+              <span className="text-xs text-muted-foreground pl-6">Live view of FHIR syncing from connected EMRs</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/smart/launch')} className="gap-2 cursor-pointer flex-col items-start py-2">
+              <div className="flex items-center gap-2 font-medium"><Rocket className="w-4 h-4" /> SMART-on-FHIR Launcher</div>
+              <span className="text-xs text-muted-foreground pl-6">Test launching this app from an EHR</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/integration-spec')} className="gap-2 cursor-pointer flex-col items-start py-2">
+              <div className="flex items-center gap-2 font-medium"><FileText className="w-4 h-4" /> Integration Spec</div>
+              <span className="text-xs text-muted-foreground pl-6">Printable FHIR technical docs</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/roi-calculator')} className="gap-2 cursor-pointer flex-col items-start py-2">
+              <div className="flex items-center gap-2 font-medium"><Calculator className="w-4 h-4" /> ROI Calculator</div>
+              <span className="text-xs text-muted-foreground pl-6">Estimate savings for a prospective customer</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open('/product', '_blank')} className="gap-2 cursor-pointer flex-col items-start py-2">
+              <div className="flex items-center gap-2 font-medium"><Globe className="w-4 h-4" /> Product Page</div>
+              <span className="text-xs text-muted-foreground pl-6">Public marketing site</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
 
         {/* Notifications */}
         <NotificationCenter />
