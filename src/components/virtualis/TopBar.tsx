@@ -234,7 +234,7 @@ export function TopBar() {
       </div>
 
       {/* Mobile Controls */}
-      <div className="flex lg:hidden items-center gap-2">
+      <div className="flex md:hidden items-center gap-2">
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
