@@ -62,7 +62,7 @@ const App = () => (
                   <Route path="/emr-sandbox" element={<EmrSandbox />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/" element={<ProtectedRoute>{isAmbulatory ? <Navigate to="/schedule" replace /> : <HospitalSelector />}</ProtectedRoute>} />
+                  <Route path="/" element={<ProtectedRoute><HospitalSelector /></ProtectedRoute>} />
                   {!isAmbulatory && <Route path="/census" element={<ProtectedRoute><PatientCensus /></ProtectedRoute>} />}
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
