@@ -125,16 +125,22 @@ export default function HospitalSelector() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
-          <div className="w-full max-w-4xl">
+        <main className="flex-1 p-4 sm:p-8">
+          <div className="w-full max-w-5xl mx-auto">
             {/* Welcome */}
-            <div className="text-center mb-8 sm:mb-12">
-              <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3">
-                Select a Facility
+            <div className="text-center mb-8">
+              <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2">
+                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
               </h1>
-              <p className="text-sm sm:text-lg text-muted-foreground">
-                Choose a hospital to view its patient census and clinical data
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Choose a workspace, jump back into your day, or open a tool.
               </p>
+            </div>
+
+            {/* EMR workspaces */}
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Connected EMRs</h2>
+              <span className="text-xs text-muted-foreground">Click to enter that facility's chart</span>
             </div>
 
             {/* Error State */}
