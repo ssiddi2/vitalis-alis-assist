@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { HospitalProvider } from "@/contexts/HospitalContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -62,7 +62,7 @@ const App = () => (
                   <Route path="/emr-sandbox" element={<EmrSandbox />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/" element={<ProtectedRoute>{isAmbulatory ? <Navigate to="/schedule" replace /> : <HospitalSelector />}</ProtectedRoute>} />
+                  <Route path="/" element={<ProtectedRoute><HospitalSelector /></ProtectedRoute>} />
                   {!isAmbulatory && <Route path="/census" element={<ProtectedRoute><PatientCensus /></ProtectedRoute>} />}
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />

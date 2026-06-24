@@ -2,17 +2,29 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital, Hospital } from '@/contexts/HospitalContext';
 import { Button } from '@/components/ui/button';
-import { 
-  Building2, 
-  Users, 
-  AlertTriangle, 
-  ChevronRight, 
-  Wifi, 
+import {
+  Building2,
+  Users,
+  AlertTriangle,
+  ChevronRight,
+  Wifi,
   LogOut,
+  CalendarDays,
+  Stethoscope,
+  DollarSign,
+  BarChart3,
+  Server,
+  Rocket,
+  FileText,
+  Calculator,
+  Globe,
+  Shield,
+  LucideIcon,
 } from 'lucide-react';
 import virtualisOneIcon from '@/assets/virtualis-one-icon.png.asset.json';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { HospitalCardSkeleton } from '@/components/ui/skeleton-patterns';
+import { isAmbulatory } from '@/config/deployment';
 
 const EMR_CONFIG = {
   epic: { 
@@ -37,18 +49,53 @@ const EMR_CONFIG = {
 
 export default function HospitalSelector() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { hospitals, setSelectedHospital, loading, error } = useHospital();
 
   const handleSelectHospital = (hospital: Hospital) => {
     setSelectedHospital(hospital);
-    navigate('/census');
+    navigate(isAmbulatory ? '/schedule' : '/census');
   };
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
+
+  type Tile = { label: string; desc: string; path: string; icon: LucideIcon; external?: boolean };
+
+  const jumpTiles: Tile[] = [
+    { label: 'My Schedule', desc: "Today's appointments", path: '/schedule', icon: CalendarDays },
+    { label: 'My Clinic', desc: 'Clinic-wide patient list & encounters', path: '/clinic', icon: Stethoscope },
+    { label: 'Revenue (RCM)', desc: 'Billing, charges, claims status', path: '/billing', icon: DollarSign },
+    ...(!isAmbulatory ? [{ label: 'Quality', desc: 'CMS quality measures & dashboards', path: '/quality', icon: BarChart3 } as Tile] : []),
+    ...(isAdmin ? [{ label: 'Admin', desc: 'Users, roles & invitations', path: '/admin', icon: Shield } as Tile] : []),
+  ];
+
+  const toolTiles: Tile[] = [
+    { label: 'FHIR Data Inspector', desc: 'Live view of FHIR resources syncing from connected EMRs', path: '/emr-sandbox', icon: Server },
+    { label: 'SMART-on-FHIR Launcher', desc: 'Test launching this app from an EHR', path: '/smart/launch', icon: Rocket },
+    { label: 'Integration Spec', desc: 'Printable FHIR technical docs', path: '/integration-spec', icon: FileText },
+    { label: 'ROI Calculator', desc: 'Estimate savings for a prospective customer', path: '/roi-calculator', icon: Calculator },
+    { label: 'Product Page', desc: 'Public marketing site', path: '/product', icon: Globe, external: true },
+  ];
+
+  const renderTile = (t: Tile) => (
+    <button
+      key={t.path}
+      onClick={() => (t.external ? window.open(t.path, '_blank') : navigate(t.path))}
+      className="group glass-strong rounded-2xl p-4 sm:p-5 border border-border/50 hover:border-primary/50 transition-all text-left hover:shadow-elevated hover:-translate-y-0.5 active:scale-[0.99] flex items-start gap-3"
+    >
+      <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+        <t.icon className="w-5 h-5 text-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h4 className="text-sm sm:text-base font-semibold text-foreground truncate">{t.label}</h4>
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.desc}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0 mt-1" />
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -78,16 +125,22 @@ export default function HospitalSelector() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
-          <div className="w-full max-w-4xl">
+        <main className="flex-1 p-4 sm:p-8">
+          <div className="w-full max-w-5xl mx-auto">
             {/* Welcome */}
-            <div className="text-center mb-8 sm:mb-12">
-              <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-3">
-                Select a Facility
+            <div className="text-center mb-8">
+              <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2">
+                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
               </h1>
-              <p className="text-sm sm:text-lg text-muted-foreground">
-                Choose a hospital to view its patient census and clinical data
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Choose a workspace, jump back into your day, or open a tool.
               </p>
+            </div>
+
+            {/* EMR workspaces */}
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Connected EMRs</h2>
+              <span className="text-xs text-muted-foreground">Click to enter that facility's chart</span>
             </div>
 
             {/* Error State */}
@@ -177,6 +230,26 @@ export default function HospitalSelector() {
                 </p>
               </div>
             )}
+
+            {/* Jump back in */}
+            <section className="mt-10">
+              <h2 className="text-lg font-semibold text-foreground mb-3">Jump back in</h2>
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {jumpTiles.map(renderTile)}
+              </div>
+            </section>
+
+            {/* Tools & Demos */}
+            <section className="mt-10">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Tools &amp; Demos</h2>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Not clinical workflows</span>
+              </div>
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {toolTiles.map(renderTile)}
+              </div>
+            </section>
+
 
             {/* Integration Info */}
             <div className="mt-8 sm:mt-12 text-center">
