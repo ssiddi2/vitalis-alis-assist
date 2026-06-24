@@ -1,80 +1,58 @@
-## Full IA Overhaul — Make the App Make Sense
 
-### The core problem
+# Multi-Entity & RCM Capability Assessment
 
-Right now after login you land on `/schedule` (because the build is in `ambulatory` mode, which forces `Navigate to="/schedule"`), the top nav is hidden under 1024px, the mobile menu has no links, and a pile of demo/integration/marketing routes (`/demo`, `/product`, `/emr-sandbox`, `/smart/launch`, `/integration-spec`, `/roi-calculator`) sit alongside real clinical routes with no labels or grouping. Nothing tells the user where they are or where to go.
+## Goal
 
-### What you said you want
+Give you an honest, evidence-based answer to: *can this platform today support a second legal entity with independent billing, RCM, and payer enrollment?* — then deliver it as a shareable PDF + Markdown document you can hand to stakeholders before scoping the IR workflow.
 
-- A **role picker** style landing — not a forced schedule page.
-- The **original Home** that shows the **multiple connected EMRs** (the HospitalSelector with Epic / Cerner / Meditech cards).
-- Demo/sandbox/integration pages **kept visible but clearly labeled** so they stop looking like clinical features.
-- A **full IA overhaul** — restructure navigation, rename sections, fix the post-login flow at every screen size.
+No application code changes. Read-only analysis of the current schema, config, and UI, plus document generation into `/mnt/documents/`.
 
-### New information architecture
+## TL;DR of the assessment (so you can decide before I write the doc)
 
-```text
-LOGIN
-  │
-  ▼
-HOME  (/)  ── "Choose your workspace"
-  ├─ Clinical workspaces (EMR cards: Epic / Cerner / Meditech / +Add)
-  │     click → enters that hospital's chart workspace
-  ├─ My day        → /schedule
-  ├─ My clinic     → /clinic
-  └─ Quick links: Inbox · Notifications
+The platform today is a **clinical EMR + AI workspace with a demo-grade billing dashboard**, not a production RCM system. Multi-tenancy exists at the **hospital** level (RLS by `hospital_id`), but there is **no concept of a legal/billing entity**, **no Tax ID / billing NPI**, **no clearinghouse integration**, **no 837/835 pipeline**, **no ERA/EFT posting**, **no patient statements**, and **no credentialing/payer enrollment module**.
 
-PERSISTENT TOP BAR  (visible at ALL screen sizes via collapsible menu)
-  ├─ Home
-  ├─ Clinical  (Schedule, Clinic, Patient Census, Chart)
-  ├─ Revenue   (RCM / Billing, Quality)
-  ├─ Tools     ← NEW grouping for the confusing stuff
-  │     ├─ EMR Sandbox        "FHIR data inspector — see what's syncing from connected EMRs"
-  │     ├─ SMART Launcher     "Test SMART-on-FHIR app launch from an EHR"
-  │     ├─ Integration Spec   "Technical FHIR integration docs (printable)"
-  │     ├─ ROI Calculator     "Estimate savings for a prospective customer"
-  │     └─ Product Page       "Public marketing page"
-  └─ Admin    (admins only)
-```
+Per-bullet status:
 
-### Specific changes
+| Requirement | Status | Evidence |
+|---|---|---|
+| Bill under multiple Tax IDs / billing NPIs in one instance | **Not supported** | No `tax_id`, `billing_npi`, or `entity` columns anywhere in schema |
+| Separation of providers / locations / financials by entity | **Partial (hospital-level only)** | `hospitals` + `hospital_users` + RLS exist; no entity layer above/below |
+| Electronic claim submission (837P/837I) by entity | **Not supported** | `billing_events` stores CPT/ICD + `estimated_revenue` only; no claim, no submission edge function |
+| ERA (835) / EFT enrollment + posting | **Not supported** | No remit, payment, adjustment, or clearinghouse tables/functions |
+| Insurance payment reconciliation & reporting by entity | **Not supported** | No payments table; RCM dashboard uses hard-coded demo arrays (`revenueTimeline`, `agingBuckets`) |
+| Patient statements & payment processing | **Not supported** | No statement, ledger, or payment processor integration |
+| Provider credentialing & payer enrollment (multi-entity) | **Not supported** | No credentialing, payer, or enrollment tables |
+| RCM & collections reporting by entity | **Not supported** | Dashboard is presentational; no entity dimension and no real aggregations |
 
-**1. Landing = Home, not Schedule**
-- `src/App.tsx`: remove the `isAmbulatory ? <Navigate to="/schedule"/> : <HospitalSelector/>` branch. Root `/` always renders `HospitalSelector` (rename internally to `Home`).
-- Keep `/schedule`, `/clinic`, etc. as direct routes the Home page links into.
+**Bottom line:** before scoping IR workflows that depend on billing under a separate legal entity, the platform needs a foundational multi-entity + RCM build. That is a substantial effort (not a config toggle).
 
-**2. Redesign Home as a role-aware launcher**
-- `src/pages/HospitalSelector.tsx` becomes the Home page with three sections:
-  - **Connected EMRs** — existing hospital cards (Epic/Cerner/Meditech), each opens that workspace.
-  - **Jump back in** — "My Schedule today", "My Clinic", "Inbox" tiles.
-  - **Tools & Demos** — small labeled tiles for Sandbox, SMART Launcher, ROI, Integration Spec, Product (hidden for non-admins if you want — confirm in build).
-- Each tile has a one-line plain-English description so nothing is mysterious.
+## Deliverable
 
-**3. Fix the navigation at every screen size**
-- `src/components/virtualis/TopBar.tsx`: lower the breakpoint so the nav appears from `md:` (≥768px) instead of `lg:` (≥1024px), and regroup links into the new sections via a small dropdown ("Tools" menu) so the bar doesn't overflow.
-- `src/components/virtualis/MobileMenu.tsx`: rebuild the link list around the new IA — Home, Clinical (Schedule/Clinic/Census), Revenue (RCM/Quality), Tools (Sandbox/SMART/Spec/ROI/Product), Admin. Each link gets the same one-line description as Home.
+A single document written to `/mnt/documents/`, in two formats:
 
-**4. Rename for clarity**
-- "EMR Sandbox" → **"FHIR Data Inspector (Sandbox)"**
-- "SMART Launch" → **"SMART-on-FHIR Launcher (Test)"**
-- "Integration Spec" → **"Integration Spec (FHIR Docs)"**
-- "Demo" → **"Public Demo Page"**
-- Add a subtle "DEMO" or "DEV" badge on Tools-section pages so clinicians instantly know it's not a clinical workflow.
+1. `multi-entity-capability-assessment.md` — source of truth, editable
+2. `multi-entity-capability-assessment.pdf` — print/share version (US Letter, Arial, branded heading color from the app's primary token)
 
-**5. Post-login redirect**
-- After a successful login in `src/pages/Auth.tsx`, send users to `/` (Home), never directly into `/schedule`.
+### Document outline
 
-### Files touched
+1. **Executive Summary** — one page, the TL;DR table above + clear "today vs. required" verdict.
+2. **Current Architecture** — what the platform *is* today: clinical EMR (Epic-style chart, ALIS AI, SMART-on-FHIR sandbox), multi-hospital RLS isolation, demo-grade RCM dashboard.
+3. **Per-Requirement Findings** — one section per bullet from your message, each with: *What you asked for*, *What exists today (with file/table evidence)*, *Gap*, *Effort tier* (S/M/L/XL).
+4. **Proposed Data Model for Multi-Entity RCM** — entity tier above hospital, with `legal_entities` (tax_id, billing_npi, address, contact), `entity_locations`, `entity_providers` (credentialing status per payer), `payers`, `payer_enrollments` (per entity + provider + payer), `claims` (837), `remittances` (835), `payments`, `adjustments`, `patient_statements`. RLS scoped by entity *and* hospital.
+5. **External Integrations Required** — clearinghouse options (Availity, Change Healthcare/Optum, Waystar, Office Ally), patient payment processor (Stripe via Lovable Cloud), ERA/EFT enrollment workflow per entity.
+6. **Build Phases & Rough Effort** — Phase 0 entity model, Phase 1 claims out, Phase 2 ERA/EFT in, Phase 3 statements + patient pay, Phase 4 entity-scoped reporting & credentialing. T-shirt sizes only — no fake hour estimates.
+7. **Decision Point for IR Scoping** — explicit recommendation on whether to scope IR workflows now (against the gap) or after Phase 0–1.
+8. **Appendix** — file/table references used as evidence so your team can verify.
 
-- `src/App.tsx` — root route logic
-- `src/pages/HospitalSelector.tsx` — rebuilt as Home with three sections
-- `src/components/virtualis/TopBar.tsx` — new grouped nav, lower breakpoint, Tools dropdown
-- `src/components/virtualis/MobileMenu.tsx` — regrouped link list with descriptions
-- `src/pages/Auth.tsx` — post-login redirect to `/`
-- Light label/title tweaks in: `EmrSandbox.tsx`, `SmartLaunch.tsx`, `IntegrationSpec.tsx`, `Demo.tsx` (page titles + a small "Tool" badge)
+### Generation approach (technical)
 
-### Out of scope (ask separately if you want them)
+- Write Markdown by hand (no template engine).
+- Generate PDF with the bundled `docx` skill OR a small Python `reportlab` script (per the pdf skill) — reportlab is lighter and matches the "minimal code" preference. US Letter, 1" margins, Arial, primary color sampled from `index.css` token for headings.
+- QA: render PDF → `pdftoppm` → inspect every page image → fix overflow/clipping → re-render. Report what was checked.
+- Emit `<presentation-artifact>` tags for both the `.md` and `.pdf` so you can preview/download immediately.
 
-- Visual redesign (palette/typography) — this pass keeps the current glassmorphic look.
-- Backend/role changes — uses the existing `isAdmin` from `useAuth` only.
-- Deleting any routes — everything stays reachable, just labeled and grouped.
+## Out of scope (explicitly)
+
+- No code changes to the app itself.
+- No new tables, migrations, or edge functions.
+- No IR workflow design — that comes after you decide on the multi-entity foundation.
