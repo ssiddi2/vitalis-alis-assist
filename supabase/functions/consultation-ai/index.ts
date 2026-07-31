@@ -273,6 +273,10 @@ serve(async (req) => {
         const { data: thread } = await db.from("consultation_threads")
           .select("*").eq("id", threadId).single();
         if (!thread) return jsonRes({ error: "Thread not found" }, 404);
+        if (!(await userHasHospitalAccess(db, userId, thread.hospital_id))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const { data: messages } = await db.from("consultation_messages")
           .select("*").eq("thread_id", threadId).order("created_at");
