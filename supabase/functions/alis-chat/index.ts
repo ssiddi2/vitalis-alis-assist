@@ -406,11 +406,19 @@ async function consumeStream(response: Response): Promise<{
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const user = await getCaller(req);
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { messages, patientContext } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -421,7 +429,7 @@ serve(async (req) => {
     const context = {
       hospitalId: patientContext?.hospital?.id,
       patientId: patientContext?.patient?.id,
-      userId: null as string | null,
+      userId: user.id as string | null,
     };
 
     let systemContent = ALIS_SYSTEM_PROMPT;
