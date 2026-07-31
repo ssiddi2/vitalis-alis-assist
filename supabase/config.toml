@@ -4,10 +4,10 @@ project_id = "whhcxocxnrhfkixfrhvi"
 verify_jwt = false
 
 [functions.alis-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.consultation-ai]
-verify_jwt = false
+verify_jwt = true
 
 [functions.elevenlabs-conversation-token]
 verify_jwt = false
