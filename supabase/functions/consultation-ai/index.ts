@@ -174,13 +174,17 @@ serve(async (req) => {
 
       // ── Send message + AI monitoring ──
       case "send_message": {
-        if (!threadId || !content || !userId) {
+        if (!threadId || !content) {
           return jsonRes({ error: "Missing fields" }, 400);
         }
 
         const { data: thread } = await db.from("consultation_threads")
           .select("*").eq("id", threadId).single();
         if (!thread) return jsonRes({ error: "Thread not found" }, 404);
+        if (!(await userHasHospitalAccess(db, userId, thread.hospital_id))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const senderRole = thread.primary_clinician_id === userId ? "primary_clinician" : "specialist";
 
