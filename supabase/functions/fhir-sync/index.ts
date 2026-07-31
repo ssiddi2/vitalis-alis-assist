@@ -53,7 +53,9 @@ async function samplePatient(): Promise<Record<string, unknown> | null> {
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
 
   const t0 = Date.now();
   const counts = await Promise.all(RESOURCES.map(async (n) => ({ name: n, count: await countResource(n) })));
