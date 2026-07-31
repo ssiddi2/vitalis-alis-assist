@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.fhir-writeback]
 verify_jwt = false
+
+[functions.acuity-engine]
+verify_jwt = true
