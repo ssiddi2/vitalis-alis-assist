@@ -507,10 +507,21 @@ serve(async (req) => {
       });
     }
 
-    // We have tool calls - execute them, then get follow-up response
+    // We have tool calls - verify hospital membership before executing anything
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    if (!(await userHasHospitalAccess(adminClient, user.id, context.hospitalId))) {
+      return new Response(JSON.stringify({ error: "Forbidden: no access to this hospital" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log(`Executing ${firstResult.toolCalls.length} tool call(s)`);
 
     const toolResults: Array<{ toolCallId: string; name: string; args: Record<string, unknown>; result: unknown }> = [];
+
 
     for (const tc of firstResult.toolCalls) {
       let args: Record<string, unknown> = {};
