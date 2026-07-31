@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 // Public FHIR R4 sandbox (HAPI). No auth required — safe for demo.
 // In production this URL would be Epic/Cerner/Meditech tenant base URL with SMART-on-FHIR OAuth.
