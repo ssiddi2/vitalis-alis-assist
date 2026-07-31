@@ -14,6 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
+      acuity_feedback: {
+        Row: {
+          acuity_id: string | null
+          created_at: string
+          hospital_id: string
+          id: string
+          metric_type: string | null
+          metric_value: string | null
+          recorded_by: string | null
+        }
+        Insert: {
+          acuity_id?: string | null
+          created_at?: string
+          hospital_id: string
+          id?: string
+          metric_type?: string | null
+          metric_value?: string | null
+          recorded_by?: string | null
+        }
+        Update: {
+          acuity_id?: string | null
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          metric_type?: string | null
+          metric_value?: string | null
+          recorded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acuity_feedback_acuity_id_fkey"
+            columns: ["acuity_id"]
+            isOneToOne: false
+            referencedRelation: "acuity_scores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acuity_scores: {
+        Row: {
+          acuity_level: string | null
+          classification: string | null
+          color: string | null
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          hospital_id: string
+          id: string
+          message_text: string | null
+          model_name: string | null
+          model_provider: string | null
+          patient_id: string | null
+          rationale: string | null
+          recommendation: string | null
+          score: number | null
+          source_id: string | null
+          source_layer: string | null
+          source_table: string | null
+        }
+        Insert: {
+          acuity_level?: string | null
+          classification?: string | null
+          color?: string | null
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          hospital_id: string
+          id?: string
+          message_text?: string | null
+          model_name?: string | null
+          model_provider?: string | null
+          patient_id?: string | null
+          rationale?: string | null
+          recommendation?: string | null
+          score?: number | null
+          source_id?: string | null
+          source_layer?: string | null
+          source_table?: string | null
+        }
+        Update: {
+          acuity_level?: string | null
+          classification?: string | null
+          color?: string | null
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          hospital_id?: string
+          id?: string
+          message_text?: string | null
+          model_name?: string | null
+          model_provider?: string | null
+          patient_id?: string | null
+          rationale?: string | null
+          recommendation?: string | null
+          score?: number | null
+          source_id?: string | null
+          source_layer?: string | null
+          source_table?: string | null
+        }
+        Relationships: []
+      }
       ai_intelligence_log: {
         Row: {
           content: Json
