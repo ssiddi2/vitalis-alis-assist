@@ -1,10 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
 
 const ALIS_SYSTEM_PROMPT = `You are ALIS (Ambient Learning Intelligence System), an advanced clinical AI assistant integrated into Virtualis, a universal clinical layer for healthcare.
 
@@ -408,11 +406,19 @@ async function consumeStream(response: Response): Promise<{
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const user = await getCaller(req);
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { messages, patientContext } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -423,7 +429,7 @@ serve(async (req) => {
     const context = {
       hospitalId: patientContext?.hospital?.id,
       patientId: patientContext?.patient?.id,
-      userId: null as string | null,
+      userId: user.id as string | null,
     };
 
     let systemContent = ALIS_SYSTEM_PROMPT;
@@ -501,10 +507,21 @@ serve(async (req) => {
       });
     }
 
-    // We have tool calls - execute them, then get follow-up response
+    // We have tool calls - verify hospital membership before executing anything
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    if (!(await userHasHospitalAccess(adminClient, user.id, context.hospitalId))) {
+      return new Response(JSON.stringify({ error: "Forbidden: no access to this hospital" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log(`Executing ${firstResult.toolCalls.length} tool call(s)`);
 
     const toolResults: Array<{ toolCallId: string; name: string; args: Record<string, unknown>; result: unknown }> = [];
+
 
     for (const tc of firstResult.toolCalls) {
       let args: Record<string, unknown> = {};

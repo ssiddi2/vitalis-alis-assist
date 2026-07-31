@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 // Public FHIR R4 sandbox (HAPI). No auth required — safe for demo.
 // In production this URL would be Epic/Cerner/Meditech tenant base URL with SMART-on-FHIR OAuth.
@@ -56,7 +53,9 @@ async function samplePatient(): Promise<Record<string, unknown> | null> {
 }
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
 
   const t0 = Date.now();
   const counts = await Promise.all(RESOURCES.map(async (n) => ({ name: n, count: await countResource(n) })));

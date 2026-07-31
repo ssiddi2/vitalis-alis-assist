@@ -1,15 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+let corsHeaders: Record<string, string> = {};
 
 const supabaseAdmin = () => createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
+
 
 // Load shared patient context from DB
 async function loadSharedContext(patientId: string): Promise<Record<string, unknown>> {
@@ -73,27 +73,28 @@ async function callAI(messages: Array<{ role: string; content: string }>, stream
 }
 
 serve(async (req) => {
+  corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const user = await getCaller(req);
+    if (!user) return jsonRes({ error: "Unauthorized" }, 401);
+
     const { action, threadId, content, patientId, hospitalId, specialty, reason, consultRequestId } = await req.json();
 
-    // Extract user from auth header
-    const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.replace("Bearer ", "");
     const db = supabaseAdmin();
-    let userId: string | null = null;
-    if (token && token !== Deno.env.get("SUPABASE_ANON_KEY")) {
-      const { data: { user } } = await db.auth.getUser(token);
-      userId = user?.id || null;
-    }
+    const userId: string = user.id;
 
     switch (action) {
       // ── Create thread + load context + AI welcome ──
       case "create_thread": {
-        if (!patientId || !hospitalId || !specialty || !reason || !userId) {
+        if (!patientId || !hospitalId || !specialty || !reason) {
           return jsonRes({ error: "Missing required fields" }, 400);
         }
+        if (!(await userHasHospitalAccess(db, userId, hospitalId))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const sharedContext = await loadSharedContext(patientId);
 
@@ -173,13 +174,17 @@ serve(async (req) => {
 
       // ── Send message + AI monitoring ──
       case "send_message": {
-        if (!threadId || !content || !userId) {
+        if (!threadId || !content) {
           return jsonRes({ error: "Missing fields" }, 400);
         }
 
         const { data: thread } = await db.from("consultation_threads")
           .select("*").eq("id", threadId).single();
         if (!thread) return jsonRes({ error: "Thread not found" }, 404);
+        if (!(await userHasHospitalAccess(db, userId, thread.hospital_id))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const senderRole = thread.primary_clinician_id === userId ? "primary_clinician" : "specialist";
 
@@ -268,6 +273,10 @@ serve(async (req) => {
         const { data: thread } = await db.from("consultation_threads")
           .select("*").eq("id", threadId).single();
         if (!thread) return jsonRes({ error: "Thread not found" }, 404);
+        if (!(await userHasHospitalAccess(db, userId, thread.hospital_id))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const { data: messages } = await db.from("consultation_messages")
           .select("*").eq("thread_id", threadId).order("created_at");
@@ -317,8 +326,12 @@ serve(async (req) => {
         if (!threadId) return jsonRes({ error: "Missing threadId" }, 400);
 
         const { data: thread } = await db.from("consultation_threads")
-          .select("patient_id").eq("id", threadId).single();
+          .select("patient_id, hospital_id").eq("id", threadId).single();
         if (!thread) return jsonRes({ error: "Thread not found" }, 404);
+        if (!(await userHasHospitalAccess(db, userId, thread.hospital_id))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const sharedContext = await loadSharedContext(thread.patient_id);
         await db.from("consultation_threads")

@@ -1,19 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { isAllowedIss } from "../_shared/fhirAllowlist.ts";
 
 // FHIR write-back proxy. Client forwards SMART session creds; we POST the resource
 // and report success or a graceful skip (sandbox lacks scope, etc.) so demos never crash.
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { iss, access_token, resourceType, resource } = await req.json();
     if (!iss || !access_token || !resourceType || !resource) {
       return json({ status: "skipped", reason: "missing_smart_session" });
+    }
+    if (!isAllowedIss(iss)) {
+      return json({ status: "skipped", reason: "iss_not_allowlisted" });
     }
 
     const base = String(iss).replace(/\/$/, "");
@@ -38,10 +39,10 @@ serve(async (req) => {
   } catch (e) {
     return json({ status: "error", reason: e instanceof Error ? e.message : "unknown" }, 500);
   }
-});
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+  function json(body: unknown, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
