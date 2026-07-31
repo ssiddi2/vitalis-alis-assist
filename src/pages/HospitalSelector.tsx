@@ -10,7 +10,7 @@ import {
   Wifi, 
   LogOut,
 } from 'lucide-react';
-import virtualisOneIcon from '@/assets/virtualis-one-icon.png.asset.json';
+import virtualisOneIcon from '@/assets/virtualis-one-header-icon.png.asset.json';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { HospitalCardSkeleton } from '@/components/ui/skeleton-patterns';
 
