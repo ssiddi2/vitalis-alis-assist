@@ -9,7 +9,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InactivityGuard } from "@/components/InactivityGuard";
-import { isAmbulatory } from "@/config/deployment";
 import HospitalSelector from "./pages/HospitalSelector";
 import PatientCensus from "./pages/PatientCensus";
 import Dashboard from "./pages/Dashboard";
@@ -27,7 +26,6 @@ import ROICalculator from "./pages/ROICalculator";
 import SmartLaunch from "./pages/SmartLaunch";
 import SmartCallback from "./pages/SmartCallback";
 import Demo from "./pages/Demo";
-import EmrSandbox from "./pages/EmrSandbox";
 import { SmartContextBanner } from "@/components/virtualis/SmartContextBanner";
 
 const queryClient = new QueryClient({
@@ -59,15 +57,14 @@ const App = () => (
                   <Route path="/smart/launch" element={<SmartLaunch />} />
                   <Route path="/smart/callback" element={<SmartCallback />} />
                   <Route path="/demo" element={<Demo />} />
-                  <Route path="/emr-sandbox" element={<EmrSandbox />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<ProtectedRoute><HospitalSelector /></ProtectedRoute>} />
-                  {!isAmbulatory && <Route path="/census" element={<ProtectedRoute><PatientCensus /></ProtectedRoute>} />}
+                  <Route path="/census" element={<ProtectedRoute><PatientCensus /></ProtectedRoute>} />
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
                   <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
-                  {!isAmbulatory && <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />}
+                  <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />
                   <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
                   <Route path="/clinic" element={<ProtectedRoute><Clinic /></ProtectedRoute>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Mail, Lock, Server, ExternalLink } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
@@ -196,26 +196,6 @@ export default function Auth() {
                     )}
                   </Button>
                 </form>
-              )}
-
-              {!isForgotPassword && (
-                <div className="mt-6">
-                  <div className="relative flex items-center my-3">
-                    <div className="flex-grow border-t border-border/60" />
-                    <span className="mx-3 text-[10px] font-semibold tracking-widest text-muted-foreground">DEMO</span>
-                    <div className="flex-grow border-t border-border/60" />
-                  </div>
-                  <a
-                    href="/emr-sandbox"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-2 w-full h-11 rounded-xl border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-medium text-sm transition-colors"
-                  >
-                    <Server className="w-4 h-4" />
-                    Open EMR Sandbox (no login required)
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
               )}
 
               {!resetEmailSent && isForgotPassword && (

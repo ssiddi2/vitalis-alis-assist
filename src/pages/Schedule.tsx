@@ -40,7 +40,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function Schedule() {
   const navigate = useNavigate();
-  const { selectedHospital, loading: hospitalLoading, setSelectedPatientId, setActiveEncounterId } = useHospital();
+  const { selectedHospital, loading: hospitalLoading } = useHospital();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'week' | 'day'>('week');
   const [newApptOpen, setNewApptOpen] = useState(false);
@@ -251,9 +251,7 @@ export default function Schedule() {
                     )}>
                       {slotAppts.map(appt => (
                         <AppointmentCard key={appt.id} appointment={appt} onSelect={() => {
-                          setSelectedPatientId(appt.patient_id);
-                          if (appt.encounter_id) setActiveEncounterId(appt.encounter_id);
-                          navigate('/dashboard');
+                          // Navigate to patient dashboard
                         }} />
                       ))}
                     </div>

@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { isAmbulatory } from '@/config/deployment';
 
 export interface Hospital {
   id: string;
@@ -112,18 +111,12 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
         setHospitals(hospitalsWithCounts);
 
         // Reconcile any hydrated stub against the freshly fetched list.
-        // In ambulatory (single-clinic) mode, auto-select the first available clinic.
         setSelectedHospitalState((prev) => {
-          if (prev) {
-            const full = hospitalsWithCounts.find((h) => h.id === prev.id);
-            if (full) return full;
-            writeStored(HOSPITAL_KEY, null);
-          }
-          if (isAmbulatory && hospitalsWithCounts.length > 0) {
-            const first = hospitalsWithCounts[0];
-            writeStored(HOSPITAL_KEY, first.id);
-            return first;
-          }
+          if (!prev) return prev;
+          const full = hospitalsWithCounts.find((h) => h.id === prev.id);
+          if (full) return full;
+          // Hydrated id no longer accessible — clear it.
+          writeStored(HOSPITAL_KEY, null);
           return null;
         });
       } catch (err) {

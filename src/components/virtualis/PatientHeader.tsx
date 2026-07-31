@@ -1,12 +1,6 @@
-import { useState } from 'react';
 import { Patient } from '@/types/clinical';
-import { Clock, MapPin, Calendar, User, Timer, DoorOpen, Stethoscope, Video, RefreshCw, UserCheck, AlertTriangle, FileText, Receipt, Upload } from 'lucide-react';
-import { pushChartSnapshot } from '@/lib/universalEmr';
-import { toast } from 'sonner';
+import { Clock, MapPin, Calendar, User, Timer, DoorOpen, Stethoscope, Video, RefreshCw, UserCheck, AlertTriangle, FileText } from 'lucide-react';
 import { ActiveEncounter } from '@/hooks/useActiveEncounter';
-import { SuperbillModal } from './SuperbillModal';
-import { useHospital } from '@/contexts/HospitalContext';
-import { Button } from '@/components/ui/button';
 
 const ENCOUNTER_TYPE_LABELS: Record<string, { label: string; icon: typeof Stethoscope }> = {
   office_visit: { label: 'Office Visit', icon: Stethoscope },
@@ -49,8 +43,6 @@ function StatTile({ icon: Icon, iconBg, iconColor, label, value, className = '' 
 export function PatientHeader({ patient, encounter, encounterDuration }: PatientHeaderProps) {
   const encounterMeta = encounter ? ENCOUNTER_TYPE_LABELS[encounter.encounter_type] || ENCOUNTER_TYPE_LABELS.office_visit : null;
   const EncounterIcon = encounterMeta?.icon || Stethoscope;
-  const { selectedHospital } = useHospital();
-  const [billOpen, setBillOpen] = useState(false);
 
   return (
     <div className="card-apple p-4 sm:p-6 mb-4 sm:mb-6">
@@ -88,32 +80,8 @@ export function PatientHeader({ patient, encounter, encounterDuration }: Patient
               Active
             </div>
           )}
-          {selectedHospital && (
-            <Button size="sm" variant="outline" className="h-7 rounded-lg gap-1.5 text-xs" onClick={() => setBillOpen(true)}>
-              <Receipt className="w-3 h-3" /> Superbill
-            </Button>
-          )}
-          <Button
-            size="sm" variant="outline" className="h-7 rounded-lg gap-1.5 text-xs"
-            onClick={async () => {
-              toast.message('Pushing chart to EMR Sandbox…');
-              const n = await pushChartSnapshot(patient.id, patient.name);
-              toast.success(`${n} FHIR resources delivered`);
-            }}
-          >
-            <Upload className="w-3 h-3" /> Push to EMR
-          </Button>
         </div>
       </div>
-      {selectedHospital && (
-        <SuperbillModal
-          open={billOpen}
-          onOpenChange={setBillOpen}
-          patient={{ id: patient.id, name: patient.name, mrn: patient.mrn, age: patient.age, sex: patient.sex }}
-          hospitalId={selectedHospital.id}
-          encounterId={encounter?.id}
-        />
-      )}
 
       {encounter ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
