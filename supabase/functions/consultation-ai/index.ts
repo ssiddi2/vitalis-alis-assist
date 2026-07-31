@@ -73,27 +73,28 @@ async function callAI(messages: Array<{ role: string; content: string }>, stream
 }
 
 serve(async (req) => {
+  corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const user = await getCaller(req);
+    if (!user) return jsonRes({ error: "Unauthorized" }, 401);
+
     const { action, threadId, content, patientId, hospitalId, specialty, reason, consultRequestId } = await req.json();
 
-    // Extract user from auth header
-    const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.replace("Bearer ", "");
     const db = supabaseAdmin();
-    let userId: string | null = null;
-    if (token && token !== Deno.env.get("SUPABASE_ANON_KEY")) {
-      const { data: { user } } = await db.auth.getUser(token);
-      userId = user?.id || null;
-    }
+    const userId: string = user.id;
 
     switch (action) {
       // ── Create thread + load context + AI welcome ──
       case "create_thread": {
-        if (!patientId || !hospitalId || !specialty || !reason || !userId) {
+        if (!patientId || !hospitalId || !specialty || !reason) {
           return jsonRes({ error: "Missing required fields" }, 400);
         }
+        if (!(await userHasHospitalAccess(db, userId, hospitalId))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const sharedContext = await loadSharedContext(patientId);
 
