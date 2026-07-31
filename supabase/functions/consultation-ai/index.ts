@@ -326,8 +326,12 @@ serve(async (req) => {
         if (!threadId) return jsonRes({ error: "Missing threadId" }, 400);
 
         const { data: thread } = await db.from("consultation_threads")
-          .select("patient_id").eq("id", threadId).single();
+          .select("patient_id, hospital_id").eq("id", threadId).single();
         if (!thread) return jsonRes({ error: "Thread not found" }, 404);
+        if (!(await userHasHospitalAccess(db, userId, thread.hospital_id))) {
+          return jsonRes({ error: "Forbidden" }, 403);
+        }
+
 
         const sharedContext = await loadSharedContext(thread.patient_id);
         await db.from("consultation_threads")
