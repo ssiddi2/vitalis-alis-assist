@@ -16,7 +16,7 @@ import { MobileMenu } from './MobileMenu';
 import { NotificationCenter } from './NotificationCenter';
 import { EMRSyncBadge } from './EMRSyncBadge';
 import { AmbientStatusIndicator } from './AmbientStatusIndicator';
-import virtualisOneIcon from '@/assets/virtualis-one-icon.png.asset.json';
+import virtualisOneIcon from '@/assets/virtualis-one-header-icon.png.asset.json';
 
 export function TopBar() {
   const [currentTime, setCurrentTime] = useState('');
