@@ -83,7 +83,7 @@ export function useConsultRequests(patientId?: string) {
         source_table: 'notifications',
         source_id: notif.id,
         message_text: consult.reason,
-        classification: r.classification as string ?? null,
+        classification: (r.classification as string | undefined) ?? null,
         acuity_level: result.suggestedUrgency,
         score: result.score,
         color: result.color,
