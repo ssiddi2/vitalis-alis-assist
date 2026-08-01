@@ -171,6 +171,31 @@ const tools = [
 ];
 
 // Execute tool calls
+type SupabaseClientLike = ReturnType<typeof createClient>;
+
+/** Records an AI-initiated mutating action in audit_logs. */
+async function logAiAction(
+  supabase: SupabaseClientLike,
+  params: {
+    tool: string;
+    summary: string;
+    resourceType: string;
+    resourceId?: string | null;
+    context: { hospitalId?: string; patientId?: string; userId?: string };
+  },
+) {
+  const { error } = await supabase.from("audit_logs").insert({
+    action_type: "create",
+    resource_type: params.resourceType,
+    resource_id: params.resourceId ?? null,
+    patient_id: params.context.patientId ?? null,
+    hospital_id: params.context.hospitalId ?? null,
+    user_id: params.context.userId ?? null,
+    metadata: { ai_initiated: true, actor: "ALIS", tool: params.tool, summary: params.summary },
+  });
+  if (error) console.error("logAiAction failed:", error.message);
+}
+
 async function executeTool(toolName: string, args: Record<string, unknown>, context: { hospitalId?: string; patientId?: string; userId?: string }) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -187,7 +212,7 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         .insert({
           patient_id: context.patientId,
           order_type: args.order_type as string,
-          order_data: { name: args.name, priority: args.priority },
+          order_data: { name: args.name, priority: args.priority, ai_generated: true, drafted_by: "ALIS" },
           rationale: args.rationale as string,
           status: "staged",
           created_by: context.userId || null
@@ -200,6 +225,14 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         return { success: false, message: error.message };
       }
       
+      await logAiAction(supabase, {
+        tool: "stage_order",
+        summary: `Staged ${args.order_type} order: ${args.name}`,
+        resourceType: "staged_order",
+        resourceId: data.id,
+        context,
+      });
+
       return { 
         success: true, 
         message: `Order staged: ${args.name} (${args.priority})`,
@@ -222,6 +255,8 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
             objective: args.objective,
             assessment: args.assessment,
             plan: args.plan,
+            ai_generated: true,
+            drafted_by: "ALIS",
           },
           status: "draft",
           author_id: context.userId || null,
@@ -234,6 +269,14 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         return { success: false, message: error.message };
       }
 
+      await logAiAction(supabase, {
+        tool: "create_note",
+        summary: `Drafted ${args.note_type} note`,
+        resourceType: "clinical_note",
+        resourceId: data.id,
+        context,
+      });
+
       const typeLabel = (args.note_type as string).charAt(0).toUpperCase() + (args.note_type as string).slice(1);
       return {
         success: true,
@@ -243,6 +286,13 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
     }
 
     case "invite_provider": {
+      await logAiAction(supabase, {
+        tool: "invite_provider",
+        summary: `Invited ${args.email} as ${args.role}`,
+        resourceType: "provider_invitation",
+        context,
+      });
+
       return {
         success: true,
         message: `Invitation sent to ${args.email} for ${args.name} as ${args.role}`,
@@ -307,6 +357,14 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
       await supabase
         .from("channel_members")
         .insert({ channel_id: data.id, user_id: context.userId });
+
+      await logAiAction(supabase, {
+        tool: "create_team_channel",
+        summary: `Created channel "${args.name}"`,
+        resourceType: "team_channel",
+        resourceId: data.id,
+        context,
+      });
 
       return { success: true, message: `Channel "${args.name}" created`, channel: data };
     }

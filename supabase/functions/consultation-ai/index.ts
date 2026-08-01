@@ -33,20 +33,19 @@ async function loadSharedContext(patientId: string): Promise<Record<string, unkn
   };
 }
 
-// Roster of simulated on-call specialists (demo). Keys are specialty names.
-const SPECIALIST_ROSTER: Record<string, { id: string; name: string; persona: string }> = {
-  "Cardiology": {
-    id: "sim_dr_das",
-    name: "Dr. Aravind Das",
-    persona: "board-certified Cardiology attending, fellowship-trained in interventional cardiology",
-  },
-};
+// Specialties for which ALIS offers an explicitly-AI specialty perspective.
+const SPECIALTY_PERSPECTIVES = ["Cardiology"];
+const SPECIALTY_SENDER_ID = "alis_specialty";
 
-function specialistSystemPrompt(specialty: string, context: Record<string, unknown>): string | null {
-  const s = SPECIALIST_ROSTER[specialty];
-  if (!s) return null;
-  return `You are ${s.name}, a ${s.persona}, responding to a curbside consult in your role as the on-call ${specialty} attending. Reply in first person, concise (2-5 sentences), clinically grounded. Reference specifics from the patient context when relevant. Either ask one focused clarifying question OR give a clear recommendation. Do NOT mention you are an AI.\n\nPatient context: ${JSON.stringify(context)}`;
+function specialtyPerspectiveName(specialty: string): string {
+  return `ALIS · ${specialty} Perspective`;
 }
+
+function specialtyPerspectivePrompt(specialty: string, context: Record<string, unknown>): string | null {
+  if (!SPECIALTY_PERSPECTIVES.includes(specialty)) return null;
+  return `You are ${specialtyPerspectiveName(specialty)}, an AI providing a ${specialty}-informed perspective in a clinical consultation thread. You are an AI, not a physician, and you are NOT a substitute for a consult with a licensed ${specialty} physician — state this plainly if asked or if recommendations could drive management. Be concise (2-5 sentences) and clinically grounded, referencing specifics from the patient context. Either ask one focused clarifying question OR give a clear recommendation.\n\nPatient context: ${JSON.stringify(context)}`;
+}
+
 
 // Generate role-differentiated system prompts
 function buildSystemPrompt(role: "primary_clinician" | "specialist", specialty: string, context: Record<string, unknown>): string {
@@ -124,18 +123,17 @@ serve(async (req) => {
           content: welcomeContent,
         });
 
-        // Auto-introduce the on-call specialist (e.g. Dr. Das for Cardiology)
-        const specialistSys = specialistSystemPrompt(specialty, sharedContext);
-        const specialist = SPECIALIST_ROSTER[specialty];
-        if (specialistSys && specialist) {
+        // Explicitly-AI specialty perspective intro
+        const perspectiveSys = specialtyPerspectivePrompt(specialty, sharedContext);
+        if (perspectiveSys) {
           const intro = await callAI([
-            { role: "system", content: specialistSys },
+            { role: "system", content: perspectiveSys },
             { role: "user", content: `Consult reason: ${reason}. Acknowledge the consult, note one or two key data points from the chart you'll focus on, and ask a focused clarifying question.` },
           ]) as string;
           await db.from("consultation_messages").insert({
             thread_id: thread.id,
-            sender_id: specialist.id,
-            sender_role: "specialist",
+            sender_id: SPECIALTY_SENDER_ID,
+            sender_role: "ai",
             content: intro,
           });
         }
@@ -241,13 +239,12 @@ serve(async (req) => {
           });
         }
 
-        // Auto-reply from the simulated on-call specialist when the primary clinician posts
+        // Explicitly-AI specialty perspective reply when the primary clinician posts
         let specialistMsg = null;
-        const specialistSys = specialistSystemPrompt(thread.specialty, sharedContext);
-        const specialist = SPECIALIST_ROSTER[thread.specialty];
-        if (senderRole === "primary_clinician" && specialistSys && specialist) {
+        const perspectiveSys = specialtyPerspectivePrompt(thread.specialty, sharedContext);
+        if (senderRole === "primary_clinician" && perspectiveSys) {
           const specReply = await callAI([
-            { role: "system", content: specialistSys },
+            { role: "system", content: perspectiveSys },
             ...historyMessages,
             { role: "user", content: `[primary_clinician]: ${content}` },
             { role: "user", content: "Generate your next reply in the thread." },
@@ -255,8 +252,8 @@ serve(async (req) => {
           if (specReply && specReply.trim().length > 5) {
             const { data } = await db.from("consultation_messages").insert({
               thread_id: threadId,
-              sender_id: specialist.id,
-              sender_role: "specialist",
+              sender_id: SPECIALTY_SENDER_ID,
+              sender_role: "ai",
               content: specReply,
             }).select().single();
             specialistMsg = data;
