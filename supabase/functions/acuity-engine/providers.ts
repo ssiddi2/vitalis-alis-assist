@@ -59,8 +59,6 @@ export const FALLBACK: AcuityResult = {
   recommendation: null,
 };
 
-const env = (k: string) => Deno.env.get(k) || "";
-
 function extractJson(text: string): Record<string, unknown> | null {
   const cleaned = text.replace(/```(?:json)?/gi, "```").split("```").join("\n");
   const match = cleaned.match(/\{[\s\S]*\}/);
@@ -153,7 +151,7 @@ export function sanitize(raw: Record<string, unknown>, base: AcuityResult = FALL
 
 /** Calls the configured model for a tier and returns a sanitized result, degrading to a safe default. */
 export async function callModel(
-  tier: Tier,
+  _tier: Tier,
   systemPrompt: string,
   userContent: string,
   base: AcuityResult = FALLBACK,
