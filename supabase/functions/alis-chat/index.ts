@@ -675,7 +675,13 @@ serve(async (req) => {
       ...messages,
     ];
 
-    if (useAnthropic) {
+    if (useAnthropic && LOVABLE_API_KEY) {
+      try {
+        return await runAnthropicChat(systemContent, messages, context, corsHeaders);
+      } catch (e) {
+        console.warn("alis-chat: Anthropic path failed, falling back to gateway —", e instanceof Error ? e.message : e);
+      }
+    } else if (useAnthropic) {
       return await runAnthropicChat(systemContent, messages, context, corsHeaders);
     }
 

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
+import { completeText } from "../_shared/llm.ts";
 
 const env = (k: string) => Deno.env.get(k) || "";
 
@@ -25,37 +26,6 @@ function extractJson(text: string): Record<string, unknown> | null {
   const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) return null;
   try { return JSON.parse(match[0]); } catch { return null; }
-}
-
-async function callModel(system: string, user: string): Promise<string> {
-  const anthropicKey = env("ANTHROPIC_API_KEY");
-  if (anthropicKey) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: env("NOTE_MODEL") || "claude-sonnet-5",
-        max_tokens: 2048,
-        system,
-        messages: [{ role: "user", content: user }],
-      }),
-    });
-    if (!res.ok) throw new Error(`anthropic ${res.status}`);
-    const data = await res.json();
-    return data.content?.[0]?.text || "";
-  }
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env("LOVABLE_API_KEY")}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: env("NOTE_MODEL") || "google/gemini-2.5-pro",
-      messages: [{ role: "system", content: system }, { role: "user", content: user }],
-    }),
-  });
-  if (!res.ok) throw new Error(`gateway ${res.status}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -88,7 +58,8 @@ serve(async (req) => {
 
     let parsed: Record<string, unknown> | null = null;
     try {
-      parsed = extractJson(await callModel(SYSTEM, content));
+      const { text } = await completeText({ system: SYSTEM, messages: [{ role: "user", content }], json: true });
+      parsed = extractJson(text);
     } catch (_e) {
       parsed = null;
     }
