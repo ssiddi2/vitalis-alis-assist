@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, Check, X, Sparkles, Plus, PackageCheck } from 'lucide-react';
+import { ClipboardList, Check, X, Sparkles, Plus, PackageCheck, Plug, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StagedOrder } from '@/types/hospital';
+import { StagedOrder, OrderStatus } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useAuth } from '@/hooks/useAuth';
+import { loadSmartSession } from '@/lib/smart';
+import { rejectOrder as rejectOrderLifecycle, ORDER_STATUS_LABELS, ORDER_STATUS_CLASSES } from '@/lib/orderLifecycle';
 import { OrderSignatureModal } from './OrderSignatureModal';
 import { OrderEntryModal } from './OrderEntryModal';
 import { OrderSetSelector } from './OrderSetSelector';
@@ -11,9 +14,9 @@ import { cn } from '@/lib/utils';
 interface StagedOrdersPanelProps {
   orders: StagedOrder[];
   patientId?: string;
-  onApprove?: (orderId: string) => void;
+  onApprove?: (orderId: string, status?: OrderStatus) => void;
   onApproveAll?: () => void;
-  onCancel?: (orderId: string) => void;
+  onCancel?: (orderId: string, alreadyPersisted?: boolean) => void;
   clinicianName?: string;
 }
 
@@ -26,7 +29,35 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, onCancel, clinicianName = 'Clinician' }: StagedOrdersPanelProps) {
   const { logView, logAction } = useAuditLog();
+  const { user } = useAuth();
   const pendingOrders = orders.filter(o => o.status === 'staged');
+  const resolvedOrders = orders.filter(o => o.status !== 'staged');
+  const smart = loadSmartSession();
+  let issHost: string | null = null;
+  try { issHost = smart ? new URL(smart.iss).host : null; } catch { issHost = null; }
+
+  const EmrIndicator = () => (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider',
+        issHost
+          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
+          : 'border-slate-200 bg-slate-100 text-slate-500',
+      )}
+    >
+      {issHost ? <Plug className="h-2.5 w-2.5" /> : <HardDrive className="h-2.5 w-2.5" />}
+      {issHost ? `Connected · ${issHost}` : 'Local record'}
+    </span>
+  );
+
+  const StatusChip = ({ status }: { status: string }) => (
+    <span className={cn(
+      'text-[9px] px-1.5 py-0.5 rounded-full border font-medium',
+      ORDER_STATUS_CLASSES[status] || ORDER_STATUS_CLASSES.staged,
+    )}>
+      {ORDER_STATUS_LABELS[status] || status}
+    </span>
+  );
   const [signingOrder, setSigningOrder] = useState<StagedOrder | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [orderEntryOpen, setOrderEntryOpen] = useState(false);
@@ -65,8 +96,8 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
     setSigningOrder(order);
   };
 
-  const handleSignComplete = (orderId: string) => {
-    onApprove?.(orderId);
+  const handleSignComplete = (orderId: string, status?: OrderStatus) => {
+    onApprove?.(orderId, status);
   };
 
   const handleApproveAll = () => {
@@ -76,15 +107,11 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
     }
   };
 
-  const handleCancel = (orderId: string) => {
+  const handleCancel = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
-    if (patientId && order) {
-      logAction('delete', 'staged_order', orderId, patientId, {
-        order_type: order.order_type,
-        action: 'cancelled',
-      });
-    }
-    onCancel?.(orderId);
+    if (!order) return;
+    await rejectOrderLifecycle(order, user?.id, logAction as never);
+    onCancel?.(orderId, true);
   };
 
   if (pendingOrders.length === 0) {
@@ -149,7 +176,7 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
             const priority = (order.order_data?.priority as string) || 'Routine';
             const priorityClass = PRIORITY_COLORS[priority] || PRIORITY_COLORS.Routine;
             const isNew = newOrderIds.has(order.id);
-            const isAIGenerated = !order.created_by || order.created_by === null;
+            const isAIGenerated = Boolean(order.order_data?.ai_generated) || !order.created_by;
             
             return (
               <div 
@@ -164,13 +191,14 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
                     <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${priorityClass}`}>
                       {priority}
                     </span>
+                    <StatusChip status={order.status} />
                     <span className="text-xs font-medium text-foreground truncate">
                       {String(order.order_data?.name || order.order_type)}
                     </span>
                     {isAIGenerated && (
                       <span className="flex items-center gap-0.5 text-[9px] text-primary/70 bg-primary/10 px-1 py-0.5 rounded">
                         <Sparkles className="h-2.5 w-2.5" />
-                        ALIS
+                        AI-staged
                       </span>
                     )}
                   </div>
@@ -197,6 +225,30 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
               </div>
             );
           })}
+        </div>
+
+        {resolvedOrders.length > 0 && (
+          <div className="mt-3 space-y-1.5 border-t border-border/50 pt-2 max-h-[140px] overflow-y-auto">
+            {resolvedOrders.map((o) => (
+              <div key={o.id} className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-muted-foreground truncate">
+                  {String(o.order_data?.name || o.order_type)}
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {(Boolean(o.order_data?.ai_generated) || !o.created_by) && (
+                    <span className="flex items-center gap-0.5 text-[9px] text-primary/70 bg-primary/10 px-1 py-0.5 rounded">
+                      <Sparkles className="h-2.5 w-2.5" /> AI-staged
+                    </span>
+                  )}
+                  <StatusChip status={o.status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3 flex justify-end">
+          <EmrIndicator />
         </div>
 
         {pendingOrders.length > 1 && (
