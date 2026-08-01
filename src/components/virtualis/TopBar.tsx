@@ -120,6 +120,9 @@ export function TopBar() {
         <AmbientStatusIndicator isAmbient={isAmbient} onToggle={() => setIsAmbient(prev => !prev)} />
 
         {/* Nav Links */}
+        <button onClick={() => navigate('/command')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
+          <Radar className="w-3 h-3" /> Command
+        </button>
         <button onClick={() => navigate('/schedule')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
           <CalendarDays className="w-3 h-3" /> Schedule
         </button>
