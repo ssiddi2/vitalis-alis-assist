@@ -105,9 +105,14 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
         coding_confidence: picked.reduce((s, c) => s + c.confidence, 0) / picked.length,
       });
       if (error) throw error;
-      toast({ title: 'Charges posted', description: `${picked.length} codes added to the superbill.` });
+      toast({ title: 'Claim generated', description: `${picked.length} codes added to the superbill.` });
       setSuggestions([]);
+      setDenialIssues([]);
+      setDenialRisk(null);
+      setCleanClaim(null);
+      setConfirmHighRisk(false);
     } catch (e) {
+
       toast({ title: 'Could not post charges', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
     } finally {
       setPosting(false);
