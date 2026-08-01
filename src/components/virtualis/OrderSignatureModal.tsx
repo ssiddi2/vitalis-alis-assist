@@ -106,6 +106,20 @@ export function OrderSignatureModal({
             </p>
           </div>
 
+          <div className="flex items-center justify-end">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider',
+                issHost
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
+                  : 'border-slate-200 bg-slate-100 text-slate-500',
+              )}
+            >
+              {issHost ? <Plug className="h-3 w-3" /> : <HardDrive className="h-3 w-3" />}
+              {issHost ? `Connected · ${issHost}` : 'Local record'}
+            </span>
+          </div>
+
           <Button
             onClick={handleSign}
             disabled={signed}
