@@ -463,6 +463,180 @@ async function consumeStream(response: Response): Promise<{
   return { content, toolCalls };
 }
 
+// ─────────────────────────────────────────────
+// Anthropic (Claude) provider — isolated path
+// ─────────────────────────────────────────────
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const ALIS_MODEL = Deno.env.get("ALIS_MODEL") || "claude-sonnet-5";
+
+type ChatMessage = { role: string; content: unknown };
+type ToolCall = { id: string; name: string; arguments: string };
+
+function anthropicHeaders() {
+  return {
+    "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+    "anthropic-version": "2023-06-01",
+    "Content-Type": "application/json",
+  };
+}
+
+/** Maps the OpenAI-format tool defs to Anthropic's tool schema. */
+function toAnthropicTools(openAiTools: typeof tools) {
+  return openAiTools.map((t) => ({
+    name: t.function.name,
+    description: t.function.description,
+    input_schema: t.function.parameters,
+  }));
+}
+
+/** First pass (non-streaming): returns assistant text + any tool_use blocks. */
+async function anthropicDetectToolCalls(
+  system: string,
+  messages: ChatMessage[],
+): Promise<{ content: string; toolCalls: ToolCall[]; blocks: unknown[] }> {
+  const res = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: anthropicHeaders(),
+    body: JSON.stringify({
+      model: ALIS_MODEL,
+      max_tokens: 2048,
+      system,
+      messages,
+      tools: toAnthropicTools(tools),
+    }),
+  });
+  if (!res.ok) throw new Error(`Anthropic detect error: ${res.status} ${await res.text()}`);
+  const data = await res.json();
+  const blocks: Array<Record<string, unknown>> = data.content || [];
+  const content = blocks.filter((b) => b.type === "text").map((b) => b.text as string).join("");
+  const toolCalls = blocks
+    .filter((b) => b.type === "tool_use")
+    .map((b) => ({ id: b.id as string, name: b.name as string, arguments: JSON.stringify(b.input ?? {}) }));
+  return { content, toolCalls, blocks };
+}
+
+/** Streaming pass: emits OpenAI-style `data: {choices:[{delta:{content}}]}` SSE lines. */
+async function anthropicStream(system: string, messages: ChatMessage[]): Promise<ReadableStream<Uint8Array>> {
+  const res = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: anthropicHeaders(),
+    body: JSON.stringify({ model: ALIS_MODEL, max_tokens: 2048, system, messages, stream: true }),
+  });
+  if (!res.ok) throw new Error(`Anthropic stream error: ${res.status} ${await res.text()}`);
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = res.body!.getReader();
+  let buffer = "";
+
+  return new ReadableStream({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+        return;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+          if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+            const chunk = JSON.stringify({ choices: [{ delta: { content: evt.delta.text } }] });
+            controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
+          }
+        } catch {
+          // partial JSON, ignore
+        }
+      }
+    },
+  });
+}
+
+/** Full Claude request flow: detect tools → authorize → execute → stream follow-up. */
+async function runAnthropicChat(
+  system: string,
+  clientMessages: ChatMessage[],
+  context: { hospitalId?: string; patientId?: string; userId?: string },
+  corsHeaders: Record<string, string>,
+): Promise<Response> {
+  const convo: ChatMessage[] = clientMessages.map((m) => ({
+    role: m.role === "assistant" ? "assistant" : "user",
+    content: m.content,
+  }));
+
+  const first = await anthropicDetectToolCalls(system, convo);
+
+  if (first.toolCalls.length === 0) {
+    return new Response(await anthropicStream(system, convo), {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
+  }
+
+  const adminClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+  if (!(await userHasHospitalAccess(adminClient, context.userId!, context.hospitalId))) {
+    return new Response(JSON.stringify({ error: "Forbidden: no access to this hospital" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const toolResults: Array<{ toolCallId: string; name: string; args: Record<string, unknown>; result: unknown }> = [];
+  for (const tc of first.toolCalls) {
+    let args: Record<string, unknown> = {};
+    try { args = JSON.parse(tc.arguments); } catch { console.error("Failed to parse tool args:", tc.arguments); }
+    const result = await executeTool(tc.name, args, context);
+    toolResults.push({ toolCallId: tc.id, name: tc.name, args, result });
+  }
+
+  const followUp: ChatMessage[] = [
+    ...convo,
+    { role: "assistant", content: first.blocks },
+    {
+      role: "user",
+      content: toolResults.map((tr) => ({
+        type: "tool_result",
+        tool_use_id: tr.toolCallId,
+        content: JSON.stringify(tr.result),
+      })),
+    },
+  ];
+
+  const followUpStream = await anthropicStream(system, followUp);
+  const encoder = new TextEncoder();
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+
+  (async () => {
+    try {
+      for (const tr of toolResults) {
+        const eventData = JSON.stringify({ tool_name: tr.name, tool_args: tr.args, result: tr.result });
+        await writer.write(encoder.encode(`event: tool_result\ndata: ${eventData}\n\n`));
+      }
+      const reader = followUpStream.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        await writer.write(value);
+      }
+    } catch (e) {
+      console.error("Anthropic stream pipe error:", e);
+    } finally {
+      await writer.close();
+    }
+  })();
+
+  return new Response(readable, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
+}
+
 serve(async (req) => {
   const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") {
@@ -479,8 +653,9 @@ serve(async (req) => {
 
     const { messages, patientContext } = await req.json();
     
+    const useAnthropic = !!Deno.env.get("ANTHROPIC_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    if (!useAnthropic && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
@@ -499,6 +674,10 @@ serve(async (req) => {
       { role: "system", content: systemContent },
       ...messages,
     ];
+
+    if (useAnthropic) {
+      return await runAnthropicChat(systemContent, messages, context, corsHeaders);
+    }
 
     // First AI call (non-streaming) to detect tool calls
     const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
