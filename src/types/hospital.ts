@@ -2,7 +2,15 @@
 
 export type EmrSystem = 'epic' | 'meditech' | 'cerner';
 
-export type OrderStatus = 'staged' | 'approved' | 'sent' | 'cancelled';
+export type OrderStatus =
+  | 'staged'
+  | 'signed'
+  | 'pushed'
+  | 'push_failed'
+  | 'rejected'
+  | 'approved'
+  | 'sent'
+  | 'cancelled';
 
 export type NoteStatus = 'draft' | 'pending_signature' | 'signed' | 'amended';
 
