@@ -45,6 +45,64 @@ export function useConsultRequests(patientId?: string) {
     }
   }, [selectedHospital?.id, patientId]);
 
+  // Score a consult once and mirror the result onto its notification row (no extra LLM call).
+  const scoreConsult = useCallback(async (consult: ConsultRequest) => {
+    if (!user?.id) return;
+    try {
+      const result = await scoreMessage({
+        hospitalId: consult.hospital_id,
+        messageText: consult.reason || `${consult.specialty} consult`,
+        patientId: consult.patient_id ?? null,
+        sourceTable: 'consult_requests',
+        sourceId: consult.id,
+      });
+      if (!result) return;
+
+      const { data: notif } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          hospital_id: consult.hospital_id,
+          patient_id: consult.patient_id ?? null,
+          type: 'consult_response',
+          title: `${consult.specialty} consult requested`,
+          body: consult.reason,
+          metadata: { consult_id: consult.id },
+        })
+        .select('id')
+        .single();
+
+      if (!notif?.id) return;
+
+      const r = result as unknown as Record<string, unknown>;
+      await supabase.from('acuity_scores').insert({
+        hospital_id: consult.hospital_id,
+        patient_id: consult.patient_id ?? null,
+        source_table: 'notifications',
+        source_id: notif.id,
+        message_text: consult.reason,
+        classification: r.classification as string ?? null,
+        acuity_level: result.suggestedUrgency,
+        score: result.score,
+        color: result.color,
+        rationale: result.reasoning,
+        recommendation: result.recommendation ?? null,
+        confidence: result.confidence,
+        service_category: result.serviceCategory,
+        hospital_priority: result.hospitalPriority,
+        risk_level: result.riskLevel,
+        estimated_response_time: result.estimatedResponseTime,
+        extracted_keywords: result.extractedKeywords,
+        immediate_actions: result.immediateActions,
+        suggested_specialty: result.suggestedSpecialty,
+        suggested_specialties: result.suggestedSpecialties,
+        created_by: user.id,
+      });
+    } catch (err) {
+      console.warn('Acuity scoring skipped:', err);
+    }
+  }, [user?.id, scoreMessage]);
+
   // Create a new consult request
   const createConsult = useCallback(async (input: CreateConsultInput) => {
     if (!user?.id) return null;
@@ -62,13 +120,15 @@ export function useConsultRequests(patientId?: string) {
       if (error) throw error;
 
       setConsults(prev => [data, ...prev]);
+      void scoreConsult(data as ConsultRequest);
       return data;
     } catch (err) {
       console.error('Error creating consult:', err);
       setError('Failed to create consult request');
       return null;
     }
-  }, [user?.id]);
+  }, [user?.id, scoreConsult]);
+
 
   // Accept a consult (for consultants)
   const acceptConsult = useCallback(async (consultId: string, consultantId: string) => {
