@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, CalendarDays, Users } from 'lucide-react';
+import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, CalendarDays, Users, Radar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
