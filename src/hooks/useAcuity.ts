@@ -102,3 +102,43 @@ export function useLatestAcuity(sourceTable?: string | null, sourceId?: string |
 
   return acuity;
 }
+
+export const ACUITY_RANK: Record<AcuityLevel, number> = { High: 0, Moderate: 1, Low: 2 };
+
+/** Latest acuity per source_id, keyed by id — for list rendering + acuity sorting. */
+export function useLatestAcuityMap(sourceTable: string, ids: string[]) {
+  const [map, setMap] = useState<Record<string, LatestAcuity>>({});
+  const key = ids.join(',');
+
+  useEffect(() => {
+    const list = key ? key.split(',') : [];
+    if (list.length === 0) {
+      setMap({});
+      return;
+    }
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from('acuity_scores')
+        .select('source_id, acuity_level, confidence, rationale, created_at')
+        .eq('source_table', sourceTable)
+        .in('source_id', list)
+        .order('created_at', { ascending: false });
+      if (!active) return;
+      const next: Record<string, LatestAcuity> = {};
+      for (const row of data || []) {
+        if (!row.source_id || next[row.source_id]) continue;
+        next[row.source_id] = {
+          level: toLevel(row.acuity_level),
+          confidence: row.confidence != null ? Number(row.confidence) : null,
+          reasoning: row.rationale ?? null,
+        };
+      }
+      setMap(next);
+    })();
+    return () => { active = false; };
+  }, [sourceTable, key]);
+
+  return map;
+}
+
