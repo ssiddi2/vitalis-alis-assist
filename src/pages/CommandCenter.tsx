@@ -123,9 +123,14 @@ export default function CommandCenter() {
   }, [hospitalId]);
 
   useEffect(() => {
+    if (!hospitalId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     void fetchBoard();
-    if (!hospitalId) return;
+
 
     const channel = supabase
       .channel(`command-center-${hospitalId}`)
