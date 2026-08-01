@@ -90,6 +90,9 @@ serve(async (req) => {
     const db = supabaseAdmin();
     const userId: string = user.id;
 
+    const rl = await checkRateLimit(db, userId, "consultation-ai", { limit: envLimit("RL_CONSULT", 40), windowSec: 60 });
+    if (!rl.allowed) return jsonRes({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
+
     switch (action) {
       // ── Create thread + load context + AI welcome ──
       case "create_thread": {
