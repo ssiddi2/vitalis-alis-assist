@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Brain, Clock, Stethoscope, Sparkles, Loader2 } from 'lucide-react';
+import { LiveAcuityCard } from '@/components/virtualis/acuity/LiveAcuityCard';
 import type { ConsultUrgency } from '@/types/team';
 
 interface ConsultRequestModalProps {
