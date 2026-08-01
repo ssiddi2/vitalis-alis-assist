@@ -1,22 +1,90 @@
 import { useState } from 'react';
-import { DollarSign, TrendingUp, FileCheck, AlertTriangle, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertTriangle, Check, X, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
 import { BillingEvent } from '@/types/hospital';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useHospital } from '@/contexts/HospitalContext';
+import { toast } from '@/hooks/use-toast';
 
 interface ChargeReviewPanelProps {
   billingEvents: BillingEvent[];
   patientId?: string;
+  encounterSummary?: string;
+  noteId?: string;
 }
 
-export function ChargeReviewPanel({ billingEvents, patientId }: ChargeReviewPanelProps) {
+interface SuggestedCode {
+  code: string;
+  type: 'CPT' | 'ICD-10';
+  description: string;
+  confidence: number;
+  rationale: string;
+  fee: number | null;
+}
+
+export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, noteId }: ChargeReviewPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  
+  const { selectedHospital } = useHospital();
+  const [coding, setCoding] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestedCode[]>([]);
+  const [accepted, setAccepted] = useState<Record<string, boolean>>({});
+  const [posting, setPosting] = useState(false);
+
   const totalRevenue = billingEvents.reduce((sum, e) => sum + (e.estimated_revenue || 0), 0);
   const pendingEvents = billingEvents.filter(e => e.status === 'pending');
   const submittedEvents = billingEvents.filter(e => e.status === 'submitted');
   const acceptedEvents = billingEvents.filter(e => e.status === 'accepted');
   const rejectedEvents = billingEvents.filter(e => e.status === 'rejected');
+
+  const runCoder = async () => {
+    if (!selectedHospital) return;
+    setCoding(true);
+    setSuggestions([]);
+    setAccepted({});
+    try {
+      const { data, error } = await supabase.functions.invoke('billing-coder', {
+        body: {
+          hospital_id: selectedHospital.id,
+          encounterSummary: encounterSummary || 'Clinical encounter documented in the chart for this patient.',
+          note_id: noteId,
+        },
+      });
+      if (error) throw error;
+      const codes: SuggestedCode[] = data?.codes || [];
+      setSuggestions(codes);
+      setAccepted(Object.fromEntries(codes.map(c => [c.code, true])));
+      if (!codes.length) toast({ title: 'No codes suggested', description: 'Documentation did not support any codes.' });
+    } catch (e) {
+      toast({ title: 'Coding failed', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
+    } finally {
+      setCoding(false);
+    }
+  };
+
+  const postCharges = async () => {
+    if (!patientId) return;
+    const picked = suggestions.filter(c => accepted[c.code]);
+    if (!picked.length) return;
+    setPosting(true);
+    try {
+      const { error } = await supabase.from('billing_events').insert({
+        patient_id: patientId,
+        note_id: noteId ?? null,
+        status: 'pending',
+        cpt_codes: picked.filter(c => c.type === 'CPT').map(c => c.code),
+        icd10_codes: picked.filter(c => c.type === 'ICD-10').map(c => c.code),
+        estimated_revenue: picked.reduce((s, c) => s + (c.fee || 0), 0),
+        coding_confidence: picked.reduce((s, c) => s + c.confidence, 0) / picked.length,
+      });
+      if (error) throw error;
+      toast({ title: 'Charges posted', description: `${picked.length} codes added to the superbill.` });
+      setSuggestions([]);
+    } catch (e) {
+      toast({ title: 'Could not post charges', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
+    } finally {
+      setPosting(false);
+    }
+  };
 
   return (
     <div className="glass rounded-xl p-4 border border-border/50">
@@ -32,6 +100,7 @@ export function ChargeReviewPanel({ billingEvents, patientId }: ChargeReviewPane
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
       </div>
+
 
       {/* Revenue Summary */}
       <div className="flex items-center justify-between mb-3">
