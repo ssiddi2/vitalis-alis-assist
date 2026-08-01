@@ -44,8 +44,12 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const rl = await checkRateLimit(admin, user.id, "acuity-engine", { limit: envLimit("RL_ACUITY", 60), windowSec: 60 });
+    if (!rl.allowed) return json({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
+
     const body = await req.json();
     const { action, hospital_id } = body;
+
 
     if (!hospital_id) return json({ error: "Missing hospital_id" }, 400);
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) {
