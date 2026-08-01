@@ -138,6 +138,67 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
         )}
       </div>
 
+      {/* ALIS coder */}
+      <button
+        onClick={runCoder}
+        disabled={coding || !selectedHospital}
+        className="w-full flex items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+      >
+        {coding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+        {coding ? 'Coding…' : 'Code with ALIS'}
+      </button>
+
+      {suggestions.length > 0 && (
+        <div className="mt-3 space-y-2 rounded-xl border border-border/60 bg-background/60 p-2.5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">01 — Suggested codes</p>
+          {suggestions.map((c) => (
+            <div
+              key={c.code}
+              className={cn(
+                'rounded-lg border p-2 transition-colors',
+                accepted[c.code] ? 'border-primary/30 bg-primary/5' : 'border-border/50 bg-muted/30 opacity-60',
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px]">{c.code}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{c.type}</span>
+                    <span className="text-[9px] text-muted-foreground">{Math.round(c.confidence * 100)}%</span>
+                    {c.fee != null && <span className="text-[10px] font-semibold text-foreground">${c.fee}</span>}
+                  </div>
+                  <p className="mt-0.5 truncate text-[10px] text-foreground">{c.description}</p>
+                  {c.rationale && <p className="text-[9px] leading-snug text-muted-foreground">{c.rationale}</p>}
+                </div>
+                <div className="flex flex-shrink-0 gap-1">
+                  <button
+                    onClick={() => setAccepted((a) => ({ ...a, [c.code]: true }))}
+                    className="rounded-full p-1 text-success hover:bg-success/10"
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => setAccepted((a) => ({ ...a, [c.code]: false }))}
+                    className="rounded-full p-1 text-critical hover:bg-critical/10"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={postCharges}
+            disabled={posting || !patientId || !suggestions.some((c) => accepted[c.code])}
+            className="w-full rounded-full bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {posting ? 'Posting…' : 'Post accepted charges →'}
+          </button>
+        </div>
+      )}
+
+
+
       {/* Expanded Charge Details */}
       {expanded && billingEvents.length > 0 && (
         <div className="space-y-2 mt-3 pt-3 border-t border-border/50 max-h-[250px] overflow-y-auto">
