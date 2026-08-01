@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Check, FileSignature, Shield } from 'lucide-react';
-import { StagedOrder } from '@/types/hospital';
+import { Check, FileSignature, Shield, Plug, HardDrive } from 'lucide-react';
+import { StagedOrder, OrderStatus } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { useAuth } from '@/hooks/useAuth';
 import { useWorkflowMetricsContext } from './PatientDashboard';
 import { loadSmartSession } from '@/lib/smart';
-import { writeMedicationOrderToEhr, writeServiceRequestToEhr } from '@/lib/ehrWriteback';
+import { signAndPushOrder } from '@/lib/orderLifecycle';
 import { cn } from '@/lib/utils';
 
 interface OrderSignatureModalProps {
@@ -15,7 +16,7 @@ interface OrderSignatureModalProps {
   onOpenChange: (open: boolean) => void;
   clinicianName: string;
   patientId?: string;
-  onSign: (orderId: string) => void;
+  onSign: (orderId: string, status?: OrderStatus) => void;
 }
 
 export function OrderSignatureModal({
@@ -28,38 +29,29 @@ export function OrderSignatureModal({
 }: OrderSignatureModalProps) {
   const [signed, setSigned] = useState(false);
   const { logAction } = useAuditLog();
+  const { user } = useAuth();
   const metrics = useWorkflowMetricsContext();
+
+  const smart = loadSmartSession();
+  let issHost: string | null = null;
+  try { issHost = smart ? new URL(smart.iss).host : null; } catch { issHost = null; }
 
   if (!order) return null;
 
   const priority = (order.order_data?.priority as string) || 'Routine';
   const name = String(order.order_data?.name || order.order_type);
 
-  const handleSign = () => {
+  const handleSign = async () => {
     setSigned(true);
     metrics?.increment('ordersSigned');
 
-    if (patientId) {
-      logAction('sign', 'staged_order', order.id, patientId, {
-        order_type: order.order_type,
-        priority,
-        signed_by: clinicianName,
-      });
-    }
+    const { status } = await signAndPushOrder(order, user?.id, logAction as never);
 
-    // Fire-and-forget EHR write-back when launched from a SMART session
-    const smart = loadSmartSession();
-    if (smart?.patient_id) {
-      const writer = order.order_type === 'medication' ? writeMedicationOrderToEhr : writeServiceRequestToEhr;
-      void writer(smart.patient_id, name, order.rationale || undefined);
-    }
-
-    setTimeout(() => {
-      onSign(order.id);
-      setSigned(false);
-      onOpenChange(false);
-    }, 800);
+    onSign(order.id, status);
+    setSigned(false);
+    onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!signed) onOpenChange(v); }}>
