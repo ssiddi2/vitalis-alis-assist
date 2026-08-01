@@ -17,6 +17,7 @@ interface AuditLogRequest {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req);
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
