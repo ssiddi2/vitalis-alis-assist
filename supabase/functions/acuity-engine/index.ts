@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
-import { callModel, type AcuityResult } from "./providers.ts";
+import { callModel, sanitize, SPECIALTIES, URGENCY_COLOR, type AcuityResult } from "./providers.ts";
 
 // LAYER 0 — deterministic red-flag rules (no LLM cost).
 const RED_FLAGS = [
@@ -10,16 +10,23 @@ const RED_FLAGS = [
   "stat", "code blue", "hemorrhage", "suicidal", "sepsis",
 ];
 
+const SHAPE =
+  `{"suggestedUrgency":"High"|"Moderate"|"Low","suggestedSpecialty":"<one of: ${SPECIALTIES.join(", ")}>",` +
+  `"suggestedSpecialties":[{"name":"<allowlisted specialty>","confidence":0-100,"reasoning":"short"}],` +
+  `"reasoning":"one concise clinical sentence","confidence":0-100,` +
+  `"serviceCategory":"emergency"|"critical_care"|"routine_care"|"specialty_consultation",` +
+  `"hospitalPriority":"immediate"|"urgent"|"routine","riskLevel":"Critical"|"Moderate"|"Low",` +
+  `"immediateActions":["short action"],"estimatedResponseTime":"immediate"|"within_15_min"|"within_1_hour"|"routine",` +
+  `"extractedKeywords":["term"],"score":0-100}`;
+
 const FAST_PROMPT =
-  `You are a clinical message triage classifier. Score the ACUITY of the message only — never give a definitive diagnosis, never suggest treatment. ` +
-  `Respond with ONLY a JSON object: {"classification":"stat"|"urgent"|"routine","acuity_level":"high"|"medium"|"low","score":0-100,"color":"#RRGGBB","rationale":"one concise clinical sentence","confidence":0-1}. ` +
-  `Use #DC2626 for high, #F59E0B for medium, #16A34A for low.`;
+  `You perform clinical acuity TRIAGE of a clinician message. Assess acuity and routing ONLY — never give a definitive diagnosis and never prescribe treatment. ` +
+  `Respond with ONLY a JSON object of exactly this shape: ${SHAPE}`;
 
 const FRONTIER_PROMPT =
-  `You are a senior clinical triage reviewer performing a careful re-assessment of a message flagged as uncertain or high acuity. ` +
-  `Never give a definitive diagnosis. Respond with ONLY a JSON object: ` +
-  `{"classification":"stat"|"urgent"|"routine","acuity_level":"high"|"medium"|"low","score":0-100,"color":"#RRGGBB","rationale":"concise clinical reasoning","recommendation":"one actionable next step for the clinician","confidence":0-1}. ` +
-  `Use #DC2626 for high, #F59E0B for medium, #16A34A for low.`;
+  `You are a senior clinical triage reviewer re-assessing a message flagged as uncertain or high acuity. Acuity TRIAGE only — never a definitive diagnosis. ` +
+  `Respond with ONLY a JSON object of exactly this shape, additionally including "recommendation":"one actionable next step for the clinician", ` +
+  `and always populate immediateActions and suggestedSpecialties: ${SHAPE}`;
 
 serve(async (req) => {
   const cors = buildCors(req);
@@ -69,14 +76,15 @@ serve(async (req) => {
     const flag = RED_FLAGS.find((f) => lower.includes(f));
 
     if (flag) {
-      result = {
-        classification: "stat",
-        acuity_level: "high",
+      result = sanitize({
+        suggestedUrgency: "High",
+        suggestedSpecialty: "Emergency Medicine",
+        reasoning: `Deterministic red-flag matched: "${flag}".`,
+        confidence: 100,
         score: 95,
-        color: "#DC2626",
-        rationale: `Deterministic red-flag matched: "${flag}".`,
-        confidence: 1,
-      };
+        extractedKeywords: [flag],
+        immediateActions: ["Escalate immediately to the on-call clinician"],
+      });
     } else {
       // LAYER 1 — cheap fast classifier
       const fast = await callModel("fast", FAST_PROMPT, String(message_text));
@@ -86,13 +94,14 @@ serve(async (req) => {
       model_name = fast.model;
 
       // LAYER 2 — frontier escalation
-      if (result.confidence < 0.7 || result.classification === "stat" || result.score >= 80) {
+      if (result.confidence < 70 || result.suggestedUrgency === "High" || result.score >= 80) {
         const frontier = await callModel(
           "frontier",
           FRONTIER_PROMPT,
           `Message: ${message_text}\n\nInitial assessment: ${JSON.stringify(result)}`,
+          result,
         );
-        result = { ...result, ...frontier.result };
+        result = frontier.result;
         source_layer = "frontier";
         model_provider = frontier.provider;
         model_name = frontier.model;
@@ -106,12 +115,20 @@ serve(async (req) => {
       source_id: source_id || null,
       message_text,
       classification: result.classification,
-      acuity_level: result.acuity_level,
+      acuity_level: result.suggestedUrgency,
       score: result.score,
-      color: result.color,
-      rationale: result.rationale,
+      color: URGENCY_COLOR[result.suggestedUrgency],
+      rationale: result.reasoning,
       recommendation: result.recommendation || null,
       confidence: result.confidence,
+      service_category: result.serviceCategory,
+      hospital_priority: result.hospitalPriority,
+      risk_level: result.riskLevel,
+      estimated_response_time: result.estimatedResponseTime,
+      extracted_keywords: result.extractedKeywords,
+      immediate_actions: result.immediateActions,
+      suggested_specialty: result.suggestedSpecialty,
+      suggested_specialties: result.suggestedSpecialties,
       source_layer,
       model_provider,
       model_name,
@@ -119,7 +136,7 @@ serve(async (req) => {
     }).select().single();
 
     if (error) throw error;
-    return json(data);
+    return json({ ...data, ...result });
   } catch (error) {
     console.error("Acuity engine error:", error);
     return json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);

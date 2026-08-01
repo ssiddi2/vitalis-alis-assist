@@ -60,18 +60,26 @@ export type Database = {
           confidence: number | null
           created_at: string
           created_by: string | null
+          estimated_response_time: string | null
+          extracted_keywords: Json | null
           hospital_id: string
+          hospital_priority: string | null
           id: string
+          immediate_actions: Json | null
           message_text: string | null
           model_name: string | null
           model_provider: string | null
           patient_id: string | null
           rationale: string | null
           recommendation: string | null
+          risk_level: string | null
           score: number | null
+          service_category: string | null
           source_id: string | null
           source_layer: string | null
           source_table: string | null
+          suggested_specialties: Json | null
+          suggested_specialty: string | null
         }
         Insert: {
           acuity_level?: string | null
@@ -80,18 +88,26 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           created_by?: string | null
+          estimated_response_time?: string | null
+          extracted_keywords?: Json | null
           hospital_id: string
+          hospital_priority?: string | null
           id?: string
+          immediate_actions?: Json | null
           message_text?: string | null
           model_name?: string | null
           model_provider?: string | null
           patient_id?: string | null
           rationale?: string | null
           recommendation?: string | null
+          risk_level?: string | null
           score?: number | null
+          service_category?: string | null
           source_id?: string | null
           source_layer?: string | null
           source_table?: string | null
+          suggested_specialties?: Json | null
+          suggested_specialty?: string | null
         }
         Update: {
           acuity_level?: string | null
@@ -100,18 +116,26 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           created_by?: string | null
+          estimated_response_time?: string | null
+          extracted_keywords?: Json | null
           hospital_id?: string
+          hospital_priority?: string | null
           id?: string
+          immediate_actions?: Json | null
           message_text?: string | null
           model_name?: string | null
           model_provider?: string | null
           patient_id?: string | null
           rationale?: string | null
           recommendation?: string | null
+          risk_level?: string | null
           score?: number | null
+          service_category?: string | null
           source_id?: string | null
           source_layer?: string | null
           source_table?: string | null
+          suggested_specialties?: Json | null
+          suggested_specialty?: string | null
         }
         Relationships: []
       }
