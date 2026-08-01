@@ -162,7 +162,8 @@ export function NotificationCenter() {
                     </div>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>
