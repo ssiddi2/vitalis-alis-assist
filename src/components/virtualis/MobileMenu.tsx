@@ -11,6 +11,7 @@ interface MobileMenuProps {
 
 export function MobileMenu({ currentTime }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
