@@ -26,6 +26,7 @@ import ROICalculator from "./pages/ROICalculator";
 import SmartLaunch from "./pages/SmartLaunch";
 import SmartCallback from "./pages/SmartCallback";
 import Demo from "./pages/Demo";
+import CommandCenter from "./pages/CommandCenter";
 import { SmartContextBanner } from "@/components/virtualis/SmartContextBanner";
 
 const queryClient = new QueryClient({
