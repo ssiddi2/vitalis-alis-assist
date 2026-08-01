@@ -2407,7 +2407,15 @@ export type Database = {
         | "procedure"
       note_status: "draft" | "pending_signature" | "signed" | "amended"
       note_type: "progress" | "consult" | "discharge" | "procedure"
-      order_status: "staged" | "approved" | "sent" | "cancelled"
+      order_status:
+        | "staged"
+        | "approved"
+        | "sent"
+        | "cancelled"
+        | "signed"
+        | "pushed"
+        | "push_failed"
+        | "rejected"
       patient_type: "inpatient" | "outpatient" | "both"
       prescription_status: "draft" | "signed" | "sent" | "filled" | "cancelled"
       referral_status:
@@ -2596,7 +2604,16 @@ export const Constants = {
       ],
       note_status: ["draft", "pending_signature", "signed", "amended"],
       note_type: ["progress", "consult", "discharge", "procedure"],
-      order_status: ["staged", "approved", "sent", "cancelled"],
+      order_status: [
+        "staged",
+        "approved",
+        "sent",
+        "cancelled",
+        "signed",
+        "pushed",
+        "push_failed",
+        "rejected",
+      ],
       patient_type: ["inpatient", "outpatient", "both"],
       prescription_status: ["draft", "signed", "sent", "filled", "cancelled"],
       referral_status: ["draft", "sent", "scheduled", "completed", "cancelled"],
