@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Brain, Clock, Stethoscope, Sparkles, Loader2 } from 'lucide-react';
+import { LiveAcuityCard } from '@/components/virtualis/acuity/LiveAcuityCard';
 import type { ConsultUrgency } from '@/types/team';
 
 interface ConsultRequestModalProps {
@@ -156,6 +157,15 @@ export function ConsultRequestModal({ isOpen, onClose, patientId, patientName }:
             <Label htmlFor="reason">Reason for Consult</Label>
             <Textarea id="reason" placeholder="Describe the clinical question or concern..." value={reason} onChange={e => setReason(e.target.value)} rows={4} />
           </div>
+
+          <LiveAcuityCard
+            clinicalReason={reason}
+            patientInfo={`Patient: ${patientName}`}
+            patientId={patientId}
+            selectedSpecialty={specialty}
+            onSpecialtySelect={setSpecialty}
+          />
+
 
           {/* AI Thread Toggle */}
           <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">

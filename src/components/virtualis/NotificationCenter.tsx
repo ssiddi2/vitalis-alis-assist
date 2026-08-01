@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Bell, Check, CheckCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLatestAcuityMap, ACUITY_RANK } from '@/hooks/useAcuity';
+import { AcuitySignalBars } from '@/components/virtualis/acuity/AcuitySignalBars';
+import { AcuityBadge } from '@/components/virtualis/acuity/AcuityBadge';
+import { AcuityAvatar } from '@/components/virtualis/acuity/AcuityAvatar';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -32,6 +36,18 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const acuityMap = useLatestAcuityMap('notifications', notifications.map(n => n.id));
+
+  // Sort by acuity (High → Moderate → Low), unscored last, then recency.
+  const sorted = useMemo(() => {
+    return [...notifications].sort((a, b) => {
+      const ra = acuityMap[a.id] ? ACUITY_RANK[acuityMap[a.id].level] : 3;
+      const rb = acuityMap[b.id] ? ACUITY_RANK[acuityMap[b.id].level] : 3;
+      if (ra !== rb) return ra - rb;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [notifications, acuityMap]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -110,7 +126,9 @@ export function NotificationCenter() {
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {notifications.map((notif) => (
+              {sorted.map((notif) => {
+                const acuity = acuityMap[notif.id];
+                return (
                 <button
                   key={notif.id}
                   onClick={() => markAsRead(notif.id)}
@@ -121,12 +139,21 @@ export function NotificationCenter() {
                 >
                   <div className="flex items-start gap-2">
                     {!notif.read && <span className="w-2 h-2 bg-primary rounded-full mt-1.5 flex-shrink-0" />}
+                    <AcuityAvatar
+                      level={acuity?.level}
+                      unread={!notif.read}
+                      fallback={notif.title.slice(0, 2).toUpperCase()}
+                      className="h-7 w-7"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
+                        {acuity && <AcuitySignalBars level={acuity.level} unread={!notif.read} />}
                         <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase', TYPE_COLORS[notif.type] || TYPE_COLORS.message)}>
                           {notif.type.replace(/_/g, ' ')}
                         </span>
+                        {acuity && <AcuityBadge level={acuity.level} confidence={acuity.confidence} />}
                       </div>
+
                       <p className="text-xs font-medium text-foreground truncate">{notif.title}</p>
                       {notif.body && <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{notif.body}</p>}
                       <p className="text-[9px] text-muted-foreground mt-1">
@@ -135,7 +162,8 @@ export function NotificationCenter() {
                     </div>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>
