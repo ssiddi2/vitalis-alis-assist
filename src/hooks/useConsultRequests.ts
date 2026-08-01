@@ -9,7 +9,9 @@ import type { ConsultRequest, CreateConsultInput, ConsultStatus } from '@/types/
 export function useConsultRequests(patientId?: string) {
   const { user } = useAuth();
   const { selectedHospital } = useHospital();
+  const { scoreMessage } = useAcuity();
   const [consults, setConsults] = useState<ConsultRequest[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
