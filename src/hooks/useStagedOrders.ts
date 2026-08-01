@@ -107,8 +107,16 @@ export function useStagedOrders({ patientId, useDemoData = true, demoOrders = []
     }
   }, [useDemoData, user?.id]);
 
-  // Approve an order
-  const approveOrder = useCallback(async (orderId: string) => {
+  // Approve an order. When `finalStatus` is supplied the lifecycle helper has
+  // already persisted the transition — only sync local state.
+  const approveOrder = useCallback(async (orderId: string, finalStatus?: StagedOrder['status']) => {
+    if (finalStatus) {
+      setOrders(prev => prev.map(order =>
+        order.id === orderId ? { ...order, status: finalStatus } : order
+      ));
+      return;
+    }
+
     if (useDemoData) {
       setOrders(prev => prev.map(order => 
         order.id === orderId ? { ...order, status: 'approved' as const } : order
