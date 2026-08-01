@@ -220,14 +220,73 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
               </div>
             </div>
           ))}
+
+          {/* Denial-risk meter */}
+          {denialRisk != null && (
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">02 — Denial risk</p>
+                <span className="text-[10px] text-muted-foreground">
+                  {cleanClaim != null && <>Clean claim <span className="font-semibold text-foreground">{cleanClaim}%</span></>}
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${denialRisk}%`,
+                      backgroundColor: denialRisk >= 60 ? '#EF4444' : denialRisk >= 30 ? '#F59E0B' : '#10B981',
+                    }}
+                  />
+                </div>
+                <span className="font-mono text-[11px] font-semibold text-foreground">{denialRisk}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Point-of-care denial alerts */}
+          {denialIssues.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">03 — Pre-submission alerts</p>
+              {denialIssues.map((i, idx) => (
+                <div key={idx} className="rounded-lg border border-border/50 bg-background/70 p-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn('h-1.5 w-1.5 rounded-full', SEVERITY[i.severity].dot)} />
+                    <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                      {SEVERITY[i.severity].label} · {i.category}
+                    </span>
+                    {i.code && <span className="rounded bg-secondary px-1 py-0.5 font-mono text-[9px]">{i.code}</span>}
+                  </div>
+                  <p className="mt-0.5 text-[10px] leading-snug text-foreground">{i.message}</p>
+                  {i.fix && <p className="text-[9px] leading-snug text-muted-foreground">Fix: {i.fix}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
           <button
-            onClick={postCharges}
+            onClick={() => {
+              if (hasHighRisk && !confirmHighRisk) { setConfirmHighRisk(true); return; }
+              postCharges();
+            }}
             disabled={posting || !patientId || !suggestions.some((c) => accepted[c.code])}
-            className="w-full rounded-full bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={cn(
+              'w-full rounded-full px-3 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-90 disabled:opacity-50',
+              hasHighRisk && confirmHighRisk
+                ? 'bg-[#EF4444] text-white'
+                : 'bg-primary text-primary-foreground',
+            )}
           >
-            {posting ? 'Posting…' : 'Post accepted charges →'}
+            {posting ? 'Generating…' : hasHighRisk && confirmHighRisk ? 'Generate anyway →' : 'Generate claim →'}
           </button>
+          {hasHighRisk && confirmHighRisk && !posting && (
+            <p className="text-center text-[9px] text-muted-foreground">
+              Unresolved high-severity denial risk — confirm to submit.
+            </p>
+          )}
         </div>
+
       )}
 
 
