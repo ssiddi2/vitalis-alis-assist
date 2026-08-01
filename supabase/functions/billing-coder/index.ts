@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
-import { suggestBilling } from "../_shared/billing.ts";
+import { suggestBilling, checkDenialRisk, type SuggestedCode } from "../_shared/billing.ts";
 
 const env = (k: string) => Deno.env.get(k) || "";
 

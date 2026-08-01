@@ -80,3 +80,80 @@ export async function suggestBilling(input: {
     return EMPTY;
   }
 }
+
+/* ---------------- Denial-risk prediction (single source of truth) ---------------- */
+
+export type IssueSeverity = "high" | "medium" | "low";
+
+export interface DenialIssue {
+  severity: IssueSeverity;
+  category: string;
+  message: string;
+  fix: string;
+  code?: string;
+}
+
+export interface DenialRiskResult {
+  denialRisk: number | null;
+  cleanClaimProbability: number | null;
+  issues: DenialIssue[];
+}
+
+const DENIAL_EMPTY: DenialRiskResult = { denialRisk: null, cleanClaimProbability: null, issues: [] };
+
+const DENIAL_SYSTEM =
+  "You are an expert claims-adjudication reviewer predicting DENIAL RISK BEFORE a claim is submitted. " +
+  "Evaluate: medical necessity (does each linked ICD-10 support its CPT), code specificity, missing or incorrect " +
+  "modifiers, NCCI bundling/mutually-exclusive edits, prior-authorization likelihood, documentation gaps, and " +
+  "coverage policy (LCD/NCD). Be concrete and payer-realistic; do not invent issues that documentation already supports. " +
+  'Respond with ONLY a JSON object of exactly this shape: {"denialRisk":0-100,"cleanClaimProbability":0-100,' +
+  '"issues":[{"severity":"high"|"medium"|"low","category":"","message":"","fix":"","code":""}]}';
+
+const pct = (v: unknown): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : null;
+};
+
+function normalizeIssues(raw: unknown): DenialIssue[] {
+  if (!Array.isArray(raw)) return [];
+  return (raw as Record<string, unknown>[])
+    .filter((i) => i && str(i.message))
+    .map((i) => ({
+      severity: (["high", "medium", "low"].includes(str(i.severity)) ? str(i.severity) : "low") as IssueSeverity,
+      category: str(i.category) || "General",
+      message: str(i.message),
+      fix: str(i.fix),
+      ...(str(i.code) ? { code: str(i.code).toUpperCase() } : {}),
+    }))
+    .slice(0, 10);
+}
+
+/** Predicts pre-submission denial risk for a set of codes. Never throws. */
+export async function checkDenialRisk(input: {
+  codes: Array<{ code: string; type: string; description?: string }>;
+  noteContent?: string;
+  payer?: string;
+}): Promise<DenialRiskResult> {
+  const codes = (input.codes || []).filter((c) => c && str(c.code));
+  if (!codes.length) return DENIAL_EMPTY;
+
+  const content = [
+    input.payer ? `Payer: ${str(input.payer)}` : "",
+    `Codes on claim:\n${codes.map((c) => `- ${c.type} ${c.code}${c.description ? ` — ${c.description}` : ""}`).join("\n")}`,
+    str(input.noteContent) ? `Supporting documentation:\n${str(input.noteContent)}` : "Supporting documentation: not provided.",
+  ].filter(Boolean).join("\n\n");
+
+  try {
+    const { text } = await completeText({ system: DENIAL_SYSTEM, messages: [{ role: "user", content }], json: true });
+    const parsed = extractJson(text);
+    if (!parsed) return DENIAL_EMPTY;
+    return {
+      denialRisk: pct(parsed.denialRisk),
+      cleanClaimProbability: pct(parsed.cleanClaimProbability),
+      issues: normalizeIssues(parsed.issues),
+    };
+  } catch (e) {
+    console.warn("billing: denial-risk check failed —", e instanceof Error ? e.message : e);
+    return DENIAL_EMPTY;
+  }
+}
