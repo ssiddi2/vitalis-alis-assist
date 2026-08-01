@@ -169,8 +169,16 @@ export function useStagedOrders({ patientId, useDemoData = true, demoOrders = []
     }
   }, [orders, useDemoData]);
 
-  // Cancel an order
-  const cancelOrder = useCallback(async (orderId: string) => {
+  // Cancel an order. When `alreadyPersisted` the lifecycle helper already wrote
+  // the 'rejected' status — only sync local state.
+  const cancelOrder = useCallback(async (orderId: string, alreadyPersisted?: boolean) => {
+    if (alreadyPersisted) {
+      setOrders(prev => prev.map(order =>
+        order.id === orderId ? { ...order, status: 'rejected' as const } : order
+      ));
+      return;
+    }
+
     if (useDemoData) {
       setOrders(prev => prev.filter(order => order.id !== orderId));
       toast.success('Order cancelled');
