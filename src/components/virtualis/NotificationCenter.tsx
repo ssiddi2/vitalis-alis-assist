@@ -37,6 +37,18 @@ export function NotificationCenter() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const acuityMap = useLatestAcuityMap('notifications', notifications.map(n => n.id));
+
+  // Sort by acuity (High → Moderate → Low), unscored last, then recency.
+  const sorted = useMemo(() => {
+    return [...notifications].sort((a, b) => {
+      const ra = acuityMap[a.id] ? ACUITY_RANK[acuityMap[a.id].level] : 3;
+      const rb = acuityMap[b.id] ? ACUITY_RANK[acuityMap[b.id].level] : 3;
+      if (ra !== rb) return ra - rb;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [notifications, acuityMap]);
+
   useEffect(() => {
     if (!user?.id) return;
 
