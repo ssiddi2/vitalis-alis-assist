@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { getCaller } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const user = await getCaller(req);
+  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   const API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
   const AGENT_ID = Deno.env.get("ELEVENLABS_AGENT_ID");
