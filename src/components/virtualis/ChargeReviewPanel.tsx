@@ -22,6 +22,20 @@ interface SuggestedCode {
   fee: number | null;
 }
 
+interface DenialIssue {
+  severity: 'high' | 'medium' | 'low';
+  category: string;
+  message: string;
+  fix: string;
+  code?: string;
+}
+
+const SEVERITY: Record<DenialIssue['severity'], { dot: string; label: string }> = {
+  high: { dot: 'bg-[#EF4444]', label: 'High' },
+  medium: { dot: 'bg-[#F59E0B]', label: 'Med' },
+  low: { dot: 'bg-[#10B981]', label: 'Low' },
+};
+
 export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, noteId }: ChargeReviewPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const { selectedHospital } = useHospital();
@@ -29,22 +43,32 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
   const [suggestions, setSuggestions] = useState<SuggestedCode[]>([]);
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
   const [posting, setPosting] = useState(false);
+  const [denialRisk, setDenialRisk] = useState<number | null>(null);
+  const [cleanClaim, setCleanClaim] = useState<number | null>(null);
+  const [denialIssues, setDenialIssues] = useState<DenialIssue[]>([]);
+  const [confirmHighRisk, setConfirmHighRisk] = useState(false);
 
   const totalRevenue = billingEvents.reduce((sum, e) => sum + (e.estimated_revenue || 0), 0);
   const pendingEvents = billingEvents.filter(e => e.status === 'pending');
   const submittedEvents = billingEvents.filter(e => e.status === 'submitted');
   const acceptedEvents = billingEvents.filter(e => e.status === 'accepted');
   const rejectedEvents = billingEvents.filter(e => e.status === 'rejected');
+  const hasHighRisk = denialIssues.some(i => i.severity === 'high');
 
   const runCoder = async () => {
     if (!selectedHospital) return;
     setCoding(true);
     setSuggestions([]);
     setAccepted({});
+    setDenialIssues([]);
+    setDenialRisk(null);
+    setCleanClaim(null);
+    setConfirmHighRisk(false);
     try {
       const { data, error } = await supabase.functions.invoke('billing-coder', {
         body: {
           hospital_id: selectedHospital.id,
+          patient_id: patientId,
           encounterSummary: encounterSummary || 'Clinical encounter documented in the chart for this patient.',
           note_id: noteId,
         },
@@ -53,6 +77,9 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
       const codes: SuggestedCode[] = data?.codes || [];
       setSuggestions(codes);
       setAccepted(Object.fromEntries(codes.map(c => [c.code, true])));
+      setDenialRisk(data?.denialRisk ?? null);
+      setCleanClaim(data?.cleanClaimProbability ?? null);
+      setDenialIssues(data?.denialIssues || []);
       if (!codes.length) toast({ title: 'No codes suggested', description: 'Documentation did not support any codes.' });
     } catch (e) {
       toast({ title: 'Coding failed', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
@@ -60,6 +87,7 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
       setCoding(false);
     }
   };
+
 
   const postCharges = async () => {
     if (!patientId) return;
@@ -77,9 +105,14 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
         coding_confidence: picked.reduce((s, c) => s + c.confidence, 0) / picked.length,
       });
       if (error) throw error;
-      toast({ title: 'Charges posted', description: `${picked.length} codes added to the superbill.` });
+      toast({ title: 'Claim generated', description: `${picked.length} codes added to the superbill.` });
       setSuggestions([]);
+      setDenialIssues([]);
+      setDenialRisk(null);
+      setCleanClaim(null);
+      setConfirmHighRisk(false);
     } catch (e) {
+
       toast({ title: 'Could not post charges', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
     } finally {
       setPosting(false);
@@ -187,14 +220,73 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
               </div>
             </div>
           ))}
+
+          {/* Denial-risk meter */}
+          {denialRisk != null && (
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">02 — Denial risk</p>
+                <span className="text-[10px] text-muted-foreground">
+                  {cleanClaim != null && <>Clean claim <span className="font-semibold text-foreground">{cleanClaim}%</span></>}
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${denialRisk}%`,
+                      backgroundColor: denialRisk >= 60 ? '#EF4444' : denialRisk >= 30 ? '#F59E0B' : '#10B981',
+                    }}
+                  />
+                </div>
+                <span className="font-mono text-[11px] font-semibold text-foreground">{denialRisk}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Point-of-care denial alerts */}
+          {denialIssues.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">03 — Pre-submission alerts</p>
+              {denialIssues.map((i, idx) => (
+                <div key={idx} className="rounded-lg border border-border/50 bg-background/70 p-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn('h-1.5 w-1.5 rounded-full', SEVERITY[i.severity].dot)} />
+                    <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                      {SEVERITY[i.severity].label} · {i.category}
+                    </span>
+                    {i.code && <span className="rounded bg-secondary px-1 py-0.5 font-mono text-[9px]">{i.code}</span>}
+                  </div>
+                  <p className="mt-0.5 text-[10px] leading-snug text-foreground">{i.message}</p>
+                  {i.fix && <p className="text-[9px] leading-snug text-muted-foreground">Fix: {i.fix}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
           <button
-            onClick={postCharges}
+            onClick={() => {
+              if (hasHighRisk && !confirmHighRisk) { setConfirmHighRisk(true); return; }
+              postCharges();
+            }}
             disabled={posting || !patientId || !suggestions.some((c) => accepted[c.code])}
-            className="w-full rounded-full bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={cn(
+              'w-full rounded-full px-3 py-1.5 text-[11px] font-medium transition-opacity hover:opacity-90 disabled:opacity-50',
+              hasHighRisk && confirmHighRisk
+                ? 'bg-[#EF4444] text-white'
+                : 'bg-primary text-primary-foreground',
+            )}
           >
-            {posting ? 'Posting…' : 'Post accepted charges →'}
+            {posting ? 'Generating…' : hasHighRisk && confirmHighRisk ? 'Generate anyway →' : 'Generate claim →'}
           </button>
+          {hasHighRisk && confirmHighRisk && !posting && (
+            <p className="text-center text-[9px] text-muted-foreground">
+              Unresolved high-severity denial risk — confirm to submit.
+            </p>
+          )}
         </div>
+
       )}
 
 
