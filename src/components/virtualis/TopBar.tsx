@@ -78,7 +78,8 @@ export function TopBar() {
   };
 
   return (
-    <header className="glass-strong border-b border-border px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-50">
+    <header className="sticky top-0 z-50 px-2 sm:px-4 pt-2 sm:pt-3 pb-1 sm:pb-2">
+      <div className="glass-strong rounded-full border border-border px-3 sm:px-5 py-2 flex items-center justify-between">
       {/* Logo and Hospital */}
       <div className="flex items-center gap-2 sm:gap-4 min-w-0">
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -90,7 +91,7 @@ export function TopBar() {
             <div className="w-px h-6 sm:h-8 bg-border hidden sm:block" />
             <button
               onClick={handleBackToHospitals}
-              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-secondary/50 border border-border hover:bg-secondary transition-colors group min-w-0"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-secondary/60 border border-border hover:bg-accent transition-colors group min-w-0"
             >
               <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
               <Building2 className={`w-3 h-3 sm:w-4 sm:h-4 ${getEmrColor()} flex-shrink-0 hidden sm:block`} />
@@ -119,16 +120,16 @@ export function TopBar() {
         <AmbientStatusIndicator isAmbient={isAmbient} onToggle={() => setIsAmbient(prev => !prev)} />
 
         {/* Nav Links */}
-        <button onClick={() => navigate('/schedule')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+        <button onClick={() => navigate('/schedule')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
           <CalendarDays className="w-3 h-3" /> Schedule
         </button>
-        <button onClick={() => navigate('/clinic')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+        <button onClick={() => navigate('/clinic')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
           <Users className="w-3 h-3" /> Clinic
         </button>
-        <button onClick={() => navigate('/billing')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+        <button onClick={() => navigate('/billing')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
           <DollarSign className="w-3 h-3" /> RCM
         </button>
-        <button onClick={() => navigate('/quality')} className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-border transition-all">
+        <button onClick={() => navigate('/quality')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
           <BarChart3 className="w-3 h-3" /> Quality
         </button>
 
@@ -139,7 +140,7 @@ export function TopBar() {
         <DirectMessageSidebar />
 
         {/* Time Display */}
-        <div className="font-mono text-xs text-muted-foreground px-4 py-2 bg-secondary/50 border border-border rounded-xl">
+        <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground px-3 py-1.5 bg-secondary/60 border border-border rounded-full">
           {currentTime}
         </div>
 
@@ -150,7 +151,7 @@ export function TopBar() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="rounded-xl h-9 gap-2 bg-secondary/50 border-border hover:bg-secondary"
+                className="rounded-full h-9 gap-2 bg-card border-border hover:bg-secondary"
               >
                 <User className="w-4 h-4" />
                 <span className="max-w-[100px] truncate text-sm">
@@ -159,7 +160,7 @@ export function TopBar() {
                 {getRoleBadge()}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl border-border shadow-elevated">
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border shadow-elevated">
               <div className="px-3 py-2">
                 <p className="text-sm font-medium">{user.email}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 capitalize">{role} Access</p>
@@ -182,7 +183,7 @@ export function TopBar() {
             onClick={() => navigate('/auth')}
             variant="outline"
             size="sm"
-            className="rounded-xl h-9 bg-secondary/50 border-border hover:bg-secondary"
+            className="rounded-full h-9 bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
           >
             Sign In
           </Button>
@@ -198,7 +199,7 @@ export function TopBar() {
                 <User className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl border-border shadow-elevated">
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border shadow-elevated">
               <div className="px-3 py-2">
                 <p className="text-sm font-medium">{user.email}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 capitalize">{role} Access</p>
@@ -213,6 +214,7 @@ export function TopBar() {
         )}
         
         <MobileMenu currentTime={currentTime} />
+      </div>
       </div>
     </header>
   );
