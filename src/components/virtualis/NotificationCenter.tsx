@@ -126,7 +126,9 @@ export function NotificationCenter() {
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {notifications.map((notif) => (
+              {sorted.map((notif) => {
+                const acuity = acuityMap[notif.id];
+                return (
                 <button
                   key={notif.id}
                   onClick={() => markAsRead(notif.id)}
@@ -137,12 +139,21 @@ export function NotificationCenter() {
                 >
                   <div className="flex items-start gap-2">
                     {!notif.read && <span className="w-2 h-2 bg-primary rounded-full mt-1.5 flex-shrink-0" />}
+                    <AcuityAvatar
+                      level={acuity?.level}
+                      unread={!notif.read}
+                      fallback={notif.title.slice(0, 2).toUpperCase()}
+                      className="h-7 w-7"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
+                        {acuity && <AcuitySignalBars level={acuity.level} unread={!notif.read} />}
                         <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase', TYPE_COLORS[notif.type] || TYPE_COLORS.message)}>
                           {notif.type.replace(/_/g, ' ')}
                         </span>
+                        {acuity && <AcuityBadge level={acuity.level} confidence={acuity.confidence} />}
                       </div>
+
                       <p className="text-xs font-medium text-foreground truncate">{notif.title}</p>
                       {notif.body && <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{notif.body}</p>}
                       <p className="text-[9px] text-muted-foreground mt-1">
