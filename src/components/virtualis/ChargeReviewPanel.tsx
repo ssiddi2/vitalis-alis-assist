@@ -22,6 +22,20 @@ interface SuggestedCode {
   fee: number | null;
 }
 
+interface DenialIssue {
+  severity: 'high' | 'medium' | 'low';
+  category: string;
+  message: string;
+  fix: string;
+  code?: string;
+}
+
+const SEVERITY: Record<DenialIssue['severity'], { dot: string; label: string }> = {
+  high: { dot: 'bg-[#EF4444]', label: 'High' },
+  medium: { dot: 'bg-[#F59E0B]', label: 'Med' },
+  low: { dot: 'bg-[#10B981]', label: 'Low' },
+};
+
 export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, noteId }: ChargeReviewPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const { selectedHospital } = useHospital();
@@ -29,22 +43,32 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
   const [suggestions, setSuggestions] = useState<SuggestedCode[]>([]);
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
   const [posting, setPosting] = useState(false);
+  const [denialRisk, setDenialRisk] = useState<number | null>(null);
+  const [cleanClaim, setCleanClaim] = useState<number | null>(null);
+  const [denialIssues, setDenialIssues] = useState<DenialIssue[]>([]);
+  const [confirmHighRisk, setConfirmHighRisk] = useState(false);
 
   const totalRevenue = billingEvents.reduce((sum, e) => sum + (e.estimated_revenue || 0), 0);
   const pendingEvents = billingEvents.filter(e => e.status === 'pending');
   const submittedEvents = billingEvents.filter(e => e.status === 'submitted');
   const acceptedEvents = billingEvents.filter(e => e.status === 'accepted');
   const rejectedEvents = billingEvents.filter(e => e.status === 'rejected');
+  const hasHighRisk = denialIssues.some(i => i.severity === 'high');
 
   const runCoder = async () => {
     if (!selectedHospital) return;
     setCoding(true);
     setSuggestions([]);
     setAccepted({});
+    setDenialIssues([]);
+    setDenialRisk(null);
+    setCleanClaim(null);
+    setConfirmHighRisk(false);
     try {
       const { data, error } = await supabase.functions.invoke('billing-coder', {
         body: {
           hospital_id: selectedHospital.id,
+          patient_id: patientId,
           encounterSummary: encounterSummary || 'Clinical encounter documented in the chart for this patient.',
           note_id: noteId,
         },
@@ -53,6 +77,9 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
       const codes: SuggestedCode[] = data?.codes || [];
       setSuggestions(codes);
       setAccepted(Object.fromEntries(codes.map(c => [c.code, true])));
+      setDenialRisk(data?.denialRisk ?? null);
+      setCleanClaim(data?.cleanClaimProbability ?? null);
+      setDenialIssues(data?.denialIssues || []);
       if (!codes.length) toast({ title: 'No codes suggested', description: 'Documentation did not support any codes.' });
     } catch (e) {
       toast({ title: 'Coding failed', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
@@ -60,6 +87,7 @@ export function ChargeReviewPanel({ billingEvents, patientId, encounterSummary, 
       setCoding(false);
     }
   };
+
 
   const postCharges = async () => {
     if (!patientId) return;
