@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
+import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { callModel, sanitize, SPECIALTIES, URGENCY_COLOR, type AcuityResult } from "./providers.ts";
 
 // LAYER 0 — deterministic red-flag rules (no LLM cost).
@@ -44,8 +45,12 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const rl = await checkRateLimit(admin, user.id, "acuity-engine", { limit: envLimit("RL_ACUITY", 60), windowSec: 60 });
+    if (!rl.allowed) return json({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
+
     const body = await req.json();
     const { action, hospital_id } = body;
+
 
     if (!hospital_id) return json({ error: "Missing hospital_id" }, 400);
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) {

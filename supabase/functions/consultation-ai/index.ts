@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
+import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { completeText } from "../_shared/llm.ts";
 
 let corsHeaders: Record<string, string> = {};
@@ -89,6 +90,9 @@ serve(async (req) => {
 
     const db = supabaseAdmin();
     const userId: string = user.id;
+
+    const rl = await checkRateLimit(db, userId, "consultation-ai", { limit: envLimit("RL_CONSULT", 40), windowSec: 60 });
+    if (!rl.allowed) return jsonRes({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
 
     switch (action) {
       // ── Create thread + load context + AI welcome ──

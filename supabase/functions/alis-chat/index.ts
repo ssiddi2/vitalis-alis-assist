@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
+import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 
 
 const ALIS_SYSTEM_PROMPT = `You are ALIS (Ambient Learning Intelligence System), an advanced clinical AI assistant integrated into Virtualis, a universal clinical layer for healthcare.
@@ -651,7 +652,20 @@ serve(async (req) => {
       });
     }
 
+    const rateLimitClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const rl = await checkRateLimit(rateLimitClient, user.id, "alis-chat", { limit: envLimit("RL_ALIS", 30), windowSec: 60 });
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { messages, patientContext } = await req.json();
+    
+
     
     const useAnthropic = !!Deno.env.get("ANTHROPIC_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

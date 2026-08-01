@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
+import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { completeText } from "../_shared/llm.ts";
 
 const env = (k: string) => Deno.env.get(k) || "";
@@ -41,14 +42,19 @@ serve(async (req) => {
     const user = await getCaller(req);
     if (!user) return json({ error: "Unauthorized" }, 401);
 
+    const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
+
+    const rl = await checkRateLimit(admin, user.id, "generate-note", { limit: envLimit("RL_NOTE", 20), windowSec: 60 });
+    if (!rl.allowed) return json({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
+
     const { transcript, patientContext, hospital_id, note_type } = await req.json();
     if (!hospital_id) return json({ error: "hospital_id required" }, 400);
     if (!str(transcript)) return json({ error: "transcript required" }, 400);
 
-    const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) {
       return json({ error: "Forbidden" }, 403);
     }
+
 
     const content = [
       `Note type: ${str(note_type) || "progress"}`,
