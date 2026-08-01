@@ -123,18 +123,17 @@ serve(async (req) => {
           content: welcomeContent,
         });
 
-        // Auto-introduce the on-call specialist (e.g. Dr. Das for Cardiology)
-        const specialistSys = specialistSystemPrompt(specialty, sharedContext);
-        const specialist = SPECIALIST_ROSTER[specialty];
-        if (specialistSys && specialist) {
+        // Explicitly-AI specialty perspective intro
+        const perspectiveSys = specialtyPerspectivePrompt(specialty, sharedContext);
+        if (perspectiveSys) {
           const intro = await callAI([
-            { role: "system", content: specialistSys },
+            { role: "system", content: perspectiveSys },
             { role: "user", content: `Consult reason: ${reason}. Acknowledge the consult, note one or two key data points from the chart you'll focus on, and ask a focused clarifying question.` },
           ]) as string;
           await db.from("consultation_messages").insert({
             thread_id: thread.id,
-            sender_id: specialist.id,
-            sender_role: "specialist",
+            sender_id: SPECIALTY_SENDER_ID,
+            sender_role: "ai",
             content: intro,
           });
         }
@@ -240,13 +239,12 @@ serve(async (req) => {
           });
         }
 
-        // Auto-reply from the simulated on-call specialist when the primary clinician posts
+        // Explicitly-AI specialty perspective reply when the primary clinician posts
         let specialistMsg = null;
-        const specialistSys = specialistSystemPrompt(thread.specialty, sharedContext);
-        const specialist = SPECIALIST_ROSTER[thread.specialty];
-        if (senderRole === "primary_clinician" && specialistSys && specialist) {
+        const perspectiveSys = specialtyPerspectivePrompt(thread.specialty, sharedContext);
+        if (senderRole === "primary_clinician" && perspectiveSys) {
           const specReply = await callAI([
-            { role: "system", content: specialistSys },
+            { role: "system", content: perspectiveSys },
             ...historyMessages,
             { role: "user", content: `[primary_clinician]: ${content}` },
             { role: "user", content: "Generate your next reply in the thread." },
@@ -254,8 +252,8 @@ serve(async (req) => {
           if (specReply && specReply.trim().length > 5) {
             const { data } = await db.from("consultation_messages").insert({
               thread_id: threadId,
-              sender_id: specialist.id,
-              sender_role: "specialist",
+              sender_id: SPECIALTY_SENDER_ID,
+              sender_role: "ai",
               content: specReply,
             }).select().single();
             specialistMsg = data;
