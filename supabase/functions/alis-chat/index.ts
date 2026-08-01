@@ -652,7 +652,20 @@ serve(async (req) => {
       });
     }
 
+    const rateLimitClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const rl = await checkRateLimit(rateLimitClient, user.id, "alis-chat", { limit: envLimit("RL_ALIS", 30), windowSec: 60 });
+    if (!rl.allowed) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { messages, patientContext } = await req.json();
+    
+
     
     const useAnthropic = !!Deno.env.get("ANTHROPIC_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
