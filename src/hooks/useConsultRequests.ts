@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
+import { useAcuity } from '@/hooks/useAcuity';
 import type { ConsultRequest, CreateConsultInput, ConsultStatus } from '@/types/team';
+
 
 export function useConsultRequests(patientId?: string) {
   const { user } = useAuth();
