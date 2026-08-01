@@ -371,38 +371,44 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
     }
 
     case "suggest_billing_codes": {
-      // Generate billing code suggestions based on encounter details
-      const complexityMap: Record<string, { cpt: string[]; revenue: number }> = {
-        "new_patient_low": { cpt: ["99202"], revenue: 110 },
-        "new_patient_moderate": { cpt: ["99203"], revenue: 175 },
-        "new_patient_high": { cpt: ["99205"], revenue: 350 },
-        "established_patient_low": { cpt: ["99212"], revenue: 75 },
-        "established_patient_moderate": { cpt: ["99214"], revenue: 155 },
-        "established_patient_high": { cpt: ["99215"], revenue: 250 },
-        "consult_low": { cpt: ["99242"], revenue: 150 },
-        "consult_moderate": { cpt: ["99243"], revenue: 200 },
-        "consult_high": { cpt: ["99245"], revenue: 375 },
-        "critical_care_low": { cpt: ["99291"], revenue: 450 },
-        "critical_care_moderate": { cpt: ["99291"], revenue: 450 },
-        "critical_care_high": { cpt: ["99291", "99292"], revenue: 600 },
-        "procedure_low": { cpt: ["99213"], revenue: 110 },
-        "procedure_moderate": { cpt: ["99214"], revenue: 155 },
-        "procedure_high": { cpt: ["99215"], revenue: 250 },
-      };
+      const suggestion = await suggestBilling({
+        encounterSummary: args.note_summary,
+        encounterType: args.encounter_type,
+      });
+      const cpt = suggestion.codes.filter((c) => c.type === "CPT");
+      const icd = suggestion.codes.filter((c) => c.type === "ICD-10");
 
-      const key = `${args.encounter_type}_${args.complexity}`;
-      const codes = complexityMap[key] || complexityMap["established_patient_moderate"];
-      
+      let estimated_revenue = 0;
+      if (cpt.length && context.hospitalId) {
+        const { data: fees } = await supabase
+          .from("fee_schedule")
+          .select("code, amount")
+          .eq("hospital_id", context.hospitalId)
+          .eq("active", true)
+          .in("code", cpt.map((c) => c.code));
+        estimated_revenue = (fees || []).reduce((sum, f) => sum + Number(f.amount || 0), 0);
+      }
+
+      const avgConfidence = suggestion.codes.length
+        ? suggestion.codes.reduce((s, c) => s + c.confidence, 0) / suggestion.codes.length
+        : 0;
+
       return {
-        success: true,
-        message: `Suggested CPT codes: ${codes.cpt.join(", ")} (est. $${codes.revenue})`,
-        suggested_cpt: codes.cpt,
-        estimated_revenue: codes.revenue,
+        success: cpt.length > 0,
+        message: cpt.length
+          ? `Suggested CPT codes: ${cpt.map((c) => c.code).join(", ")}${estimated_revenue ? ` (est. $${estimated_revenue})` : ""}`
+          : "No billing codes could be justified from the documentation provided",
+        suggested_cpt: cpt.map((c) => c.code),
+        suggested_icd10: icd.map((c) => c.code),
+        codes: suggestion.codes,
+        em_level: suggestion.emLevel,
+        estimated_revenue,
         encounter_type: args.encounter_type,
-        complexity: args.complexity,
-        confidence: args.complexity === "high" ? 0.85 : args.complexity === "moderate" ? 0.9 : 0.95,
+        complexity: suggestion.mdmComplexity || args.complexity,
+        confidence: Number(avgConfidence.toFixed(2)),
       };
     }
+
 
     default:
       return { success: false, message: `Unknown tool: ${toolName}` };
