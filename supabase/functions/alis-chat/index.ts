@@ -676,7 +676,12 @@ serve(async (req) => {
     ];
 
     if (useAnthropic) {
-      return await runAnthropicChat(systemContent, messages, context, corsHeaders);
+      try {
+        return await runAnthropicChat(systemContent, messages, context, corsHeaders);
+      } catch (e) {
+        console.warn("alis-chat: Anthropic path failed, falling back to gateway —", e instanceof Error ? e.message : e);
+        if (!LOVABLE_API_KEY) throw e;
+      }
     }
 
     // First AI call (non-streaming) to detect tool calls

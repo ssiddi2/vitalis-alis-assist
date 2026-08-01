@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
+import { completeText } from "../_shared/llm.ts";
 
 let corsHeaders: Record<string, string> = {};
 
@@ -57,31 +58,15 @@ function buildSystemPrompt(role: "primary_clinician" | "specialist", specialty: 
   return `${base}\n\nYou are generating insights for the SPECIALIST (${specialty}). Focus on:\n- Presenting relevant history and data specific to ${specialty}\n- Highlighting pertinent positive/negative findings\n- Providing differential diagnosis support\n- Surfacing relevant imaging/lab trends for this specialty`;
 }
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const ALIS_MODEL = Deno.env.get("ALIS_MODEL") || "claude-sonnet-5";
-
-/** Anthropic Messages API (non-streaming). Returns the assistant text. */
-async function callAnthropic(messages: Array<{ role: string; content: string }>): Promise<string> {
-  const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
-  const convo = messages.filter((m) => m.role !== "system")
-    .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
-  const res = await fetch(ANTHROPIC_URL, {
-    method: "POST",
-    headers: {
-      "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-      "anthropic-version": "2023-06-01",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: ALIS_MODEL, max_tokens: 2048, system, messages: convo }),
-  });
-  if (!res.ok) throw new Error(`Anthropic error: ${res.status} ${await res.text()}`);
-  const data = await res.json();
-  return data.content?.[0]?.text || "";
-}
-
-// Call AI gateway
+// Non-streaming completions go through the shared failover chain.
 async function callAI(messages: Array<{ role: string; content: string }>, stream = false) {
-  if (!stream && Deno.env.get("ANTHROPIC_API_KEY")) return await callAnthropic(messages);
+  if (!stream) {
+    const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
+    const convo = messages.filter((m) => m.role !== "system")
+      .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
+    const { text } = await completeText({ system, messages: convo });
+    return text;
+  }
   const key = Deno.env.get("LOVABLE_API_KEY")!;
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -89,9 +74,7 @@ async function callAI(messages: Array<{ role: string; content: string }>, stream
     body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, stream }),
   });
   if (!res.ok) throw new Error(`AI error: ${res.status}`);
-  if (stream) return res;
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  return res;
 }
 
 serve(async (req) => {
