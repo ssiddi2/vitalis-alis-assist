@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Menu, Clock, Zap } from 'lucide-react';
+import { Menu, Clock, Zap, Radar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
