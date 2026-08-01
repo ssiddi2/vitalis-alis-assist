@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Bell, Check, CheckCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLatestAcuityMap, ACUITY_RANK } from '@/hooks/useAcuity';
+import { AcuitySignalBars } from '@/components/virtualis/acuity/AcuitySignalBars';
+import { AcuityBadge } from '@/components/virtualis/acuity/AcuityBadge';
+import { AcuityAvatar } from '@/components/virtualis/acuity/AcuityAvatar';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
