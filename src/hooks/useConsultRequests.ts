@@ -97,7 +97,7 @@ export function useConsultRequests(patientId?: string) {
         extracted_keywords: result.extractedKeywords,
         immediate_actions: result.immediateActions,
         suggested_specialty: result.suggestedSpecialty,
-        suggested_specialties: result.suggestedSpecialties,
+        suggested_specialties: result.suggestedSpecialties as unknown as never,
         created_by: user.id,
       });
     } catch (err) {
