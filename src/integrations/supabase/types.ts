@@ -1902,6 +1902,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          bucket: string
+          count: number
+          id: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          id?: string
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          id?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           completed_date: string | null
