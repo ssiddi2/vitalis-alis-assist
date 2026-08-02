@@ -155,7 +155,7 @@ export function ConsultRequestModal({ isOpen, onClose, patientId, patientName }:
 
           <div className="space-y-2">
             <Label htmlFor="reason">Reason for Consult</Label>
-            <Textarea id="reason" placeholder="Describe the clinical question or concern..." value={reason} onChange={e => setReason(e.target.value)} rows={4} />
+            <Textarea id="reason" placeholder="Describe the clinical question or concern..." value={reason} onChange={e => setReason(e.target.value)} rows={4} maxLength={4000} />
           </div>
 
           <LiveAcuityCard

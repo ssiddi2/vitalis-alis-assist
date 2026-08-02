@@ -4,6 +4,11 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { completeText } from "../_shared/llm.ts";
+import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
+
+const CONSULT_ACTIONS = [
+  "create_thread", "send_message", "generate_note", "refresh_context", "suggest_urgency",
+] as const;
 
 let corsHeaders: Record<string, string> = {};
 
@@ -86,7 +91,21 @@ serve(async (req) => {
     const user = await getCaller(req);
     if (!user) return jsonRes({ error: "Unauthorized" }, 401);
 
-    const { action, threadId, content, patientId, hospitalId, specialty, reason, consultRequestId } = await req.json();
+    const body = await req.json();
+    const consultRequestId = body?.consultRequestId;
+    let action: string | undefined, threadId: string | undefined, patientId: string | undefined;
+    let hospitalId: string | undefined, content = "", specialty = "", reason = "";
+    try {
+      action = venum(body?.action, CONSULT_ACTIONS, "action", { required: true });
+      threadId = vuuid(body?.threadId, "threadId");
+      patientId = vuuid(body?.patientId, "patientId");
+      hospitalId = vuuid(body?.hospitalId, "hospitalId");
+      content = vtext(body?.content, { max: 8000, field: "content" });
+      reason = vtext(body?.reason, { max: 4000, field: "reason" });
+      specialty = vtext(body?.specialty, { max: 100, field: "specialty" });
+    } catch (err) {
+      return badRequest(err, corsHeaders);
+    }
 
     const db = supabaseAdmin();
     const userId: string = user.id;
@@ -366,7 +385,7 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Consultation AI error:", error);
-    return jsonRes({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+    return jsonRes({ error: "Consultation request failed" }, 500);
   }
 });
 

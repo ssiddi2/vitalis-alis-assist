@@ -4,6 +4,9 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { suggestBilling, checkDenialRisk, type SuggestedCode } from "../_shared/billing.ts";
+import { badRequest, varray, venum, vtext, vuuid } from "../_shared/validate.ts";
+
+const ENCOUNTER_TYPES = ["new_patient", "established_patient", "inpatient", "consult", "telehealth", "procedure"] as const;
 
 const env = (k: string) => Deno.env.get(k) || "";
 
@@ -26,8 +29,22 @@ serve(async (req) => {
     });
     if (!rl.allowed) return json({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
 
-    const { encounterSummary, encounterType, hospital_id, note_id, codes: inputCodes, patient_id } = await req.json();
-    if (!hospital_id) return json({ error: "hospital_id required" }, 400);
+    const body = await req.json();
+    let encounterSummary = "", encounterType: string | undefined;
+    let hospital_id: string | undefined, note_id: string | undefined, patient_id: string | undefined;
+    let inputCodes: SuggestedCode[] = [];
+    try {
+      encounterSummary = vtext(body?.encounterSummary, { max: 12000, field: "encounterSummary" });
+      encounterType = venum(body?.encounterType, ENCOUNTER_TYPES, "encounterType");
+      hospital_id = vuuid(body?.hospital_id, "hospital_id", { required: true });
+      note_id = vuuid(body?.note_id, "note_id");
+      patient_id = vuuid(body?.patient_id, "patient_id");
+      inputCodes = body?.codes === undefined || body?.codes === null
+        ? []
+        : varray<SuggestedCode>(body.codes, { max: 50, field: "codes" });
+    } catch (err) {
+      return badRequest(err, cors);
+    }
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) return json({ error: "Forbidden" }, 403);
 
     let noteContent: string | undefined;
@@ -81,6 +98,7 @@ serve(async (req) => {
       denialIssues: denial.issues,
     });
   } catch (e) {
-    return json({ codes: [], estimatedTotal: 0, emLevel: "", mdmComplexity: "", denialRisk: null, cleanClaimProbability: null, denialIssues: [], error: e instanceof Error ? e.message : "unknown" });
+    console.error("Billing coder error:", e);
+    return json({ codes: [], estimatedTotal: 0, emLevel: "", mdmComplexity: "", denialRisk: null, cleanClaimProbability: null, denialIssues: [], error: "Billing analysis failed" });
   }
 });

@@ -291,6 +291,7 @@ export function ALISPanel({
                 onKeyDown={handleKeyDown}
                 placeholder="Ask ALIS anything or dictate..."
                 rows={1}
+                maxLength={8000}
                 className="w-full px-3 py-2 xl:py-2.5 pr-10 bg-secondary/50 border border-border rounded-xl text-xs xl:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 style={{ minHeight: '40px', maxHeight: '100px' }}
               />

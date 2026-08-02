@@ -4,6 +4,7 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { suggestBilling } from "../_shared/billing.ts";
+import { badRequest, varray, vtext, vuuid } from "../_shared/validate.ts";
 
 
 
@@ -671,7 +672,20 @@ serve(async (req) => {
       });
     }
 
-    const { messages, patientContext } = await req.json();
+    const body = await req.json();
+    const patientContext = body?.patientContext;
+    // deno-lint-ignore no-explicit-any
+    let messages: any[];
+    try {
+      messages = varray<any>(body?.messages, { max: 50, field: "messages" });
+      messages.forEach((m, i) =>
+        vtext(m?.content, { max: 8000, required: true, field: `messages[${i}].content` })
+      );
+      vuuid(patientContext?.hospital?.id, "patientContext.hospital.id");
+      vuuid(patientContext?.patient?.id, "patientContext.patient.id");
+    } catch (err) {
+      return badRequest(err, corsHeaders);
+    }
     
 
     
@@ -884,7 +898,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("ALIS chat error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "ALIS is temporarily unavailable" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

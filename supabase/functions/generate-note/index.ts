@@ -4,6 +4,9 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { completeText } from "../_shared/llm.ts";
+import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
+
+const NOTE_TYPES = ["progress", "consult", "discharge", "procedure"] as const;
 
 const env = (k: string) => Deno.env.get(k) || "";
 
@@ -47,9 +50,16 @@ serve(async (req) => {
     const rl = await checkRateLimit(admin, user.id, "generate-note", { limit: envLimit("RL_NOTE", 20), windowSec: 60 });
     if (!rl.allowed) return json({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
 
-    const { transcript, patientContext, hospital_id, note_type } = await req.json();
-    if (!hospital_id) return json({ error: "hospital_id required" }, 400);
-    if (!str(transcript)) return json({ error: "transcript required" }, 400);
+    const body = await req.json();
+    let transcript: string, note_type: string | undefined, hospital_id: string | undefined;
+    const patientContext = body?.patientContext;
+    try {
+      transcript = vtext(body?.transcript, { max: 20000, required: true, field: "transcript" });
+      note_type = venum(body?.note_type, NOTE_TYPES, "note_type");
+      hospital_id = vuuid(body?.hospital_id, "hospital_id", { required: true });
+    } catch (err) {
+      return badRequest(err, cors);
+    }
 
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) {
       return json({ error: "Forbidden" }, 403);
@@ -90,6 +100,7 @@ serve(async (req) => {
       suggestedBillingCodes: codes,
     });
   } catch (e) {
-    return json({ ...FALLBACK, error: e instanceof Error ? e.message : "unknown" });
+    console.error("generate-note error:", e);
+    return json({ ...FALLBACK });
   }
 });
