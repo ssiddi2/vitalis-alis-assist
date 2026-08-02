@@ -4,6 +4,7 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { suggestBilling } from "../_shared/billing.ts";
+import { badRequest, varray, vtext, vuuid } from "../_shared/validate.ts";
 
 
 
