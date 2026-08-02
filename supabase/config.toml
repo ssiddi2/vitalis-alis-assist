@@ -3,14 +3,16 @@ project_id = "whhcxocxnrhfkixfrhvi"
 [functions.audit-log]
 verify_jwt = false
 
+# Auth is enforced IN-FUNCTION via _shared/auth.ts getCaller(); verify_jwt is false so
+# every response (including 401s and OPTIONS preflight) carries our shared CORS headers.
 [functions.alis-chat]
-verify_jwt = true
+verify_jwt = false
 
 [functions.consultation-ai]
-verify_jwt = true
+verify_jwt = false
 
 [functions.elevenlabs-conversation-token]
-verify_jwt = true
+verify_jwt = false
 
 [functions.fhir-sync]
 verify_jwt = false
@@ -19,11 +21,11 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.acuity-engine]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-note]
-verify_jwt = true
+verify_jwt = false
 
 [functions.billing-coder]
-verify_jwt = true
+verify_jwt = false
 
