@@ -100,6 +100,7 @@ serve(async (req) => {
       suggestedBillingCodes: codes,
     });
   } catch (e) {
-    return json({ ...FALLBACK, error: e instanceof Error ? e.message : "unknown" });
+    console.error("generate-note error:", e);
+    return json({ ...FALLBACK });
   }
 });

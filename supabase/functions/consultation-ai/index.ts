@@ -385,7 +385,7 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Consultation AI error:", error);
-    return jsonRes({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+    return jsonRes({ error: "Consultation request failed" }, 500);
   }
 });
 

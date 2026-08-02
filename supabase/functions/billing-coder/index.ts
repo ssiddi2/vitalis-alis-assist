@@ -98,6 +98,7 @@ serve(async (req) => {
       denialIssues: denial.issues,
     });
   } catch (e) {
-    return json({ codes: [], estimatedTotal: 0, emLevel: "", mdmComplexity: "", denialRisk: null, cleanClaimProbability: null, denialIssues: [], error: e instanceof Error ? e.message : "unknown" });
+    console.error("Billing coder error:", e);
+    return json({ codes: [], estimatedTotal: 0, emLevel: "", mdmComplexity: "", denialRisk: null, cleanClaimProbability: null, denialIssues: [], error: "Billing analysis failed" });
   }
 });

@@ -156,6 +156,6 @@ serve(async (req) => {
     return json({ ...data, ...result });
   } catch (error) {
     console.error("Acuity engine error:", error);
-    return json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+    return json({ error: "Acuity scoring failed" }, 500);
   }
 });
