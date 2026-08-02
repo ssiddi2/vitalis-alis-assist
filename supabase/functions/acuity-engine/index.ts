@@ -4,6 +4,10 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { callModel, sanitize, SPECIALTIES, URGENCY_COLOR, type AcuityResult } from "./providers.ts";
+import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
+
+const ACTIONS = ["score", "record_feedback"] as const;
+const METRIC_TYPES = ["response_time", "unaddressed", "subsequent_action", "reclassified"] as const;
 
 // LAYER 0 — deterministic red-flag rules (no LLM cost).
 const RED_FLAGS = [
@@ -49,17 +53,28 @@ serve(async (req) => {
     if (!rl.allowed) return json({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
 
     const body = await req.json();
-    const { action, hospital_id } = body;
+    let action: string | undefined, hospital_id: string | undefined;
+    let message_text = "", patient_id: string | undefined, metric_type: string | undefined;
+    try {
+      action = venum(body?.action, ACTIONS, "action", { required: true });
+      hospital_id = vuuid(body?.hospital_id, "hospital_id", { required: true });
+      patient_id = vuuid(body?.patient_id, "patient_id");
+      if (action === "record_feedback") {
+        metric_type = venum(body?.metric_type, METRIC_TYPES, "metric_type", { required: true });
+      } else {
+        message_text = vtext(body?.message_text, { max: 8000, required: true, field: "message_text" });
+      }
+    } catch (err) {
+      return badRequest(err, cors);
+    }
 
-
-    if (!hospital_id) return json({ error: "Missing hospital_id" }, 400);
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) {
       return json({ error: "Forbidden" }, 403);
     }
 
     if (action === "record_feedback") {
-      const { acuity_id, metric_type, metric_value } = body;
-      if (!acuity_id || !metric_type) return json({ error: "Missing fields" }, 400);
+      const { acuity_id, metric_value } = body;
+      if (!acuity_id) return json({ error: "acuity_id is required" }, 400);
       const { error } = await admin.from("acuity_feedback").insert({
         acuity_id, hospital_id, metric_type, metric_value, recorded_by: user.id,
       });
@@ -67,10 +82,7 @@ serve(async (req) => {
       return json({ success: true });
     }
 
-    if (action !== "score") return json({ error: `Unknown action: ${action}` }, 400);
-
-    const { message_text, patient_id, source_table, source_id } = body;
-    if (!message_text) return json({ error: "Missing message_text" }, 400);
+    const { source_table, source_id } = body;
 
     let result: AcuityResult;
     let source_layer = "rules";

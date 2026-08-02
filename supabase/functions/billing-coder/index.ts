@@ -4,6 +4,9 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { suggestBilling, checkDenialRisk, type SuggestedCode } from "../_shared/billing.ts";
+import { badRequest, varray, venum, vtext, vuuid } from "../_shared/validate.ts";
+
+const ENCOUNTER_TYPES = ["new_patient", "established_patient", "inpatient", "consult", "telehealth", "procedure"] as const;
 
 const env = (k: string) => Deno.env.get(k) || "";
 
