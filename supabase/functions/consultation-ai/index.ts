@@ -4,6 +4,11 @@ import { corsHeaders as buildCors } from "../_shared/cors.ts";
 import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
 import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
 import { completeText } from "../_shared/llm.ts";
+import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
+
+const CONSULT_ACTIONS = [
+  "create_thread", "send_message", "generate_note", "refresh_context", "suggest_urgency",
+] as const;
 
 let corsHeaders: Record<string, string> = {};
 
