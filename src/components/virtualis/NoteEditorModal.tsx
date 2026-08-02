@@ -222,6 +222,7 @@ export function NoteEditorModal({
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="Dictate or paste the encounter conversation…"
               rows={3}
+              maxLength={20000}
               className="text-xs resize-none bg-white border-slate-200"
               disabled={signed || generating}
             />
@@ -289,6 +290,7 @@ export function NoteEditorModal({
                 onChange={(e) => setter(e.target.value)}
                 placeholder={placeholder}
                 rows={3}
+                maxLength={8000}
                 className="text-xs resize-none bg-secondary/50 border-border/50 focus:border-primary/50"
                 disabled={signed}
               />
