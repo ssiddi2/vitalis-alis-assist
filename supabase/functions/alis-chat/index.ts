@@ -674,9 +674,10 @@ serve(async (req) => {
 
     const body = await req.json();
     const patientContext = body?.patientContext;
-    let messages: Array<{ role: string; content: string }>;
+    // deno-lint-ignore no-explicit-any
+    let messages: any[];
     try {
-      messages = varray<{ role: string; content: string }>(body?.messages, { max: 50, field: "messages" });
+      messages = varray<any>(body?.messages, { max: 50, field: "messages" });
       messages.forEach((m, i) =>
         vtext(m?.content, { max: 8000, required: true, field: `messages[${i}].content` })
       );
