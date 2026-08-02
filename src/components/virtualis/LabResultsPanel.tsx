@@ -15,7 +15,7 @@ interface LabResultsProps {
   patientId: string;
 }
 
-function generateDemoLabs(): LabResult[] {
+export function generateDemoLabs(): LabResult[] {
   return [
     { name: 'WBC', value: '12.4', unit: 'K/uL', reference_range: '4.5-11.0', is_abnormal: true, direction: 'up', timestamp: new Date().toISOString() },
     { name: 'Hemoglobin', value: '13.2', unit: 'g/dL', reference_range: '12.0-17.5', is_abnormal: false, direction: 'stable', timestamp: new Date().toISOString() },

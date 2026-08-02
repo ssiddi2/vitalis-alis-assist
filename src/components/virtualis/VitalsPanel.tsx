@@ -14,7 +14,7 @@ interface VitalSign {
   status: 'normal' | 'warning' | 'critical';
 }
 
-function generateDemoVitals(): VitalSign[] {
+export function generateDemoVitals(): VitalSign[] {
   return [
     { label: 'Heart Rate', value: '88', unit: 'bpm', icon: HeartPulse, status: 'normal' },
     { label: 'Blood Pressure', value: '142/88', unit: 'mmHg', icon: Activity, status: 'warning' },
