@@ -259,6 +259,7 @@ export function TeamChatPanel({ patientId, patientName, onBack }: TeamChatPanelP
         >
           <Input
             placeholder="Type a message..."
+            maxLength={8000}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             className="flex-1"
