@@ -19,7 +19,7 @@ const JSON_NUDGE = "\n\nRespond with a single valid JSON object and nothing else
 const MODELS: Record<string, string> = {
   anthropic: "claude-sonnet-5",
   cohere: "command-r-plus-08-2024",
-  gateway: "google/gemini-2.5-pro",
+  gateway: "google/gemini-2.5-flash",
 };
 
 const KEYS: Record<string, string> = {
