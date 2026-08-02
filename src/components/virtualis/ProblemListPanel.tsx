@@ -1,39 +1,14 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { ClipboardList, CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface Problem {
-  id: string;
-  description: string;
-  icd10_code: string | null;
-  status: string;
-  onset_date: string | null;
-  resolved_date: string | null;
-}
+import { usePatientProblems } from '@/hooks/usePatientClinical';
 
 interface ProblemListPanelProps {
   patientId: string;
 }
 
 export function ProblemListPanel({ patientId }: ProblemListPanelProps) {
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: problems, loading } = usePatientProblems(patientId);
 
-  useEffect(() => {
-    async function fetch() {
-      setLoading(true);
-      const { data } = await supabase
-        .from('patient_problems')
-        .select('*')
-        .eq('patient_id', patientId)
-        .order('status', { ascending: true })
-        .order('onset_date', { ascending: false });
-      setProblems((data as Problem[]) || []);
-      setLoading(false);
-    }
-    fetch();
-  }, [patientId]);
 
   const active = problems.filter(p => p.status === 'active');
   const resolved = problems.filter(p => p.status === 'resolved');
