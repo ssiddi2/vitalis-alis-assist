@@ -671,7 +671,19 @@ serve(async (req) => {
       });
     }
 
-    const { messages, patientContext } = await req.json();
+    const body = await req.json();
+    const patientContext = body?.patientContext;
+    let messages: Array<{ role: string; content: string }>;
+    try {
+      messages = varray<{ role: string; content: string }>(body?.messages, { max: 50, field: "messages" });
+      messages.forEach((m, i) =>
+        vtext(m?.content, { max: 8000, required: true, field: `messages[${i}].content` })
+      );
+      vuuid(patientContext?.hospital?.id, "patientContext.hospital.id");
+      vuuid(patientContext?.patient?.id, "patientContext.patient.id");
+    } catch (err) {
+      return badRequest(err, corsHeaders);
+    }
     
 
     

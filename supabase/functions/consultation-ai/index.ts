@@ -91,7 +91,21 @@ serve(async (req) => {
     const user = await getCaller(req);
     if (!user) return jsonRes({ error: "Unauthorized" }, 401);
 
-    const { action, threadId, content, patientId, hospitalId, specialty, reason, consultRequestId } = await req.json();
+    const body = await req.json();
+    const consultRequestId = body?.consultRequestId;
+    let action: string | undefined, threadId: string | undefined, patientId: string | undefined;
+    let hospitalId: string | undefined, content = "", specialty = "", reason = "";
+    try {
+      action = venum(body?.action, CONSULT_ACTIONS, "action", { required: true });
+      threadId = vuuid(body?.threadId, "threadId");
+      patientId = vuuid(body?.patientId, "patientId");
+      hospitalId = vuuid(body?.hospitalId, "hospitalId");
+      content = vtext(body?.content, { max: 8000, field: "content" });
+      reason = vtext(body?.reason, { max: 4000, field: "reason" });
+      specialty = vtext(body?.specialty, { max: 100, field: "specialty" });
+    } catch (err) {
+      return badRequest(err, corsHeaders);
+    }
 
     const db = supabaseAdmin();
     const userId: string = user.id;
