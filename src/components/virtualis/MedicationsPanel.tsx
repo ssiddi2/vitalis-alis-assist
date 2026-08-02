@@ -1,19 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Pill, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface Medication {
-  id: string;
-  name: string;
-  dose: string | null;
-  route: string | null;
-  frequency: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  status: string;
-  prescriber: string | null;
-}
+import { usePatientMedications } from '@/hooks/usePatientClinical';
 
 interface MedicationsPanelProps {
   patientId: string;
@@ -26,23 +13,8 @@ const STATUS_ICON: Record<string, { icon: typeof Pill; color: string }> = {
 };
 
 export function MedicationsPanel({ patientId }: MedicationsPanelProps) {
-  const [meds, setMeds] = useState<Medication[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: meds, loading } = usePatientMedications(patientId);
 
-  useEffect(() => {
-    async function fetch() {
-      setLoading(true);
-      const { data } = await supabase
-        .from('patient_medications')
-        .select('*')
-        .eq('patient_id', patientId)
-        .order('status', { ascending: true })
-        .order('name', { ascending: true });
-      setMeds((data as Medication[]) || []);
-      setLoading(false);
-    }
-    fetch();
-  }, [patientId]);
 
   return (
     <div>

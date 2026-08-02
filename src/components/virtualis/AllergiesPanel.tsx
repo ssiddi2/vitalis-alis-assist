@@ -1,15 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface Allergy {
-  id: string;
-  allergen: string;
-  reaction: string | null;
-  severity: string;
-  onset_date: string | null;
-}
+import { usePatientAllergies } from '@/hooks/usePatientClinical';
 
 interface AllergiesPanelProps {
   patientId: string;
@@ -22,22 +13,8 @@ const severityColors: Record<string, string> = {
 };
 
 export function AllergiesPanel({ patientId }: AllergiesPanelProps) {
-  const [allergies, setAllergies] = useState<Allergy[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: allergies, loading } = usePatientAllergies(patientId);
 
-  useEffect(() => {
-    async function fetch() {
-      setLoading(true);
-      const { data } = await supabase
-        .from('patient_allergies')
-        .select('*')
-        .eq('patient_id', patientId)
-        .order('severity', { ascending: false });
-      setAllergies((data as Allergy[]) || []);
-      setLoading(false);
-    }
-    fetch();
-  }, [patientId]);
 
   return (
     <div>
