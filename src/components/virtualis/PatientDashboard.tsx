@@ -1,9 +1,11 @@
-import { useEffect, createContext, useContext } from 'react';
+import { useEffect, useState, createContext, useContext } from 'react';
 import { ClinicalInsight, ClinicalTrend } from '@/types/clinical';
 import { ClinicalNote } from '@/types/hospital';
 import { DBPatient } from '@/hooks/usePatients';
 import { PatientHeader } from './PatientHeader';
 import { PatientChartTabs } from './PatientChartTabs';
+import { AllergyStrip } from './AllergyStrip';
+
 import { ImagingStudy } from './ImagingPanel';
 import { Stethoscope } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -27,6 +29,8 @@ interface PatientDashboardProps {
 export function PatientDashboard({ patient, insights, trends, clinicalNotes, imagingStudies = [], encounter, encounterDuration }: PatientDashboardProps) {
   const { logView } = useAuditLog();
   const metrics = useWorkflowMetrics(patient?.id, patient?.hospital_id ?? undefined, encounter?.id);
+  const [activeTab, setActiveTab] = useState('overview');
+
 
   useEffect(() => {
     if (patient?.id) {
