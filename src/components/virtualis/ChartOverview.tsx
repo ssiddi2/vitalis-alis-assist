@@ -2,9 +2,7 @@ import { ReactNode } from 'react';
 import { ClinicalInsight, ClinicalTrend } from '@/types/clinical';
 import { InsightCard } from './InsightCard';
 import { ClinicalTrends } from './ClinicalTrends';
-import { generateDemoVitals } from './VitalsPanel';
-import { generateDemoLabs } from './LabResultsPanel';
-import { usePatientProblems, usePatientMedications } from '@/hooks/usePatientClinical';
+import { usePatientProblems, usePatientMedications, usePatientVitals, usePatientLabs } from '@/hooks/usePatientClinical';
 import { cn } from '@/lib/utils';
 import { Brain, HeartPulse, ClipboardList, Pill, FlaskConical, TrendingUp } from 'lucide-react';
 
@@ -51,8 +49,10 @@ interface ChartOverviewProps {
 export function ChartOverview({ patientId, insights, trends, onNavigate }: ChartOverviewProps) {
   const { data: problems } = usePatientProblems(patientId);
   const { data: meds } = usePatientMedications(patientId);
-  const vitals = generateDemoVitals().slice(0, 4);
-  const labs = generateDemoLabs().slice(0, 5);
+  const { data: allVitals } = usePatientVitals(patientId);
+  const { data: allLabs } = usePatientLabs(patientId);
+  const vitals = allVitals.slice(0, 4);
+  const labs = allLabs.slice(0, 5);
 
   const activeProblems = problems.filter(p => p.status === 'active').slice(0, 5);
   const activeMeds = meds.filter(m => m.status === 'active').slice(0, 5);
@@ -62,6 +62,7 @@ export function ChartOverview({ patientId, insights, trends, onNavigate }: Chart
       <div className="grid grid-cols-1 @2xl:grid-cols-2 gap-4 min-w-0">
         <OverviewCard index="01" label="Latest Vitals" icon={HeartPulse} onViewAll={() => onNavigate('vitals')}>
 
+          {vitals.length === 0 ? <Empty text="No vitals recorded" /> : (
           <div className="grid grid-cols-2 gap-2">
             {vitals.map(v => (
               <div key={v.label} className="rounded-xl border border-border/50 bg-background/50 px-3 py-2">
@@ -73,6 +74,7 @@ export function ChartOverview({ patientId, insights, trends, onNavigate }: Chart
               </div>
             ))}
           </div>
+          )}
         </OverviewCard>
 
         <OverviewCard index="02" label="Active Problems" icon={ClipboardList} onViewAll={() => onNavigate('problems')}>
@@ -105,17 +107,19 @@ export function ChartOverview({ patientId, insights, trends, onNavigate }: Chart
         </OverviewCard>
 
         <OverviewCard index="04" label="Recent Labs" icon={FlaskConical} onViewAll={() => onNavigate('labs')}>
+          {labs.length === 0 ? <Empty text="No lab results recorded" /> : (
           <ul className="space-y-1.5">
             {labs.map(l => (
-              <li key={l.name} className="flex items-baseline gap-2 text-xs">
-                <span className="truncate text-foreground">{l.name}</span>
-                <span className={cn('ml-auto font-semibold tabular-nums', l.is_abnormal ? 'text-critical' : 'text-foreground')}>
+              <li key={l.id} className="flex items-baseline gap-2 text-xs">
+                <span className="truncate text-foreground">{l.test_name}</span>
+                <span className={cn('ml-auto font-semibold tabular-nums', l.is_abnormal ? 'text-[#EF4444]' : 'text-foreground')}>
                   {l.value}
                   <span className="ml-1 text-[10px] font-normal text-muted-foreground">{l.unit}</span>
                 </span>
               </li>
             ))}
           </ul>
+          )}
         </OverviewCard>
 
         {trends.length > 0 && (
