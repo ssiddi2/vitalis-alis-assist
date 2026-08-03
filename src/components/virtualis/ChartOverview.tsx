@@ -58,9 +58,10 @@ export function ChartOverview({ patientId, insights, trends, onNavigate }: Chart
   const activeMeds = meds.filter(m => m.status === 'active').slice(0, 5);
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 @5xl:grid-cols-[minmax(0,1fr)_340px] gap-4 min-w-0">
+      <div className="grid grid-cols-1 @2xl:grid-cols-2 gap-4 min-w-0">
         <OverviewCard index="01" label="Latest Vitals" icon={HeartPulse} onViewAll={() => onNavigate('vitals')}>
+
           <div className="grid grid-cols-2 gap-2">
             {vitals.map(v => (
               <div key={v.label} className="rounded-xl border border-border/50 bg-background/50 px-3 py-2">
