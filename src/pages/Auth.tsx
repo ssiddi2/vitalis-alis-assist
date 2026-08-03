@@ -10,6 +10,8 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
 import { AnimatedLogo } from '@/components/virtualis/AnimatedLogo';
+import { MfaChallenge } from '@/components/auth/MfaChallenge';
+
 
 const FEATURES = ['Real-time Monitoring', 'AI Insights', 'Clinical Decision Support', 'HIPAA Compliant'];
 
@@ -49,15 +51,16 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
   const navigate = useNavigate();
   const { logLogin } = useAuditLog();
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !mfaRequired) {
       navigate('/', { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, mfaRequired, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,9 +80,18 @@ export default function Auth() {
           password,
         });
         if (error) throw error;
+
+        // Optional MFA: only step up when the user actually has a verified factor.
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2') {
+          setMfaRequired(true);
+          return;
+        }
+
         logLogin();
         toast.success('Welcome back!');
       }
+
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       toast.error(message);
@@ -143,7 +155,22 @@ export default function Auth() {
               </p>
             </div>
 
+            {mfaRequired ? (
+              <MfaChallenge
+                onVerified={() => {
+                  logLogin();
+                  setMfaRequired(false);
+                  toast.success('Welcome back!');
+                  navigate('/', { replace: true });
+                }}
+                onCancel={() => {
+                  setMfaRequired(false);
+                  setPassword('');
+                }}
+              />
+            ) : (
             <div className="glass-strong rounded-2xl border border-border p-8 shadow-elevated">
+
               <div className="mb-8">
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
                   Secure clinical access
@@ -261,10 +288,12 @@ export default function Auth() {
                 </div>
               )}
             </div>
+            )}
 
             <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               By continuing you agree to our Terms of Service and Privacy Policy
             </p>
+
           </div>
         </div>
       </div>

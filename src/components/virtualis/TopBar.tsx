@@ -7,7 +7,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, CalendarDays, Users, Radar } from 'lucide-react';
+import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, CalendarDays, Users, Radar, ShieldCheck, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { TwoFactorSetup } from './TwoFactorSetup';
+import { useMfaFactors } from '@/hooks/useMfa';
+
 import { useAuth } from '@/hooks/useAuth';
 import { useHospital } from '@/contexts/HospitalContext';
 import { useNavigate } from 'react-router-dom';
@@ -21,9 +25,21 @@ import virtualisOneIcon from '@/assets/virtualis-one-header-icon.png.asset.json'
 export function TopBar() {
   const [currentTime, setCurrentTime] = useState('');
   const [isAmbient, setIsAmbient] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [nudgeDismissed, setNudgeDismissed] = useState(
+    () => localStorage.getItem('mfa-nudge-dismissed') === '1'
+  );
   const { user, role, signOut, isAdmin } = useAuth();
+  const { enabled: mfaEnabled, loading: mfaLoading } = useMfaFactors();
   const { selectedHospital, setSelectedHospital } = useHospital();
   const navigate = useNavigate();
+
+  const showMfaNudge = !!user && !mfaLoading && !mfaEnabled && !nudgeDismissed;
+  const dismissNudge = () => {
+    localStorage.setItem('mfa-nudge-dismissed', '1');
+    setNudgeDismissed(true);
+  };
+
 
   useEffect(() => {
     const updateTime = () => {
@@ -147,7 +163,23 @@ export function TopBar() {
           {currentTime}
         </div>
 
+        {/* Optional MFA nudge — dismissible, never blocking */}
+        {showMfaNudge && (
+          <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/5 pl-3 pr-1.5 py-1">
+            <button
+              onClick={() => setSecurityOpen(true)}
+              className="flex items-center gap-1.5 text-[10px] font-medium text-primary"
+            >
+              <ShieldCheck className="w-3 h-3" /> Enable two-factor
+            </button>
+            <button onClick={dismissNudge} aria-label="Dismiss" className="p-0.5 text-primary/60 hover:text-primary">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* User Menu */}
+
         {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -175,7 +207,12 @@ export function TopBar() {
                   Admin Panel
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => setSecurityOpen(true)} className="gap-2 cursor-pointer">
+                <ShieldCheck className="w-4 h-4" />
+                Security
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-critical cursor-pointer">
+
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </DropdownMenuItem>
@@ -208,7 +245,12 @@ export function TopBar() {
                 <p className="text-xs text-muted-foreground mt-0.5 capitalize">{role} Access</p>
               </div>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setSecurityOpen(true)} className="gap-2 cursor-pointer">
+                <ShieldCheck className="w-4 h-4" />
+                Security
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-critical cursor-pointer">
+
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </DropdownMenuItem>
@@ -219,6 +261,16 @@ export function TopBar() {
         <MobileMenu currentTime={currentTime} />
       </div>
       </div>
+
+      <Dialog open={securityOpen} onOpenChange={setSecurityOpen}>
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Security</DialogTitle>
+          </DialogHeader>
+          {securityOpen && <TwoFactorSetup />}
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
+
