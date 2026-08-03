@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, Check, X, Sparkles, Plus, PackageCheck, Plug, HardDrive } from 'lucide-react';
+import { ClipboardList, Check, X, Sparkles, Plus, PackageCheck, Plug, HardDrive, Send, Loader2, Clock, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StagedOrder, OrderStatus } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
+import { useHospital } from '@/contexts/HospitalContext';
+import { labOrder, TRANSMIT_COPY, type TransmitResult } from '@/lib/orderTransmit';
+import { toast } from 'sonner';
 import { loadSmartSession } from '@/lib/smart';
 import { rejectOrder as rejectOrderLifecycle, ORDER_STATUS_LABELS, ORDER_STATUS_CLASSES } from '@/lib/orderLifecycle';
 import { OrderSignatureModal } from './OrderSignatureModal';
@@ -30,6 +33,40 @@ const PRIORITY_COLORS: Record<string, string> = {
 export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, onCancel, clinicianName = 'Clinician' }: StagedOrdersPanelProps) {
   const { logView, logAction } = useAuditLog();
   const { user } = useAuth();
+  const { selectedHospital } = useHospital();
+  const [transmitting, setTransmitting] = useState<string | null>(null);
+  const [transmitResults, setTransmitResults] = useState<Record<string, TransmitResult>>({});
+
+  const handleSendToLab = async (orderId: string) => {
+    if (!selectedHospital) return;
+    setTransmitting(orderId);
+    const res = await labOrder(orderId, selectedHospital.id);
+    setTransmitResults(prev => ({ ...prev, [orderId]: res }));
+    setTransmitting(null);
+    if (res.status === 'queued') toast.info('Order queued for transmission');
+    else if (res.status === 'sent') toast.success('Sent to lab');
+    else toast.error('Transmission unavailable');
+  };
+
+  const TransmitStatus = ({ orderId }: { orderId: string }) => {
+    const r = transmitResults[orderId];
+    if (!r) return null;
+    const copy = TRANSMIT_COPY[r.status] ?? TRANSMIT_COPY.error;
+    const label = r.status === 'queued' ? 'Queued · no lab network connected' : copy.label;
+    const blocked = copy.tone === 'blocked';
+    return (
+      <div className={cn(
+        'mt-1.5 flex items-start gap-1.5 rounded-xl border px-2 py-1.5 text-[10px]',
+        blocked && 'border-[#EF4444]/30 bg-[#EF4444]/5 text-[#EF4444]',
+        copy.tone === 'info' && 'border-border bg-muted/50 text-muted-foreground',
+        copy.tone === 'success' && 'border-[#10B981]/30 bg-[#10B981]/5 text-[#10B981]',
+        copy.tone === 'error' && 'border-[#F59E0B]/30 bg-[#F59E0B]/5 text-[#F59E0B]',
+      )}>
+        {blocked ? <ShieldAlert className="w-3 h-3 mt-px shrink-0" /> : <Clock className="w-3 h-3 mt-px shrink-0" />}
+        <span>{label}</span>
+      </div>
+    );
+  };
   const pendingOrders = orders.filter(o => o.status === 'staged');
   const resolvedOrders = orders.filter(o => o.status !== 'staged');
   const smart = loadSmartSession();
@@ -207,8 +244,21 @@ export function StagedOrdersPanel({ orders, patientId, onApprove, onApproveAll, 
                       {order.rationale}
                     </p>
                   )}
+                  <TransmitStatus orderId={order.id} />
                 </div>
                 <div className="flex gap-1">
+                  {['lab', 'imaging'].includes(String(order.order_type).toLowerCase()) && (
+                    <button
+                      onClick={() => handleSendToLab(order.id)}
+                      disabled={!selectedHospital || transmitting === order.id}
+                      title="Send to lab"
+                      className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                    >
+                      {transmitting === order.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Send className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleCancel(order.id)}
                     className="p-1 rounded hover:bg-critical/10 text-muted-foreground hover:text-critical transition-colors"

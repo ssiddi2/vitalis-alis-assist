@@ -76,7 +76,7 @@ export function PatientChartTabs({ patientId, hospitalId, insights, trends, clin
       </TabsContent>
 
       <TabsContent value="labs" className="mt-4"><LabResultsPanel patientId={patientId} /></TabsContent>
-      <TabsContent value="vitals" className="mt-4"><VitalsPanel trends={trends} /></TabsContent>
+      <TabsContent value="vitals" className="mt-4"><VitalsPanel patientId={patientId} trends={trends} /></TabsContent>
       <TabsContent value="meds" className="mt-4"><MedicationsPanel patientId={patientId} /></TabsContent>
       <TabsContent value="allergies" className="mt-4"><AllergiesPanel patientId={patientId} /></TabsContent>
       <TabsContent value="problems" className="mt-4"><ProblemListPanel patientId={patientId} /></TabsContent>
