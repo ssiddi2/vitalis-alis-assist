@@ -30,7 +30,7 @@ export interface Medication {
   prescriber: string | null;
 }
 
-type Table = 'patient_allergies' | 'patient_problems' | 'patient_medications';
+type Table = 'patient_allergies' | 'patient_problems' | 'patient_medications' | 'lab_results';
 
 function usePatientRows<T>(table: Table, patientId: string | undefined, order: [string, boolean][]) {
   const [data, setData] = useState<T[]>([]);
@@ -61,3 +61,63 @@ export const usePatientProblems = (patientId?: string) =>
 
 export const usePatientMedications = (patientId?: string) =>
   usePatientRows<Medication>('patient_medications', patientId, [['status', true], ['name', true]]);
+
+export interface LabResult {
+  id: string;
+  panel: string | null;
+  test_name: string;
+  value: string | null;
+  unit: string | null;
+  reference_range: string | null;
+  is_abnormal: boolean;
+  resulted_at: string | null;
+}
+
+export const usePatientLabs = (patientId?: string) =>
+  usePatientRows<LabResult>('lab_results', patientId, [['resulted_at', false]]);
+
+export interface VitalSign {
+  label: string;
+  value: string;
+  unit: string;
+  direction: 'up' | 'down' | 'stable';
+}
+
+/** Real vitals from the patient_vitals record (trends jsonb). Empty when none recorded. */
+export function usePatientVitals(patientId?: string) {
+  const [data, setData] = useState<VitalSign[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!patientId) { setData([]); setLoading(false); return; }
+      setLoading(true);
+      const { data: row } = await supabase
+        .from('patient_vitals')
+        .select('trends')
+        .eq('patient_id', patientId)
+        .maybeSingle();
+      if (cancelled) return;
+      const trends = Array.isArray(row?.trends) ? (row!.trends as unknown[]) : [];
+      setData(
+        trends.map((t) => {
+          const r = t as Record<string, unknown>;
+          const raw = String(r.value ?? '');
+          const [, num = raw, unit = ''] = raw.match(/^([\d.<>/-]+)\s*(.*)$/) || [];
+          return {
+            label: String(r.label ?? ''),
+            value: num,
+            unit: String(r.unit ?? unit),
+            direction: (r.direction as VitalSign['direction']) || 'stable',
+          };
+        }).filter(v => v.label),
+      );
+      setLoading(false);
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [patientId]);
+
+  return { data, loading };
+}
