@@ -163,7 +163,23 @@ export function TopBar() {
           {currentTime}
         </div>
 
+        {/* Optional MFA nudge — dismissible, never blocking */}
+        {showMfaNudge && (
+          <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/5 pl-3 pr-1.5 py-1">
+            <button
+              onClick={() => setSecurityOpen(true)}
+              className="flex items-center gap-1.5 text-[10px] font-medium text-primary"
+            >
+              <ShieldCheck className="w-3 h-3" /> Enable two-factor
+            </button>
+            <button onClick={dismissNudge} aria-label="Dismiss" className="p-0.5 text-primary/60 hover:text-primary">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* User Menu */}
+
         {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
