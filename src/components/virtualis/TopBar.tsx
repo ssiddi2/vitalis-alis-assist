@@ -261,6 +261,16 @@ export function TopBar() {
         <MobileMenu currentTime={currentTime} />
       </div>
       </div>
+
+      <Dialog open={securityOpen} onOpenChange={setSecurityOpen}>
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Security</DialogTitle>
+          </DialogHeader>
+          {securityOpen && <TwoFactorSetup />}
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
+
