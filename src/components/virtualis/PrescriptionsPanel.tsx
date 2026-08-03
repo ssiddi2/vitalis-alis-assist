@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { usePrescriptions } from '@/hooks/usePrescriptions';
+import { useHospital } from '@/contexts/HospitalContext';
+import { eprescribe, TRANSMIT_COPY, type TransmitResult } from '@/lib/orderTransmit';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -8,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Pill, Plus, Check, X, FileSignature, Clock, Send } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Pill, Plus, Check, X, FileSignature, Clock, Send, ShieldAlert, Loader2 } from 'lucide-react';
+
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   draft: { label: 'Draft', color: 'bg-muted text-muted-foreground', icon: Clock },
