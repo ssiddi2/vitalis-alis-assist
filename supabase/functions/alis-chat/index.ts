@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders as buildCors } from "../_shared/cors.ts";
-import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
-import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
+import { userHasHospitalAccess } from "../_shared/auth.ts";
+import { envLimit } from "../_shared/rateLimit.ts";
+import { guard } from "../_shared/guard.ts";
+import { adminClient } from "../_shared/supabase.ts";
 import { suggestBilling } from "../_shared/billing.ts";
 import { badRequest, varray, vtext, vuuid } from "../_shared/validate.ts";
 
@@ -587,11 +588,8 @@ async function runAnthropicChat(
     });
   }
 
-  const adminClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-  if (!(await userHasHospitalAccess(adminClient, context.userId!, context.hospitalId))) {
+  const admin = adminClient();
+  if (!(await userHasHospitalAccess(admin, context.userId!, context.hospitalId))) {
     return new Response(JSON.stringify({ error: "Forbidden: no access to this hospital" }), {
       status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -648,30 +646,11 @@ async function runAnthropicChat(
 }
 
 serve(async (req) => {
-  const corsHeaders = buildCors(req);
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const g = await guard(req, { bucket: "alis-chat", limit: envLimit("RL_ALIS", 30) });
+  if (g.response) return g.response;
+  const { user, cors: corsHeaders, json } = g;
 
   try {
-    const user = await getCaller(req);
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const rateLimitClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    const rl = await checkRateLimit(rateLimitClient, user.id, "alis-chat", { limit: envLimit("RL_ALIS", 30), windowSec: 60 });
-    if (!rl.allowed) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const body = await req.json();
     const patientContext = body?.patientContext;
     // deno-lint-ignore no-explicit-any
@@ -786,14 +765,8 @@ serve(async (req) => {
     }
 
     // We have tool calls - verify hospital membership before executing anything
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    if (!(await userHasHospitalAccess(adminClient, user.id, context.hospitalId))) {
-      return new Response(JSON.stringify({ error: "Forbidden: no access to this hospital" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!(await userHasHospitalAccess(g.admin, user.id, context.hospitalId))) {
+      return json({ error: "Forbidden: no access to this hospital" }, 403);
     }
 
     console.log(`Executing ${firstResult.toolCalls.length} tool call(s)`);
