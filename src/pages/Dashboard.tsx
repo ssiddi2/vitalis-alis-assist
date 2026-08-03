@@ -148,7 +148,7 @@ const Dashboard = () => {
           : "lg:grid-cols-[200px_1fr_360px] xl:grid-cols-[220px_1fr_440px] 2xl:grid-cols-[260px_1fr_560px]"
       )}>
         {/* Patient List Sidebar (hidden on mobile) */}
-        <div className="hidden lg:block h-[calc(100vh-57px)] border-r border-border overflow-hidden">
+        <div className="hidden lg:block h-[calc(100vh-57px)] border-r border-border overflow-hidden min-w-0">
           <PatientListSidebar
             patientsByUnit={patientsByUnit}
             selectedPatientId={selectedPatient?.id}
@@ -181,7 +181,7 @@ const Dashboard = () => {
         )}
 
         {/* Desktop ALIS Chat Panel or Team Chat */}
-        <div className="hidden lg:block h-[calc(100vh-57px)]">
+        <div className="hidden lg:block h-[calc(100vh-57px)] min-w-0 overflow-hidden">
           {showTeamChat ? (
             <TeamChatPanel 
               patientId={selectedPatient?.id || ''}

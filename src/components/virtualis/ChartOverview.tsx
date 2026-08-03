@@ -58,9 +58,10 @@ export function ChartOverview({ patientId, insights, trends, onNavigate }: Chart
   const activeMeds = meds.filter(m => m.status === 'active').slice(0, 5);
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 @5xl:grid-cols-[minmax(0,1fr)_340px] gap-4 min-w-0">
+      <div className="grid grid-cols-1 @2xl:grid-cols-2 gap-4 min-w-0">
         <OverviewCard index="01" label="Latest Vitals" icon={HeartPulse} onViewAll={() => onNavigate('vitals')}>
+
           <div className="grid grid-cols-2 gap-2">
             {vitals.map(v => (
               <div key={v.label} className="rounded-xl border border-border/50 bg-background/50 px-3 py-2">
@@ -118,13 +119,14 @@ export function ChartOverview({ patientId, insights, trends, onNavigate }: Chart
         </OverviewCard>
 
         {trends.length > 0 && (
-          <OverviewCard index="05" label="Clinical Trends" icon={TrendingUp} className="md:col-span-2">
+          <OverviewCard index="05" label="Clinical Trends" icon={TrendingUp} className="@2xl:col-span-2">
             <ClinicalTrends trends={trends} />
           </OverviewCard>
         )}
       </div>
 
-      <OverviewCard index="00" label="ALIS — What Matters Now" icon={Brain} className="xl:sticky xl:top-20 xl:self-start xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto">
+      <OverviewCard index="00" label="ALIS — What Matters Now" icon={Brain} className="@5xl:sticky @5xl:top-20 @5xl:self-start @5xl:max-h-[calc(100vh-9rem)] @5xl:overflow-y-auto">
+
         {insights.length === 0 ? <Empty text="No active insights" /> : (
           <div className="space-y-3">
             {insights.map(i => <InsightCard key={i.id} insight={i} />)}

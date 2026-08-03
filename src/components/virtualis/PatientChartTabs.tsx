@@ -40,9 +40,10 @@ export function PatientChartTabs({ patientId, hospitalId, insights, trends, clin
   return (
     <Tabs value={active} onValueChange={setActive} className="w-full">
       {/* Sticky, horizontally scrollable tab bar */}
-      <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 bg-background/80 backdrop-blur-md">
-        <div className="relative">
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-background/85 backdrop-blur-md">
+        <div className="relative min-w-0">
           <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
+
             <TabsList className="inline-flex h-auto w-max min-w-full gap-1 bg-card/60 backdrop-blur-sm p-1.5 rounded-2xl border border-border/60 shadow-soft">
               <TabsTrigger value="overview" className={TAB_CLS}><LayoutGrid className="w-3.5 h-3.5" /> Overview</TabsTrigger>
               <TabsTrigger value="labs" className={TAB_CLS}><FlaskConical className="w-3.5 h-3.5" /> Labs</TabsTrigger>
@@ -64,8 +65,9 @@ export function PatientChartTabs({ patientId, hospitalId, insights, trends, clin
             </TabsList>
           </div>
           {/* Edge fade hints */}
-          <div className="pointer-events-none absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-background to-transparent lg:hidden" />
-          <div className="pointer-events-none absolute top-0 bottom-0 right-0 w-6 bg-gradient-to-l from-background to-transparent lg:hidden" />
+          <div className="pointer-events-none absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute top-0 bottom-0 right-0 w-6 bg-gradient-to-l from-background to-transparent" />
+
         </div>
       </div>
 

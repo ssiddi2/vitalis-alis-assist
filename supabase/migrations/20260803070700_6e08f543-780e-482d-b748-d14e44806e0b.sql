@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.log_audit_event(audit_action_type, text, text, uuid, uuid, jsonb, inet, text, text) TO authenticated, service_role;
