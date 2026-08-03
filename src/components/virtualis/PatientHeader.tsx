@@ -28,17 +28,18 @@ interface StatTileProps {
 
 function StatTile({ icon: Icon, iconBg, iconColor, label, value, className = '' }: StatTileProps) {
   return (
-    <div className={`flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl bg-secondary/50 border border-border min-w-0 ${className}`}>
-      <div className={`p-1.5 sm:p-2 rounded-lg ${iconBg} flex-shrink-0`}>
-        <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconColor}`} />
+    <div className={`flex items-center gap-2.5 p-3 rounded-xl bg-secondary/50 border border-border min-w-0 ${className}`}>
+      <div className={`p-2 rounded-lg ${iconBg} flex-shrink-0`}>
+        <Icon className={`w-4 h-4 ${iconColor}`} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] text-muted-foreground truncate">{label}</div>
-        <div className="text-xs sm:text-sm font-medium text-foreground truncate" title={value}>{value}</div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground truncate">{label}</div>
+        <div className="text-sm font-medium text-foreground truncate" title={value}>{value}</div>
       </div>
     </div>
   );
 }
+
 
 export function PatientHeader({ patient, encounter, encounterDuration }: PatientHeaderProps) {
   const encounterMeta = encounter ? ENCOUNTER_TYPE_LABELS[encounter.encounter_type] || ENCOUNTER_TYPE_LABELS.office_visit : null;
