@@ -207,7 +207,12 @@ export function TopBar() {
                   Admin Panel
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => setSecurityOpen(true)} className="gap-2 cursor-pointer">
+                <ShieldCheck className="w-4 h-4" />
+                Security
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-critical cursor-pointer">
+
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </DropdownMenuItem>
