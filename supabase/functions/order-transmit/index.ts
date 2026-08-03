@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders as buildCors } from "../_shared/cors.ts";
-import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
-import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
+import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { userHasHospitalAccess } from "../_shared/auth.ts";
+import { envLimit } from "../_shared/rateLimit.ts";
+import { guard } from "../_shared/guard.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
 import { classifyControlled } from "../_shared/controlledSubstances.ts";
 
@@ -27,24 +27,11 @@ const audit = (
   });
 
 serve(async (req) => {
-  const cors = buildCors(req);
-  const json = (body: unknown, status = 200) =>
-    new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-
-  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const g = await guard(req, { bucket: "order-transmit", limit: envLimit("RL_TRANSMIT", 30) });
+  if (g.response) return g.response;
+  const { user, admin, cors, json } = g;
 
   try {
-    const user = await getCaller(req);
-    if (!user) return json({ error: "Unauthorized" }, 401);
-
-    const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
-
-    const rl = await checkRateLimit(admin, user.id, "order-transmit", {
-      limit: envLimit("RL_TRANSMIT", 30),
-      windowSec: 60,
-    });
-    if (!rl.allowed) return json({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
-
     const body = await req.json();
     let action: string | undefined, hospital_id: string | undefined;
     let prescription_id: string | undefined, order_id: string | undefined, drug_name = "";

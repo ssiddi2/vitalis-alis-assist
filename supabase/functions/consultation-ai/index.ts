@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders as buildCors } from "../_shared/cors.ts";
-import { getCaller, userHasHospitalAccess } from "../_shared/auth.ts";
-import { checkRateLimit, envLimit } from "../_shared/rateLimit.ts";
+import { userHasHospitalAccess } from "../_shared/auth.ts";
+import { envLimit } from "../_shared/rateLimit.ts";
+import { guard } from "../_shared/guard.ts";
+import { adminClient } from "../_shared/supabase.ts";
 import { completeText } from "../_shared/llm.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
 
@@ -12,10 +12,7 @@ const CONSULT_ACTIONS = [
 
 let corsHeaders: Record<string, string> = {};
 
-const supabaseAdmin = () => createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
+const supabaseAdmin = adminClient;
 
 
 // Load shared patient context from DB
@@ -84,13 +81,12 @@ async function callAI(messages: Array<{ role: string; content: string }>, stream
 }
 
 serve(async (req) => {
-  corsHeaders = buildCors(req);
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const g = await guard(req, { bucket: "consultation-ai", limit: envLimit("RL_CONSULT", 40) });
+  if (g.response) return g.response;
+  const { user, admin, cors } = g;
+  corsHeaders = cors;
 
   try {
-    const user = await getCaller(req);
-    if (!user) return jsonRes({ error: "Unauthorized" }, 401);
-
     const body = await req.json();
     const consultRequestId = body?.consultRequestId;
     let action: string | undefined, threadId: string | undefined, patientId: string | undefined;
@@ -107,11 +103,8 @@ serve(async (req) => {
       return badRequest(err, corsHeaders);
     }
 
-    const db = supabaseAdmin();
+    const db = admin;
     const userId: string = user.id;
-
-    const rl = await checkRateLimit(db, userId, "consultation-ai", { limit: envLimit("RL_CONSULT", 40), windowSec: 60 });
-    if (!rl.allowed) return jsonRes({ error: "Rate limit exceeded", retryAfter: rl.retryAfter }, 429);
 
     switch (action) {
       // ── Create thread + load context + AI welcome ──
