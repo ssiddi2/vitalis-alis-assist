@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { ChatMessage } from '@/types/clinical';
 import { toast } from 'sonner';
 import { loadSmartSession } from '@/lib/smart';
+import { supabase } from '@/integrations/supabase/client';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/alis-chat`;
 
