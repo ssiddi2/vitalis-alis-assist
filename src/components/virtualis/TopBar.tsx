@@ -25,9 +25,21 @@ import virtualisOneIcon from '@/assets/virtualis-one-header-icon.png.asset.json'
 export function TopBar() {
   const [currentTime, setCurrentTime] = useState('');
   const [isAmbient, setIsAmbient] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [nudgeDismissed, setNudgeDismissed] = useState(
+    () => localStorage.getItem('mfa-nudge-dismissed') === '1'
+  );
   const { user, role, signOut, isAdmin } = useAuth();
+  const { enabled: mfaEnabled, loading: mfaLoading } = useMfaFactors();
   const { selectedHospital, setSelectedHospital } = useHospital();
   const navigate = useNavigate();
+
+  const showMfaNudge = !!user && !mfaLoading && !mfaEnabled && !nudgeDismissed;
+  const dismissNudge = () => {
+    localStorage.setItem('mfa-nudge-dismissed', '1');
+    setNudgeDismissed(true);
+  };
+
 
   useEffect(() => {
     const updateTime = () => {
