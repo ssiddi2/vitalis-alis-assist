@@ -4,6 +4,7 @@ import { useHospital } from '@/contexts/HospitalContext';
 import { useAcuity, type AcuityResult } from '@/hooks/useAcuity';
 import { AcuityBadge } from './AcuityBadge';
 import { AcuitySignalBars } from './AcuitySignalBars';
+import { DsiInfo } from '@/components/virtualis/DsiInfo';
 import { cn } from '@/lib/utils';
 
 interface LiveAcuityCardProps {
@@ -78,7 +79,10 @@ export function LiveAcuityCard({
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
           01 — AI Clinical Assessment
         </span>
-        {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+        <div className="flex items-center gap-1.5">
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+          <DsiInfo interventionId="acuity-engine" />
+        </div>
       </div>
 
       {!result && loading && (

@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { loadSmartSession } from '@/lib/smart';
 import { writeNoteToEhr } from '@/lib/ehrWriteback';
 import { cn } from '@/lib/utils';
+import { DsiInfo } from '@/components/virtualis/DsiInfo';
 
 const NOTE_TYPE_LABELS: Record<NoteType, string> = {
   progress: 'Progress Note',
@@ -226,6 +227,9 @@ export function NoteEditorModal({
               className="text-xs resize-none bg-white border-slate-200"
               disabled={signed || generating}
             />
+            <div className="flex items-center justify-end">
+              <DsiInfo interventionId="ambient-note" />
+            </div>
             <Button
               type="button"
               onClick={handleGenerate}
