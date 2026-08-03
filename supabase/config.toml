@@ -29,3 +29,7 @@ verify_jwt = false
 [functions.billing-coder]
 verify_jwt = false
 
+[functions.order-transmit]
+verify_jwt = false
+
+
