@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { ChatMessage } from '@/types/clinical';
 import { toast } from 'sonner';
 import { loadSmartSession } from '@/lib/smart';
+import { supabase } from '@/integrations/supabase/client';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/alis-chat`;
 
@@ -52,11 +53,15 @@ export function useALISChat(options: UseALISChatOptions = {}) {
           }
         : options.patientContext;
 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Session expired. Please sign in again.');
+
       const response = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           messages: [...messages, userMessage].map((m) => ({
