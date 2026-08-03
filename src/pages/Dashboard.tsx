@@ -181,7 +181,7 @@ const Dashboard = () => {
         )}
 
         {/* Desktop ALIS Chat Panel or Team Chat */}
-        <div className="hidden lg:block h-[calc(100vh-57px)]">
+        <div className="hidden lg:block h-[calc(100vh-57px)] min-w-0 overflow-hidden">
           {showTeamChat ? (
             <TeamChatPanel 
               patientId={selectedPatient?.id || ''}
