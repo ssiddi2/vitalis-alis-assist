@@ -119,13 +119,14 @@ export function ChartOverview({ patientId, insights, trends, onNavigate }: Chart
         </OverviewCard>
 
         {trends.length > 0 && (
-          <OverviewCard index="05" label="Clinical Trends" icon={TrendingUp} className="md:col-span-2">
+          <OverviewCard index="05" label="Clinical Trends" icon={TrendingUp} className="@2xl:col-span-2">
             <ClinicalTrends trends={trends} />
           </OverviewCard>
         )}
       </div>
 
-      <OverviewCard index="00" label="ALIS — What Matters Now" icon={Brain} className="xl:sticky xl:top-20 xl:self-start xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto">
+      <OverviewCard index="00" label="ALIS — What Matters Now" icon={Brain} className="@5xl:sticky @5xl:top-20 @5xl:self-start @5xl:max-h-[calc(100vh-9rem)] @5xl:overflow-y-auto">
+
         {insights.length === 0 ? <Empty text="No active insights" /> : (
           <div className="space-y-3">
             {insights.map(i => <InsightCard key={i.id} insight={i} />)}
