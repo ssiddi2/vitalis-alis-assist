@@ -10,6 +10,8 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/hooks/useAuth';
 import { AnimatedLogo } from '@/components/virtualis/AnimatedLogo';
+import { MfaChallenge } from '@/components/auth/MfaChallenge';
+
 
 const FEATURES = ['Real-time Monitoring', 'AI Insights', 'Clinical Decision Support', 'HIPAA Compliant'];
 
