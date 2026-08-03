@@ -97,10 +97,11 @@ export function ALISPanel({
   const hasClinicalActions = stagedOrders.length > 0 || clinicalNotes.length > 0 || billingEvents.length > 0;
 
   return (
-    <div className="flex h-full bg-card border-l border-border relative overflow-hidden">
+    <div className="@container flex flex-col @[44rem]:flex-row h-full bg-card border-l border-border relative overflow-hidden">
       {/* Clinical Actions Sidebar */}
       {showSidebar && (
-        <div className="w-[240px] xl:w-[280px] border-r border-border bg-secondary/30 flex flex-col">
+        <div className="w-full max-h-[45%] @[44rem]:max-h-none @[44rem]:w-[240px] @[60rem]:w-[280px] border-b @[44rem]:border-b-0 @[44rem]:border-r border-border bg-secondary/30 flex flex-col shrink-0">
+
           {/* Sidebar Header */}
           <div className="px-3 xl:px-4 py-3 border-b border-border flex items-center justify-between">
             <h3 className="text-xs xl:text-sm font-semibold text-foreground">Clinical Actions</h3>
