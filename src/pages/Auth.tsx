@@ -288,10 +288,12 @@ export default function Auth() {
                 </div>
               )}
             </div>
+            )}
 
             <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               By continuing you agree to our Terms of Service and Privacy Policy
             </p>
+
           </div>
         </div>
       </div>
