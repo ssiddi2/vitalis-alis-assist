@@ -4,6 +4,7 @@ import { corsHeaders } from "./cors.ts";
 import { getCaller } from "./auth.ts";
 import { checkRateLimit } from "./rateLimit.ts";
 import { jsonResponse, preflight } from "./http.ts";
+import { adminClient } from "./supabase.ts";
 
 type Guard =
   | { response: Response; user?: never; admin?: never; cors?: never; json?: never }
@@ -31,7 +32,7 @@ export async function guard(
   const user = await getCaller(req);
   if (!user) return { response: jsonResponse({ error: "Unauthorized" }, cors, 401) };
 
-  const admin = adminClientLazy();
+  const admin = adminClient();
   const rl = await checkRateLimit(admin, user.id, bucket, { limit, windowSec: 60 });
   if (!rl.allowed) {
     return {
@@ -47,6 +48,3 @@ export async function guard(
     json: (body: unknown, status = 200) => jsonResponse(body, cors, status),
   };
 }
-
-import { adminClient } from "./supabase.ts";
-const adminClientLazy = adminClient;
