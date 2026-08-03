@@ -155,7 +155,22 @@ export default function Auth() {
               </p>
             </div>
 
+            {mfaRequired ? (
+              <MfaChallenge
+                onVerified={() => {
+                  logLogin();
+                  setMfaRequired(false);
+                  toast.success('Welcome back!');
+                  navigate('/', { replace: true });
+                }}
+                onCancel={() => {
+                  setMfaRequired(false);
+                  setPassword('');
+                }}
+              />
+            ) : (
             <div className="glass-strong rounded-2xl border border-border p-8 shadow-elevated">
+
               <div className="mb-8">
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
                   Secure clinical access
