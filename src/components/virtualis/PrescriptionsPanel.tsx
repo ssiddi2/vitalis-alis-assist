@@ -204,6 +204,17 @@ export function PrescriptionsPanel({ patientId }: PrescriptionsPanelProps) {
                       </Button>
                     </>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!selectedHospital || transmitting === rx.id}
+                    className="rounded-lg text-[10px] h-6 px-2 gap-1"
+                    onClick={() => handleTransmit(rx.id, rx.medication_name)}
+                  >
+                    {transmitting === rx.id
+                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                      : <Send className="w-3 h-3" />} E-prescribe
+                  </Button>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
@@ -215,6 +226,27 @@ export function PrescriptionsPanel({ patientId }: PrescriptionsPanelProps) {
               </div>
               {rx.sig && <p className="text-[11px] text-muted-foreground mt-1 italic">{rx.sig}</p>}
               {rx.pharmacy_name && <p className="text-[10px] text-muted-foreground/60 mt-0.5">📍 {rx.pharmacy_name}</p>}
+              {results[rx.id] && (() => {
+                const r = results[rx.id];
+                const copy = TRANSMIT_COPY[r.status] ?? TRANSMIT_COPY.error;
+                const blocked = copy.tone === 'blocked';
+                return (
+                  <div className={cn(
+                    'mt-2 flex items-start gap-2 rounded-xl border px-2.5 py-2 text-[11px]',
+                    blocked && 'border-[#EF4444]/30 bg-[#EF4444]/5 text-[#EF4444]',
+                    copy.tone === 'info' && 'border-border bg-muted/50 text-muted-foreground',
+                    copy.tone === 'success' && 'border-[#10B981]/30 bg-[#10B981]/5 text-[#10B981]',
+                    copy.tone === 'error' && 'border-[#F59E0B]/30 bg-[#F59E0B]/5 text-[#F59E0B]',
+                  )}>
+                    {blocked ? <ShieldAlert className="w-3.5 h-3.5 mt-px shrink-0" /> : <Clock className="w-3.5 h-3.5 mt-px shrink-0" />}
+                    <div>
+                      <p className="font-mono uppercase tracking-widest text-[9px] opacity-70">Transmission</p>
+                      <p>{copy.label}{blocked && r.schedule ? ` · Schedule ${r.schedule}` : ''}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+
             </div>
           );
         })}
