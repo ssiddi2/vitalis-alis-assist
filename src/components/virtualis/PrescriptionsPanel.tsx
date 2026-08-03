@@ -30,7 +30,23 @@ interface PrescriptionsPanelProps {
 
 export function PrescriptionsPanel({ patientId }: PrescriptionsPanelProps) {
   const { prescriptions, loading, createPrescription, signPrescription, cancelPrescription } = usePrescriptions(patientId);
+  const { selectedHospital } = useHospital();
   const [newRxOpen, setNewRxOpen] = useState(false);
+  const [transmitting, setTransmitting] = useState<string | null>(null);
+  const [results, setResults] = useState<Record<string, TransmitResult>>({});
+
+  const handleTransmit = async (rxId: string, drugName: string) => {
+    if (!selectedHospital) return;
+    setTransmitting(rxId);
+    const res = await eprescribe(rxId, selectedHospital.id, drugName);
+    setResults(prev => ({ ...prev, [rxId]: res }));
+    setTransmitting(null);
+    if (res.status === 'blocked') toast.error('Controlled substance — e-prescribing blocked');
+    else if (res.status === 'queued') toast.info('Prescription queued for transmission');
+    else if (res.status === 'sent') toast.success('Sent to pharmacy');
+    else toast.error('Transmission unavailable');
+  };
+
   const [form, setForm] = useState({
     medication_name: '',
     dose: '',
