@@ -1296,6 +1296,63 @@ export type Database = {
           },
         ]
       }
+      lab_results: {
+        Row: {
+          created_at: string
+          hospital_id: string
+          id: string
+          is_abnormal: boolean
+          panel: string | null
+          patient_id: string
+          reference_range: string | null
+          resulted_at: string | null
+          test_name: string
+          unit: string | null
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          hospital_id: string
+          id?: string
+          is_abnormal?: boolean
+          panel?: string | null
+          patient_id: string
+          reference_range?: string | null
+          resulted_at?: string | null
+          test_name: string
+          unit?: string | null
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          is_abnormal?: boolean
+          panel?: string | null
+          patient_id?: string
+          reference_range?: string | null
+          resulted_at?: string | null
+          test_name?: string
+          unit?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_results_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_results_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string

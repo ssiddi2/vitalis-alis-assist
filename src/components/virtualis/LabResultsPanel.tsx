@@ -1,116 +1,101 @@
-import { FlaskConical, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { FlaskConical, Minus, AlertTriangle } from 'lucide-react';
+import { usePatientLabs, type LabResult } from '@/hooks/usePatientClinical';
 import { cn } from '@/lib/utils';
-
-interface LabResult {
-  name: string;
-  value: string;
-  unit: string;
-  reference_range: string;
-  is_abnormal: boolean;
-  direction: 'up' | 'down' | 'stable';
-  timestamp: string;
-}
 
 interface LabResultsProps {
   patientId: string;
 }
 
-export function generateDemoLabs(): LabResult[] {
-  return [
-    { name: 'WBC', value: '12.4', unit: 'K/uL', reference_range: '4.5-11.0', is_abnormal: true, direction: 'up', timestamp: new Date().toISOString() },
-    { name: 'Hemoglobin', value: '13.2', unit: 'g/dL', reference_range: '12.0-17.5', is_abnormal: false, direction: 'stable', timestamp: new Date().toISOString() },
-    { name: 'Platelets', value: '245', unit: 'K/uL', reference_range: '150-400', is_abnormal: false, direction: 'stable', timestamp: new Date().toISOString() },
-    { name: 'Sodium', value: '138', unit: 'mEq/L', reference_range: '136-145', is_abnormal: false, direction: 'stable', timestamp: new Date().toISOString() },
-    { name: 'Potassium', value: '3.4', unit: 'mEq/L', reference_range: '3.5-5.0', is_abnormal: true, direction: 'down', timestamp: new Date().toISOString() },
-    { name: 'Creatinine', value: '1.8', unit: 'mg/dL', reference_range: '0.7-1.3', is_abnormal: true, direction: 'up', timestamp: new Date().toISOString() },
-    { name: 'BUN', value: '28', unit: 'mg/dL', reference_range: '7-20', is_abnormal: true, direction: 'up', timestamp: new Date().toISOString() },
-    { name: 'Glucose', value: '142', unit: 'mg/dL', reference_range: '70-100', is_abnormal: true, direction: 'up', timestamp: new Date().toISOString() },
-    { name: 'Lactate', value: '1.2', unit: 'mmol/L', reference_range: '0.5-2.0', is_abnormal: false, direction: 'down', timestamp: new Date().toISOString() },
-    { name: 'Troponin', value: '<0.01', unit: 'ng/mL', reference_range: '<0.04', is_abnormal: false, direction: 'stable', timestamp: new Date().toISOString() },
-  ];
-}
-
-const DirectionIcon = ({ direction }: { direction: string }) => {
-  if (direction === 'up') return <TrendingUp className="w-3 h-3 text-critical" />;
-  if (direction === 'down') return <TrendingDown className="w-3 h-3 text-warning" />;
-  return <Minus className="w-3 h-3 text-muted-foreground" />;
-};
+const Flag = ({ lab }: { lab: LabResult }) =>
+  lab.is_abnormal
+    ? <AlertTriangle className="w-3 h-3 text-[#EF4444]" />
+    : <Minus className="w-3 h-3 text-muted-foreground" />;
 
 export function LabResultsPanel({ patientId }: LabResultsProps) {
-  const labs = generateDemoLabs();
+  const { data: labs, loading } = usePatientLabs(patientId);
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 mb-3">
         <FlaskConical className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Lab Results</h3>
-        <span className="text-[10px] text-muted-foreground ml-auto">Last updated: Today</span>
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          01 — Lab Results
+        </h3>
       </div>
 
-      {/* Mobile: stacked cards */}
-      <div className="space-y-2 sm:hidden">
-        {labs.map((lab) => (
-          <div
-            key={lab.name}
-            className={cn(
-              'rounded-xl border border-border/50 p-3',
-              lab.is_abnormal && 'bg-critical/5 border-critical/30'
-            )}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                {lab.is_abnormal && <AlertTriangle className="w-3 h-3 text-critical flex-shrink-0" />}
-                <span className={cn('text-xs font-semibold truncate', lab.is_abnormal ? 'text-critical' : 'text-foreground')}>{lab.name}</span>
-              </div>
-              <DirectionIcon direction={lab.direction} />
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className={cn('text-lg font-bold font-mono tabular-nums', lab.is_abnormal ? 'text-critical' : 'text-foreground')}>
-                {lab.value}
-                <span className="text-[10px] text-muted-foreground font-normal ml-1">{lab.unit}</span>
-              </span>
-              <span className="text-[10px] text-muted-foreground font-mono">Ref: {lab.reference_range}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Desktop: table */}
-      <div className="hidden sm:block rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-[480px]">
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-3 py-2 bg-muted/50 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              <span>Test</span>
-              <span className="text-right">Value</span>
-              <span className="text-right">Unit</span>
-              <span className="text-right">Ref Range</span>
-              <span className="text-center">Trend</span>
-            </div>
+      {loading ? (
+        <p className="text-xs text-muted-foreground py-4 text-center">Loading labs…</p>
+      ) : labs.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-4 text-center">No lab results recorded</p>
+      ) : (
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="space-y-2 sm:hidden">
             {labs.map((lab) => (
               <div
-                key={lab.name}
+                key={lab.id}
                 className={cn(
-                  'grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-3 py-2.5 items-center text-xs border-t border-border/50',
-                  lab.is_abnormal && 'bg-critical/5'
+                  'rounded-2xl border border-border/50 p-3',
+                  lab.is_abnormal && 'bg-[#EF4444]/5 border-[#EF4444]/30',
                 )}
               >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  {lab.is_abnormal && <AlertTriangle className="w-3 h-3 text-critical flex-shrink-0" />}
-                  <span className={cn('font-medium truncate', lab.is_abnormal ? 'text-critical' : 'text-foreground')}>{lab.name}</span>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {lab.is_abnormal && <AlertTriangle className="w-3 h-3 text-[#EF4444] flex-shrink-0" />}
+                    <span className={cn('text-xs font-semibold truncate', lab.is_abnormal ? 'text-[#EF4444]' : 'text-foreground')}>
+                      {lab.test_name}
+                    </span>
+                  </div>
+                  {lab.panel && <span className="text-[10px] text-muted-foreground truncate">{lab.panel}</span>}
                 </div>
-                <span className={cn('text-right font-mono font-semibold tabular-nums', lab.is_abnormal ? 'text-critical' : 'text-foreground')}>
-                  {lab.value}
-                </span>
-                <span className="text-right text-muted-foreground">{lab.unit}</span>
-                <span className="text-right text-muted-foreground font-mono">{lab.reference_range}</span>
-                <div className="flex justify-center">
-                  <DirectionIcon direction={lab.direction} />
+                <div className="flex items-baseline justify-between">
+                  <span className={cn('text-lg font-bold font-mono tabular-nums', lab.is_abnormal ? 'text-[#EF4444]' : 'text-foreground')}>
+                    {lab.value}
+                    <span className="text-[10px] text-muted-foreground font-normal ml-1">{lab.unit}</span>
+                  </span>
+                  {lab.reference_range && (
+                    <span className="text-[10px] text-muted-foreground font-mono">Ref: {lab.reference_range}</span>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
+
+          {/* Desktop: table */}
+          <div className="hidden sm:block rounded-2xl border border-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[480px]">
+                <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-3 py-2 bg-muted/50 font-mono text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span>Test</span>
+                  <span className="text-right">Value</span>
+                  <span className="text-right">Unit</span>
+                  <span className="text-right">Ref Range</span>
+                  <span className="text-center">Flag</span>
+                </div>
+                {labs.map((lab) => (
+                  <div
+                    key={lab.id}
+                    className={cn(
+                      'grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-3 py-2.5 items-center text-xs border-t border-border/50',
+                      lab.is_abnormal && 'bg-[#EF4444]/5',
+                    )}
+                  >
+                    <span className={cn('font-medium truncate', lab.is_abnormal ? 'text-[#EF4444]' : 'text-foreground')}>
+                      {lab.test_name}
+                    </span>
+                    <span className={cn('text-right font-mono font-semibold tabular-nums', lab.is_abnormal ? 'text-[#EF4444]' : 'text-foreground')}>
+                      {lab.value}
+                    </span>
+                    <span className="text-right text-muted-foreground">{lab.unit}</span>
+                    <span className="text-right text-muted-foreground font-mono">{lab.reference_range}</span>
+                    <div className="flex justify-center"><Flag lab={lab} /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
