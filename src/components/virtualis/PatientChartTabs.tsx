@@ -65,8 +65,9 @@ export function PatientChartTabs({ patientId, hospitalId, insights, trends, clin
             </TabsList>
           </div>
           {/* Edge fade hints */}
-          <div className="pointer-events-none absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-background to-transparent lg:hidden" />
-          <div className="pointer-events-none absolute top-0 bottom-0 right-0 w-6 bg-gradient-to-l from-background to-transparent lg:hidden" />
+          <div className="pointer-events-none absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute top-0 bottom-0 right-0 w-6 bg-gradient-to-l from-background to-transparent" />
+
         </div>
       </div>
 
