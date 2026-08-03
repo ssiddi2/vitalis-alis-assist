@@ -51,15 +51,16 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
   const navigate = useNavigate();
   const { logLogin } = useAuditLog();
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !mfaRequired) {
       navigate('/', { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, mfaRequired, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,9 +80,18 @@ export default function Auth() {
           password,
         });
         if (error) throw error;
+
+        // Optional MFA: only step up when the user actually has a verified factor.
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2') {
+          setMfaRequired(true);
+          return;
+        }
+
         logLogin();
         toast.success('Welcome back!');
       }
+
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An error occurred';
       toast.error(message);
