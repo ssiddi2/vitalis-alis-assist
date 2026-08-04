@@ -33,7 +33,9 @@ serve(async (req) => {
 
     const text = await r.text();
     if (!r.ok) {
-      return json({ status: "skipped", reason: `ehr_${r.status}`, body: text.slice(0, 400) });
+      // Never echo the upstream body: a FHIR OperationOutcome can carry PHI.
+      console.error(`[fhir-writeback] upstream ${r.status} (${text.length} bytes)`);
+      return json({ status: "skipped", reason: `ehr_${r.status}` });
     }
     let parsed: { id?: string; resourceType?: string } = {};
     try { parsed = JSON.parse(text); } catch { /* may be empty 201 */ }

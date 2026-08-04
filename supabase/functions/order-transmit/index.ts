@@ -4,6 +4,7 @@ import { userHasHospitalAccess } from "../_shared/auth.ts";
 import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
+import { ownedByHospital } from "../_shared/tenancy.ts";
 import { classifyControlled } from "../_shared/controlledSubstances.ts";
 
 const ACTIONS = ["eprescribe", "lab_order"] as const;
@@ -50,18 +51,14 @@ serve(async (req) => {
 
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) return json({ error: "Forbidden" }, 403);
 
-    // Cross-tenant IDOR guard: the target record must belong to the caller's hospital.
-    const ownedByHospital = async (table: string, id: string) => {
-      const { data } = await admin.from(table)
-        .select("id, patients!inner(hospital_id)")
-        .eq("id", id)
-        .eq("patients.hospital_id", hospital_id)
-        .maybeSingle();
-      return !!data;
-    };
+    // PostgREST cannot join on UPDATE, so writes are scoped to this hospital's
+    // patient ids — the same boundary the read-side checks enforce.
+    const { data: hospPatients } = await admin.from("patients").select("id").eq("hospital_id", hospital_id!);
+    const patientIdsSub = (hospPatients || []).map((p: { id: string }) => p.id);
+
 
     if (action === "eprescribe") {
-      if (!(await ownedByHospital("prescriptions", prescription_id!))) return json({ error: "Not found" }, 404);
+      if (!(await ownedByHospital(admin, "prescriptions", prescription_id!, hospital_id!))) return json({ error: "Not found" }, 404);
 
       const { controlled, schedule } = classifyControlled(drug_name);
       if (controlled) {
@@ -79,7 +76,15 @@ serve(async (req) => {
       }
 
       // No e-Rx network connected: hold at 'signed' (queued) — never mark 'sent'.
-      await admin.from("prescriptions").update({ status: "signed" }).eq("id", prescription_id!);
+      // Re-assert the hospital scope on the write itself so the check and the
+      // mutation cannot diverge (TOCTOU).
+      const { data: rxWritten } = await admin.from("prescriptions")
+        .update({ status: "signed" })
+        .eq("id", prescription_id!)
+        .in("patient_id", patientIdsSub)
+        .select("id")
+        .maybeSingle();
+      if (!rxWritten) return json({ error: "Not found" }, 404);
       await audit(admin, {
         user_id: user.id, hospital_id: hospital_id!, event: "rx.queued",
         resource_type: "prescription", resource_id: prescription_id!, metadata: { drug_name, provider },
@@ -97,12 +102,17 @@ serve(async (req) => {
       .maybeSingle();
     if (!order) return json({ error: "Not found" }, 404);
 
-    await admin.from("staged_orders").update({
+    const { data: orderWritten } = await admin.from("staged_orders").update({
       order_data: {
         ...(order.order_data as Record<string, unknown> || {}),
         transmit: { status: "queued", queued_at: new Date().toISOString(), provider },
       },
-    }).eq("id", order_id!);
+    })
+      .eq("id", order_id!)
+      .in("patient_id", patientIdsSub)
+      .select("id")
+      .maybeSingle();
+    if (!orderWritten) return json({ error: "Not found" }, 404);
     await audit(admin, {
       user_id: user.id, hospital_id: hospital_id!, event: "lab.queued",
       resource_type: "staged_order", resource_id: order_id!, metadata: { provider },

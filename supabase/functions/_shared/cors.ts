@@ -11,6 +11,9 @@ function isAllowed(origin: string): boolean {
   try {
     const { protocol, hostname } = new URL(origin);
     if (protocol !== "https:") return protocol === "http:" && hostname === "localhost";
+    // Shared Lovable preview domains host every other app too, so the wildcard is
+    // opt-in for preview/staging only. Production = PRIMARY_ORIGIN + ALLOWED_ORIGINS.
+    if (Deno.env.get("ALLOW_LOVABLE_PREVIEW") !== "true") return false;
     return hostname.endsWith(".lovable.app") || hostname.endsWith(".lovableproject.com");
   } catch {
     return false;
