@@ -328,7 +328,14 @@ export default function CommandCenter() {
                         )}
                         {level && <AcuitySignalBars level={level} />}
                         {level && <AcuityBadge level={level} confidence={item.acuity?.confidence} />}
+                        {scope === 'all' && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                            <Building2 className="h-3 w-3" />
+                            {facilityNames[item.hospital_id] ?? 'Facility'}
+                          </span>
+                        )}
                       </div>
+
 
                       <p className="mt-1.5 text-sm text-foreground/80">{item.reason}</p>
 
