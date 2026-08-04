@@ -26,7 +26,7 @@ export default function HospitalSelector() {
 
   const handleSelectHospital = (hospital: Hospital) => {
     setSelectedHospital(hospital);
-    navigate('/census');
+    navigate('/command');
   };
 
   const handleSignOut = async () => {
