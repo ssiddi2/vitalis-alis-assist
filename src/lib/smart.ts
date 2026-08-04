@@ -46,9 +46,16 @@ export const discoverSmart = async (iss: string): Promise<SmartConfig> => {
   return cfg;
 };
 
-// Demo default = public Epic-style sandbox client. Override via VITE_SMART_CLIENT_ID.
-export const SMART_CLIENT_ID =
-  (import.meta.env.VITE_SMART_CLIENT_ID as string) || 'alis-demo-client';
+// Client id: the EMR Connections screen (localStorage, non-PHI config) wins,
+// then VITE_SMART_CLIENT_ID, then the public demo default.
+export const getSmartClientId = () => {
+  try {
+    const stored = localStorage.getItem('emr_sandbox_client_id')?.trim();
+    if (stored) return stored;
+  } catch { /* storage unavailable */ }
+  return (import.meta.env.VITE_SMART_CLIENT_ID as string) || 'alis-demo-client';
+};
+
 
 export const SMART_SCOPES =
   'launch openid fhirUser offline_access patient/Patient.read patient/Observation.read patient/Condition.read patient/MedicationRequest.read patient/AllergyIntolerance.read user/DocumentReference.write user/MedicationRequest.write user/ServiceRequest.write user/Communication.write';

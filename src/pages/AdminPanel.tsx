@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft, ChevronRight, ShieldCheck, Plug } from 'lucide-react';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { EditUserModal } from '@/components/virtualis/EditUserModal';
 import { TableRowSkeleton } from '@/components/ui/skeleton-patterns';
@@ -192,10 +192,15 @@ export default function AdminPanel() {
               <h2 className="text-xl font-semibold text-foreground">Users ({filteredUsers.length})</h2>
             </div>
             <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/emr-connections')} className="gap-2 rounded-xl">
+              <Plug className="w-4 h-4" />
+              EMR Connections
+            </Button>
             <Button variant="outline" onClick={() => navigate('/governance')} className="gap-2 rounded-xl">
               <ShieldCheck className="w-4 h-4" />
               AI Governance
             </Button>
+
             <Button onClick={() => setShowCreateForm(!showCreateForm)} className="gap-2 rounded-xl btn-primary-gradient">
               <UserPlus className="w-4 h-4" />
               Invite User

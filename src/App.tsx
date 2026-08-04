@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPanel from "./pages/AdminPanel";
 import AIGovernance from "./pages/AIGovernance";
+import EMRConnections from "./pages/EMRConnections";
 import BillingDashboard from "./pages/BillingDashboard";
 import QualityDashboard from "./pages/QualityDashboard";
 import Schedule from "./pages/Schedule";
@@ -69,6 +70,8 @@ const App = () => (
 
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
                   <Route path="/governance" element={<ProtectedRoute requiredRole="admin"><AIGovernance /></ProtectedRoute>} />
+                  <Route path="/emr-connections" element={<ProtectedRoute requiredRole="admin"><EMRConnections /></ProtectedRoute>} />
+
                   <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
                   <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />
                   <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
