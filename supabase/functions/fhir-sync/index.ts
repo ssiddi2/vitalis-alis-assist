@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { guard } from "../_shared/guard.ts";
 import { envLimit } from "../_shared/rateLimit.ts";
+import { isAllowedIss } from "../_shared/fhirAllowlist.ts";
 
-
-
-// Public FHIR R4 sandbox (HAPI). No auth required — safe for demo.
-// In production this URL would be Epic/Cerner/Meditech tenant base URL with SMART-on-FHIR OAuth.
-const FHIR_BASE = "https://hapi.fhir.org/baseR4";
+/**
+ * Connectivity/inventory probe against a FHIR R4 server.
+ * There is NO built-in server: the base URL comes from the caller and must be
+ * explicitly allowlisted via ALLOWED_FHIR_ISS (deny-all by default).
+ */
 
 const RESOURCES = [
   "Patient",
@@ -19,9 +20,9 @@ const RESOURCES = [
   "Procedure",
 ];
 
-async function countResource(name: string): Promise<number> {
+async function countResource(base: string, name: string): Promise<number> {
   try {
-    const r = await fetch(`${FHIR_BASE}/${name}?_summary=count`, {
+    const r = await fetch(`${base}/${name}?_summary=count`, {
       headers: { Accept: "application/fhir+json" },
     });
     if (!r.ok) return 0;
@@ -32,21 +33,18 @@ async function countResource(name: string): Promise<number> {
   }
 }
 
-async function samplePatient(): Promise<Record<string, unknown> | null> {
+async function samplePatient(base: string): Promise<Record<string, unknown> | null> {
   try {
-    const r = await fetch(`${FHIR_BASE}/Patient?_count=1&_sort=-_lastUpdated`, {
+    const r = await fetch(`${base}/Patient?_count=1&_sort=-_lastUpdated`, {
       headers: { Accept: "application/fhir+json" },
     });
     if (!r.ok) return null;
     const j = await r.json();
     const entry = j.entry?.[0]?.resource;
     if (!entry) return null;
-    const name = entry.name?.[0];
+    // Identity fields are deliberately omitted — this is a connectivity probe.
     return {
       id: entry.id,
-      name: name ? `${(name.given || []).join(" ")} ${name.family || ""}`.trim() : "(unnamed)",
-      gender: entry.gender || "unknown",
-      birthDate: entry.birthDate || null,
       lastUpdated: entry.meta?.lastUpdated || null,
     };
   } catch {
@@ -59,16 +57,26 @@ serve(async (req) => {
   if (g.response) return g.response;
   const corsHeaders = g.cors;
 
-
+  let iss = "";
+  try {
+    const body = await req.json().catch(() => ({}));
+    iss = String(body?.iss || body?.fhir_base || "").replace(/\/$/, "");
+  } catch { /* no body */ }
+  if (!iss || !isAllowedIss(iss)) {
+    return new Response(
+      JSON.stringify({ error: "FHIR server is not allowlisted", hint: "Set ALLOWED_FHIR_ISS and pass iss." }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   const t0 = Date.now();
-  const counts = await Promise.all(RESOURCES.map(async (n) => ({ name: n, count: await countResource(n) })));
-  const sample = await samplePatient();
+  const counts = await Promise.all(RESOURCES.map(async (n) => ({ name: n, count: await countResource(iss, n) })));
+  const sample = await samplePatient(iss);
   const latencyMs = Date.now() - t0;
 
   return new Response(
     JSON.stringify({
-      server: FHIR_BASE,
+      server: iss,
       fhir_version: "4.0.1",
       synced_at: new Date().toISOString(),
       latency_ms: latencyMs,
