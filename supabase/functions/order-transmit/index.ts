@@ -60,11 +60,19 @@ serve(async (req) => {
     if (action === "eprescribe") {
       if (!(await ownedByHospital(admin, "prescriptions", prescription_id!, hospital_id!))) return json({ error: "Not found" }, 404);
 
-      const { controlled, schedule } = classifyControlled(drug_name);
+      // EPCS guardrail must classify the AUTHORITATIVE drug name from the row —
+      // a caller could otherwise pass a benign drug_name for a controlled Rx.
+      const { data: rxRow } = await admin.from("prescriptions")
+        .select("medication_name").eq("id", prescription_id!).maybeSingle();
+      if (!rxRow) return json({ error: "Not found" }, 404);
+      const authoritativeDrug = (rxRow.medication_name as string) || drug_name;
+
+      const { controlled, schedule } = classifyControlled(authoritativeDrug);
       if (controlled) {
         await audit(admin, {
           user_id: user.id, hospital_id: hospital_id!, event: "rx.blocked_controlled",
-          resource_type: "prescription", resource_id: prescription_id!, metadata: { schedule, drug_name },
+          resource_type: "prescription", resource_id: prescription_id!,
+          metadata: { schedule, drug_name: authoritativeDrug },
         });
         return json({ status: "blocked", reason: "controlled_substance_epcs_required", schedule });
       }

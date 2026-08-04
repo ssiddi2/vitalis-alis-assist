@@ -1,4 +1,5 @@
 import { completeText } from "../_shared/llm.ts";
+import { extractJson } from "../_shared/bedrock.ts";
 
 export type Tier = "fast" | "frontier";
 
@@ -59,16 +60,6 @@ export const FALLBACK: AcuityResult = {
   recommendation: null,
 };
 
-function extractJson(text: string): Record<string, unknown> | null {
-  const cleaned = text.replace(/```(?:json)?/gi, "```").split("```").join("\n");
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    return null;
-  }
-}
 
 const oneOf = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
   allowed.includes(v as T) ? (v as T) : fallback;

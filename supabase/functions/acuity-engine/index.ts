@@ -4,6 +4,7 @@ import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
 import { callModel, sanitize, SPECIALTIES, URGENCY_COLOR, type AcuityResult } from "./providers.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
+import { patientInHospital } from "../_shared/tenancy.ts";
 
 const ACTIONS = ["score", "record_feedback"] as const;
 const METRIC_TYPES = ["response_time", "unaddressed", "subsequent_action", "reclassified"] as const;
@@ -111,9 +112,14 @@ serve(async (req) => {
       }
     }
 
+    // Tenancy hygiene: never attach a patient from another hospital to a score.
+    const scopedPatientId = patient_id && (await patientInHospital(admin, patient_id, hospital_id!))
+      ? patient_id
+      : null;
+
     const { data, error } = await admin.from("acuity_scores").insert({
       hospital_id,
-      patient_id: patient_id || null,
+      patient_id: scopedPatientId,
       source_table: source_table || null,
       source_id: source_id || null,
       message_text,

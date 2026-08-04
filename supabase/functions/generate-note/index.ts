@@ -3,6 +3,7 @@ import { userHasHospitalAccess } from "../_shared/auth.ts";
 import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
 import { completeText } from "../_shared/llm.ts";
+import { extractJson } from "../_shared/bedrock.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
 
 const NOTE_TYPES = ["progress", "consult", "discharge", "procedure"] as const;
@@ -22,12 +23,6 @@ const FALLBACK = {
   error: "model_unavailable",
 };
 
-function extractJson(text: string): Record<string, unknown> | null {
-  const cleaned = text.replace(/```(?:json)?/gi, "```").split("```").join("\n");
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try { return JSON.parse(match[0]); } catch { return null; }
-}
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
