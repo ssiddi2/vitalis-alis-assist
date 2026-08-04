@@ -64,6 +64,7 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
     () => readStored(PATIENT_KEY)
   );
   const [activeEncounterId, setActiveEncounterId] = useState<string | null>(null);
+  const [emrConnection, setEmrConnection] = useState<EmrConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
