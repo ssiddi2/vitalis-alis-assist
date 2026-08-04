@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { monitoringEnabled, reportError } from '@/lib/monitoring';
 
 interface ErrorBoundaryState {
   hasError: boolean;

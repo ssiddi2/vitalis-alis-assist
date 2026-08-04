@@ -24,14 +24,14 @@ const scrub = (value: unknown, depth = 0): unknown => {
   return out;
 };
 
-const sanitize = <T extends Record<string, unknown>>(event: T): T => {
+const sanitize = <T,>(event: T): T => {
   const e = event as Record<string, unknown>;
   delete e.request;
   delete e.extra;
   if (e.contexts) e.contexts = scrub(e.contexts) as Record<string, unknown>;
   if (e.tags) e.tags = scrub(e.tags) as Record<string, unknown>;
   if (e.user) e.user = { id: (e.user as { id?: string }).id };
-  return e as T;
+  return event;
 };
 
 export const initMonitoring = () => {
