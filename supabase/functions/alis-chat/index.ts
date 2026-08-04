@@ -6,6 +6,8 @@ import { guard } from "../_shared/guard.ts";
 import { adminClient } from "../_shared/supabase.ts";
 import { suggestBilling } from "../_shared/billing.ts";
 import { badRequest, varray, vtext, vuuid } from "../_shared/validate.ts";
+import { bedrockConfigured, invokeClaudeMessages } from "../_shared/bedrock.ts";
+
 
 
 

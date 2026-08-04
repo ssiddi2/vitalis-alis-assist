@@ -1,5 +1,7 @@
-// Shared multi-provider text completion with runtime failover.
-// Chain order: anthropic → cohere → gateway (override with LLM_FALLBACK_ORDER).
+// Shared multi-provider text completion.
+// Bedrock (BAA) first + fail-closed; otherwise anthropic → cohere → gateway.
+import { BEDROCK_MODEL_ID, bedrockConfigured, invokeClaude } from "./bedrock.ts";
+
 
 export interface CompleteArgs {
   system: string;
