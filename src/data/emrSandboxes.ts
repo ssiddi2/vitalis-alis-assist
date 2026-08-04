@@ -45,3 +45,17 @@ export const EMR_SANDBOXES: readonly EmrSandbox[] = [
 
 export const EMR_PRESET_KEY = 'emr_sandbox_preset';
 export const EMR_CLIENT_ID_KEY = 'emr_sandbox_client_id';
+
+/**
+ * Facility EMR flavour → sandbox preset used for NON-PRODUCTION demos only.
+ * Meditech has no public sandbox, so it demos against the SMART reference server.
+ * Real deployments must configure the facility's own issuer (ALLOWED_FHIR_ISS).
+ */
+export const SANDBOX_FOR_EMR: Record<string, string> = {
+  epic: 'epic',
+  cerner: 'cerner',
+  meditech: 'smart-health-it',
+};
+
+export const sandboxForEmr = (emr?: string | null): EmrSandbox | undefined =>
+  EMR_SANDBOXES.find(s => s.id === SANDBOX_FOR_EMR[emr ?? '']);
