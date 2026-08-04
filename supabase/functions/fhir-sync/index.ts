@@ -57,6 +57,15 @@ serve(async (req) => {
   if (g.response) return g.response;
   const corsHeaders = g.cors;
 
+  // DEMO-ONLY PATH. This probe contacts an external FHIR server and must stay
+  // disabled in any real-patient deployment. Leave ENABLE_FHIR_SANDBOX unset in production.
+  if (Deno.env.get("ENABLE_FHIR_SANDBOX") !== "true") {
+    return new Response(
+      JSON.stringify({ error: "FHIR sandbox sync is disabled" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   let iss = "";
   try {
     const body = await req.json().catch(() => ({}));
