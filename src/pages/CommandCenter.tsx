@@ -19,6 +19,8 @@ import { useMyHospitalIds } from '@/hooks/useMyHospitalIds';
 interface ConsultRow {
   id: string;
   patient_id: string;
+  hospital_id: string;
+
   reason: string;
   specialty: string;
   urgency: string;
