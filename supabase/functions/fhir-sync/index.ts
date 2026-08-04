@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { guard } from "../_shared/guard.ts";
+import { envLimit } from "../_shared/rateLimit.ts";
+
 
 
 // Public FHIR R4 sandbox (HAPI). No auth required — safe for demo.
