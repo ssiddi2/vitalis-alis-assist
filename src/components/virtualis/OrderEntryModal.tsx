@@ -52,8 +52,12 @@ export function OrderEntryModal({ open, onOpenChange, patientId }: OrderEntryMod
       .insert({
         patient_id: patientId,
         order_type: orderType,
-        order_data: { name: name.trim(), priority, details: details.trim() || undefined },
-        rationale: rationale.trim() || null,
+        order_data: {
+          name: name.trim().slice(0, 200),
+          priority,
+          details: details.trim().slice(0, 4000) || undefined,
+        },
+        rationale: rationale.trim().slice(0, 2000) || null,
         status: 'staged',
         created_by: user?.id || null,
       });

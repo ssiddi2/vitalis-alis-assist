@@ -1,7 +1,18 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Scan, ExternalLink, User, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 import type { ImagingStudy } from './ImagingPanel';
+
+const openHttpUrl = (raw: string) => {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('bad scheme');
+    window.open(u.toString(), '_blank', 'noopener,noreferrer');
+  } catch {
+    toast.error('Invalid PACS viewer link');
+  }
+};
 
 interface RadiologyReportModalProps {
   study: ImagingStudy | null;

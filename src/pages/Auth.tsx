@@ -245,6 +245,7 @@ export default function Auth() {
                           className={`${inputClass} pr-11`}
                           required
                           minLength={6}
+                          maxLength={128}
                         />
                         <button
                           type="button"
