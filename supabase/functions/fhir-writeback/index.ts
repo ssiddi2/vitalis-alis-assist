@@ -1,12 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { guard } from "../_shared/guard.ts";
+import { envLimit } from "../_shared/rateLimit.ts";
 import { isAllowedIss } from "../_shared/fhirAllowlist.ts";
 
 // FHIR write-back proxy. Client forwards SMART session creds; we POST the resource
 // and report success or a graceful skip (sandbox lacks scope, etc.) so demos never crash.
 serve(async (req) => {
-  const corsHeaders = buildCors(req);
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const g = await guard(req, { bucket: "fhir-writeback", limit: envLimit("RL_FHIR_WRITE", 60) });
+  if (g.response) return g.response;
+  const corsHeaders = g.cors;
 
   try {
     const { iss, access_token, resourceType, resource } = await req.json();
@@ -16,6 +18,7 @@ serve(async (req) => {
     if (!isAllowedIss(iss)) {
       return json({ status: "skipped", reason: "iss_not_allowlisted" });
     }
+
 
     const base = String(iss).replace(/\/$/, "");
     const r = await fetch(`${base}/${resourceType}`, {

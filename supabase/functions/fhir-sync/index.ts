@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders as buildCors } from "../_shared/cors.ts";
+import { guard } from "../_shared/guard.ts";
+import { envLimit } from "../_shared/rateLimit.ts";
+
 
 
 // Public FHIR R4 sandbox (HAPI). No auth required — safe for demo.
@@ -53,8 +55,10 @@ async function samplePatient(): Promise<Record<string, unknown> | null> {
 }
 
 serve(async (req) => {
-  const corsHeaders = buildCors(req);
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const g = await guard(req, { bucket: "fhir-sync", limit: envLimit("RL_FHIR_SYNC", 20) });
+  if (g.response) return g.response;
+  const corsHeaders = g.cors;
+
 
 
   const t0 = Date.now();

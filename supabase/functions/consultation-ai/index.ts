@@ -4,6 +4,7 @@ import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
 import { adminClient } from "../_shared/supabase.ts";
 import { completeText } from "../_shared/llm.ts";
+import { BEDROCK_MODEL_ID } from "../_shared/bedrock.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
 
 const CONSULT_ACTIONS = [
@@ -61,24 +62,18 @@ function buildSystemPrompt(role: "primary_clinician" | "specialist", specialty: 
   return `${base}\n\nYou are generating insights for the SPECIALIST (${specialty}). Focus on:\n- Presenting relevant history and data specific to ${specialty}\n- Highlighting pertinent positive/negative findings\n- Providing differential diagnosis support\n- Surfacing relevant imaging/lab trends for this specialty`;
 }
 
-// Non-streaming completions go through the shared failover chain.
-async function callAI(messages: Array<{ role: string; content: string }>, stream = false) {
-  if (!stream) {
-    const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
-    const convo = messages.filter((m) => m.role !== "system")
-      .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
-    const { text } = await completeText({ system, messages: convo });
-    return text;
-  }
-  const key = Deno.env.get("LOVABLE_API_KEY")!;
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, stream }),
-  });
-  if (!res.ok) throw new Error(`AI error: ${res.status}`);
-  return res;
+// BAA-only: all completions go through Bedrock (fail-closed via completeText).
+let modelVersion = BEDROCK_MODEL_ID;
+
+async function callAI(messages: Array<{ role: string; content: string }>) {
+  const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
+  const convo = messages.filter((m) => m.role !== "system")
+    .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
+  const { text, model } = await completeText({ system, messages: convo });
+  modelVersion = model;
+  return text;
 }
+
 
 serve(async (req) => {
   const g = await guard(req, { bucket: "consultation-ai", limit: envLimit("RL_CONSULT", 40) });
@@ -178,14 +173,14 @@ serve(async (req) => {
             target: "primary_clinician",
             insight_type: "initial_briefing",
             content: { text: primaryInsight },
-            model_version: "gemini-2.5-flash",
+            model_version: modelVersion,
           }),
           db.from("ai_intelligence_log").insert({
             thread_id: thread.id,
             target: "specialist",
             insight_type: "initial_briefing",
             content: { text: specialistInsight },
-            model_version: "gemini-2.5-flash",
+            model_version: modelVersion,
           }),
         ]);
 
@@ -257,7 +252,7 @@ serve(async (req) => {
             target: targetRole,
             insight_type: "conversation_update",
             content: { text: insight },
-            model_version: "gemini-2.5-flash",
+            model_version: modelVersion,
           });
         }
 
