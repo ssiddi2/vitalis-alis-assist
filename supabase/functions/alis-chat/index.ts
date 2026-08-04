@@ -35,7 +35,6 @@ You have access to the following tools to take actions:
 - stage_order: Stage a clinical order for physician approval
 - create_note: Create a clinical SOAP note (progress, consult, discharge, procedure) for physician review
 - suggest_billing_codes: Analyze clinical encounters and suggest CPT/ICD-10 billing codes with confidence levels
-- invite_provider: Send an email invitation to a new provider
 - list_providers: List all providers with access to the current hospital
 - create_team_channel: Create a new team communication channel
 
@@ -71,23 +70,6 @@ const tools = [
           }
         },
         required: ["order_type", "name", "priority", "rationale"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "invite_provider",
-      description: "Send an email invitation to a new provider to join the hospital system",
-      parameters: {
-        type: "object",
-        properties: {
-          email: { type: "string", description: "Email address of the provider to invite" },
-          name: { type: "string", description: "Full name of the provider" },
-          role: { type: "string", enum: ["clinician", "viewer"], description: "Access role for the provider" },
-          specialty: { type: "string", description: "Clinical specialty (optional)" }
-        },
-        required: ["email", "name", "role"]
       }
     }
   },
@@ -205,9 +187,7 @@ async function logAiAction(
 }
 
 async function executeTool(toolName: string, args: Record<string, unknown>, context: { hospitalId?: string; patientId?: string; userId?: string }) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = adminClient();
 
   switch (toolName) {
     case "stage_order": {
@@ -290,21 +270,6 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
         success: true,
         message: `${typeLabel} note drafted — ready for review`,
         note: data,
-      };
-    }
-
-    case "invite_provider": {
-      await logAiAction(supabase, {
-        tool: "invite_provider",
-        summary: `Invited ${args.email} as ${args.role}`,
-        resourceType: "provider_invitation",
-        context,
-      });
-
-      return {
-        success: true,
-        message: `Invitation sent to ${args.email} for ${args.name} as ${args.role}`,
-        note: "In production, this would send an actual email invitation"
       };
     }
 

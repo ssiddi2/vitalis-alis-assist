@@ -30,12 +30,6 @@ const EMPTY: BillingSuggestion = { codes: [], emLevel: "", mdmComplexity: "" };
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
-function extractJson(text: string): Record<string, unknown> | null {
-  const cleaned = text.replace(/```(?:json)?/gi, "```").split("```").join("\n");
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try { return JSON.parse(match[0]); } catch { return null; }
-}
 
 function normalizeCodes(raw: unknown): SuggestedCode[] {
   if (!Array.isArray(raw)) return [];

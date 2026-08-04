@@ -22,12 +22,6 @@ const FALLBACK = {
   error: "model_unavailable",
 };
 
-function extractJson(text: string): Record<string, unknown> | null {
-  const cleaned = text.replace(/```(?:json)?/gi, "```").split("```").join("\n");
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try { return JSON.parse(match[0]); } catch { return null; }
-}
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
