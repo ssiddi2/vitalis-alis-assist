@@ -178,14 +178,14 @@ serve(async (req) => {
             target: "primary_clinician",
             insight_type: "initial_briefing",
             content: { text: primaryInsight },
-            model_version: "gemini-2.5-flash",
+            model_version: modelVersion,
           }),
           db.from("ai_intelligence_log").insert({
             thread_id: thread.id,
             target: "specialist",
             insight_type: "initial_briefing",
             content: { text: specialistInsight },
-            model_version: "gemini-2.5-flash",
+            model_version: modelVersion,
           }),
         ]);
 
@@ -257,7 +257,7 @@ serve(async (req) => {
             target: targetRole,
             insight_type: "conversation_update",
             content: { text: insight },
-            model_version: "gemini-2.5-flash",
+            model_version: modelVersion,
           });
         }
 

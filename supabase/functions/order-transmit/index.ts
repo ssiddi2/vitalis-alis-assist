@@ -50,7 +50,19 @@ serve(async (req) => {
 
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) return json({ error: "Forbidden" }, 403);
 
+    // Cross-tenant IDOR guard: the target record must belong to the caller's hospital.
+    const ownedByHospital = async (table: string, id: string) => {
+      const { data } = await admin.from(table)
+        .select("id, patients!inner(hospital_id)")
+        .eq("id", id)
+        .eq("patients.hospital_id", hospital_id)
+        .maybeSingle();
+      return !!data;
+    };
+
     if (action === "eprescribe") {
+      if (!(await ownedByHospital("prescriptions", prescription_id!))) return json({ error: "Not found" }, 404);
+
       const { controlled, schedule } = classifyControlled(drug_name);
       if (controlled) {
         await audit(admin, {
@@ -78,10 +90,16 @@ serve(async (req) => {
     const provider = env("LAB_PROVIDER") || "queued";
     if (provider !== "queued") return json({ status: "error", reason: "lab_provider_not_configured" });
 
-    const { data: order } = await admin.from("staged_orders").select("order_data").eq("id", order_id!).maybeSingle();
+    const { data: order } = await admin.from("staged_orders")
+      .select("order_data, patients!inner(hospital_id)")
+      .eq("id", order_id!)
+      .eq("patients.hospital_id", hospital_id)
+      .maybeSingle();
+    if (!order) return json({ error: "Not found" }, 404);
+
     await admin.from("staged_orders").update({
       order_data: {
-        ...(order?.order_data as Record<string, unknown> || {}),
+        ...(order.order_data as Record<string, unknown> || {}),
         transmit: { status: "queued", queued_at: new Date().toISOString(), provider },
       },
     }).eq("id", order_id!);
@@ -90,6 +108,7 @@ serve(async (req) => {
       resource_type: "staged_order", resource_id: order_id!, metadata: { provider },
     });
     return json({ status: "queued" });
+
   } catch (e) {
     console.error("[order-transmit]", e instanceof Error ? e.message : e);
     return json({ error: "Request failed" }, 500);
