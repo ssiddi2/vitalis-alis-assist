@@ -1,21 +1,44 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { guard } from "../_shared/guard.ts";
+import { envLimit } from "../_shared/rateLimit.ts";
+import { isAllowedIss } from "../_shared/fhirAllowlist.ts";
 
 // Optional confidential-client secret. If unset, treats as public client (PKCE only).
 const CLIENT_SECRET = Deno.env.get("SMART_CLIENT_SECRET") || "";
 
+/** Re-derives the token endpoint server-side from the ALLOWLISTED issuer. */
+async function discoverTokenEndpoint(iss: string): Promise<string | null> {
+  const base = iss.replace(/\/$/, "");
+  const r = await fetch(`${base}/.well-known/smart-configuration`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!r.ok) return null;
+  const cfg = await r.json();
+  try {
+    const url = new URL(String(cfg.token_endpoint));
+    const issUrl = new URL(base);
+    if (url.protocol !== "https:" || url.host !== issUrl.host) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const g = await guard(req, { bucket: "smart-token", limit: envLimit("RL_SMART_TOKEN", 20) });
+  if (g.response) return g.response;
+  const { cors, json } = g;
 
   try {
-    const { token_endpoint, iss, code, code_verifier, redirect_uri, client_id } = await req.json();
-    if (!token_endpoint || !code || !code_verifier || !redirect_uri || !client_id) {
+    const { iss, code, code_verifier, redirect_uri, client_id } = await req.json();
+    if (!iss || !code || !code_verifier || !redirect_uri || !client_id) {
       return json({ error: "Missing required fields" }, 400);
     }
+    if (!isAllowedIss(iss)) return json({ error: "Issuer not allowlisted" }, 403);
+
+    // NEVER trust a client-supplied token_endpoint — the client secret would leak.
+    const token_endpoint = await discoverTokenEndpoint(iss);
+    if (!token_endpoint) return json({ error: "SMART discovery failed" }, 400);
 
     const form = new URLSearchParams();
     form.set("grant_type", "authorization_code");
@@ -33,12 +56,15 @@ serve(async (req) => {
     }
 
     const tokRes = await fetch(token_endpoint, { method: "POST", headers, body: form.toString() });
-    const tokText = await tokRes.text();
-    if (!tokRes.ok) return json({ error: "Token exchange failed", status: tokRes.status, body: tokText }, 400);
-    const tok = JSON.parse(tokText);
+    if (!tokRes.ok) {
+      console.error("[smart-token] token exchange failed", tokRes.status);
+      await tokRes.body?.cancel();
+      return json({ error: "Token exchange failed" }, 400);
+    }
+    const tok = await tokRes.json();
 
     // Best-effort: fetch launched Patient + a small clinical bundle for AI context
-    const base = (iss || "").replace(/\/$/, "");
+    const base = String(iss).replace(/\/$/, "");
     const fhirGet = async (path: string) => {
       try {
         const r = await fetch(`${base}/${path}`, {
@@ -50,7 +76,7 @@ serve(async (req) => {
 
     let patient_resource: unknown = null;
     let bundle: Record<string, unknown> = {};
-    if (tok.patient && base && tok.access_token) {
+    if (tok.patient && tok.access_token) {
       const pid = tok.patient;
       const [pt, cond, meds, allg, obs] = await Promise.all([
         fhirGet(`Patient/${pid}`),
@@ -72,13 +98,9 @@ serve(async (req) => {
 
     return json({ ...tok, patient_resource, bundle });
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+    console.error("[smart-token]", e instanceof Error ? e.message : "unknown");
+    return new Response(JSON.stringify({ error: "Request failed" }), {
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
+    });
   }
 });
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}

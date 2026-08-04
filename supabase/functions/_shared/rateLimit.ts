@@ -6,8 +6,8 @@ export interface RateLimitResult {
 }
 
 /**
- * Per-user fixed-window rate limiter backed by public.rate_limits.
- * Fails OPEN on any DB error so a limiter bug never blocks clinical features.
+ * Per-user fixed-window rate limiter backed by public.rate_limits (service-role only).
+ * FAILS CLOSED on any DB error — a broken limiter must never become an open cost/abuse door.
  */
 export async function checkRateLimit(
   supabase: SupabaseClient,
@@ -29,23 +29,26 @@ export async function checkRateLimit(
     const elapsed = (now - startedAt) / 1000;
 
     if (!data || elapsed >= windowSec) {
-      await supabase.from("rate_limits").upsert(
+      const { error: upsertError } = await supabase.from("rate_limits").upsert(
         { user_id: userId, bucket, window_start: new Date(now).toISOString(), count: 1 },
         { onConflict: "user_id,bucket" },
       );
+      if (upsertError) throw upsertError;
       return { allowed: true };
     }
 
     if (data.count < limit) {
-      await supabase.from("rate_limits").update({ count: data.count + 1 })
+      const { error: updateError } = await supabase.from("rate_limits")
+        .update({ count: data.count + 1 })
         .eq("user_id", userId).eq("bucket", bucket);
+      if (updateError) throw updateError;
       return { allowed: true };
     }
 
     return { allowed: false, retryAfter: Math.max(1, Math.ceil(windowSec - elapsed)) };
   } catch (e) {
-    console.warn(`[rateLimit] failing open for ${bucket}:`, e instanceof Error ? e.message : e);
-    return { allowed: true };
+    console.error(`[rateLimit] failing CLOSED for ${bucket}:`, e instanceof Error ? e.message : e);
+    return { allowed: false, retryAfter: 30 };
   }
 }
 
