@@ -74,22 +74,45 @@ function StatTile({ label, value, color, sub }: { label: string; value: string |
   );
 }
 
+type Scope = 'facility' | 'all';
+
 export default function CommandCenter() {
-  const { selectedHospital } = useHospital();
+  const { selectedHospital, hospitals } = useHospital();
   const navigate = useNavigate();
+  const { hospitalIds: myHospitalIds } = useMyHospitalIds();
+  const [scope, setScope] = useState<Scope>('facility');
   const [items, setItems] = useState<BoardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [routing, setRouting] = useState<string | null>(null);
   const hospitalId = selectedHospital?.id;
 
+  const facilityNames = useMemo(
+    () => Object.fromEntries(hospitals.map(h => [h.id, h.name])) as Record<string, string>,
+    [hospitals],
+  );
+
+  // Strictly the user's own memberships. In "all" scope we never widen beyond
+  // hospital_users rows for auth.uid(); RLS enforces the same boundary server-side.
+  const scopeIds = useMemo(() => {
+    if (scope === 'all') return myHospitalIds;
+    return hospitalId ? [hospitalId] : [];
+  }, [scope, myHospitalIds, hospitalId]);
+  const scopeKey = scopeIds.join(',');
+
   const fetchBoard = useCallback(async () => {
-    if (!hospitalId) return;
+    const ids = scopeKey ? scopeKey.split(',') : [];
+    if (ids.length === 0) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     const { data: consults } = await supabase
       .from('consult_requests')
-      .select('id, patient_id, reason, specialty, urgency, status, created_at, patient:patients(name, mrn)')
-      .eq('hospital_id', hospitalId)
+      .select('id, patient_id, hospital_id, reason, specialty, urgency, status, created_at, patient:patients(name, mrn)')
+      .in('hospital_id', ids)
       .in('status', ['pending', 'accepted'])
       .order('created_at', { ascending: false });
+
 
     const rows = (consults || []) as unknown as ConsultRow[];
     const ids = rows.map(r => r.id);
