@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { patientInHospital } from "../_shared/tenancy.ts";
 import { userHasHospitalAccess } from "../_shared/auth.ts";
 import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
@@ -343,6 +344,11 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
       if (!context.hospitalId || !context.userId) {
         return { success: false, message: "Missing hospital or user context" };
       }
+      // Model-supplied patient id must belong to this hospital.
+      const channelPatientId = (args.patient_id as string) || null;
+      if (channelPatientId && !(await patientInHospital(supabase, channelPatientId, context.hospitalId))) {
+        return { success: false, message: "Patient not in this hospital" };
+      }
 
       const { data, error } = await supabase
         .from("team_channels")
@@ -350,7 +356,7 @@ async function executeTool(toolName: string, args: Record<string, unknown>, cont
           name: args.name as string,
           channel_type: args.channel_type as string,
           hospital_id: context.hospitalId,
-          patient_id: args.patient_id as string || null,
+          patient_id: channelPatientId,
           created_by: context.userId
         })
         .select()
@@ -476,6 +482,13 @@ async function runBedrockChat(
   const admin = adminClient();
   if (!(await userHasHospitalAccess(admin, context.userId!, context.hospitalId))) {
     return new Response(JSON.stringify({ error: "Forbidden: no access to this hospital" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  // The patient id is caller-supplied and tools write with the service-role
+  // client, so it must belong to the caller's hospital before any tool runs.
+  if (context.patientId && !(await patientInHospital(admin, context.patientId, context.hospitalId!))) {
+    return new Response(JSON.stringify({ error: "Forbidden: patient not in this hospital" }), {
       status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
