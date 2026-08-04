@@ -204,7 +204,18 @@ export default function CommandCenter() {
     return { ...counts, total: items.length, avgConfidence: confN ? Math.round(confSum / confN) : null };
   }, [items]);
 
+  /** Jump into the chart, switching facility context when the item is from another site. */
+  const openPatient = (item: BoardItem) => {
+    if (item.hospital_id !== hospitalId) {
+      const target = hospitals.find(h => h.id === item.hospital_id);
+      if (target) setSelectedHospital(target);
+    }
+    setSelectedPatientId(item.patient_id);
+    navigate('/dashboard');
+  };
+
   const routeToOnCall = async (item: BoardItem) => {
+
     const specialty = item.acuity?.suggestedSpecialty || item.specialty;
     setRouting(item.id);
     const { error } = await supabase
