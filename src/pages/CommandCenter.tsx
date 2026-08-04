@@ -149,10 +149,11 @@ export default function CommandCenter() {
 
     setItems(rows.map(r => ({ ...r, acuity: acuityMap[r.id] ?? null })));
     setLoading(false);
-  }, [hospitalId]);
+  }, [scopeKey]);
 
   useEffect(() => {
-    if (!hospitalId) {
+    const ids = scopeKey ? scopeKey.split(',') : [];
+    if (ids.length === 0) {
       setItems([]);
       setLoading(false);
       return;
@@ -160,19 +161,22 @@ export default function CommandCenter() {
     setLoading(true);
     void fetchBoard();
 
-
-    const channel = supabase
-      .channel(`command-center-${hospitalId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'consult_requests', filter: `hospital_id=eq.${hospitalId}` }, () => void fetchBoard())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'acuity_scores', filter: `hospital_id=eq.${hospitalId}` }, () => void fetchBoard())
-      .subscribe();
+    // Realtime follows the selected scope: one filtered listener per member facility.
+    let channel = supabase.channel(`command-center-${scopeKey}`);
+    for (const id of ids) {
+      channel = channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'consult_requests', filter: `hospital_id=eq.${id}` }, () => void fetchBoard())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'acuity_scores', filter: `hospital_id=eq.${id}` }, () => void fetchBoard());
+    }
+    channel.subscribe();
 
     const poll = setInterval(() => void fetchBoard(), 20000);
     return () => {
       supabase.removeChannel(channel);
       clearInterval(poll);
     };
-  }, [hospitalId, fetchBoard]);
+  }, [scopeKey, fetchBoard]);
+
 
   const sorted = useMemo(
     () =>
