@@ -12,8 +12,12 @@ export default function SmartLaunch() {
         const iss = params.get('iss');
         const launch = params.get('launch');
         if (!iss) throw new Error('Missing iss parameter');
+        if (!smartIssAllowed(iss)) throw new Error('Issuer is not an allowed https FHIR server');
 
         const cfg = await discoverSmart(iss);
+        if (!isHttpsUrl(cfg.authorization_endpoint) || !isHttpsUrl(cfg.token_endpoint)) {
+          throw new Error('SMART endpoints must use https');
+        }
 
         const state = randomString(32);
         const verifier = randomString(64);
