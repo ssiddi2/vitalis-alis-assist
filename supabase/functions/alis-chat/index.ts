@@ -521,7 +521,12 @@ async function runBedrockChat(
 serve(async (req) => {
   const g = await guard(req, { bucket: "alis-chat", limit: envLimit("RL_ALIS", 30) });
   if (g.response) return g.response;
-  const { user, cors: corsHeaders, json } = g;
+  const { user, cors: corsHeaders } = g;
+
+  const unavailable = () =>
+    new Response(JSON.stringify({ error: "AI service unavailable" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
   try {
     const body = await req.json();
@@ -538,16 +543,10 @@ serve(async (req) => {
     } catch (err) {
       return badRequest(err, corsHeaders);
     }
-    
 
-    
-    const useBedrock = bedrockConfigured();
-    const useAnthropic = !!Deno.env.get("ANTHROPIC_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!useBedrock && !useAnthropic && !LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
+    // BAA-only: AWS Bedrock is the single permitted vendor. Fail closed — never
+    // send PHI to a non-BAA provider.
+    if (!bedrockConfigured()) return unavailable();
 
     const context = {
       hospitalId: patientContext?.hospital?.id,
@@ -560,200 +559,10 @@ serve(async (req) => {
       systemContent += `\n\nCurrent Patient Context:\n${JSON.stringify(patientContext, null, 2)}`;
     }
 
-    const apiMessages = [
-      { role: "system", content: systemContent },
-      ...messages,
-    ];
-
-    // Bedrock (BAA) preferred; FAIL-CLOSED — never fall over to a non-BAA vendor with PHI.
-    if (useBedrock) {
-      return await runBedrockChat(systemContent, messages, context, corsHeaders);
-    }
-
-    if (useAnthropic) {
-      try {
-        return await runAnthropicChat(systemContent, messages, context, corsHeaders);
-      } catch (e) {
-        console.warn("alis-chat: Anthropic path failed, falling back to gateway —", e instanceof Error ? e.message : e);
-        if (!LOVABLE_API_KEY) throw e;
-      }
-    }
-
-
-    // First AI call (non-streaming) to detect tool calls
-    const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: apiMessages,
-        tools,
-        stream: true,
-      }),
-    });
-
-    if (!firstResponse.ok) {
-      if (firstResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (firstResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await firstResponse.text();
-      console.error("AI gateway error:", firstResponse.status, errorText);
-      return new Response(JSON.stringify({ error: "AI service temporarily unavailable" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Consume the first stream to check for tool calls
-    const firstResult = await consumeStream(firstResponse);
-
-    // If no tool calls, re-do with streaming directly to client
-    if (firstResult.toolCalls.length === 0) {
-      // Make a second streaming call without tools to get clean streaming
-      const streamResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: apiMessages,
-          stream: true,
-        }),
-      });
-
-      if (!streamResponse.ok) {
-        const t = await streamResponse.text();
-        console.error("Stream error:", t);
-        return new Response(JSON.stringify({ error: "AI service error" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      return new Response(streamResponse.body, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
-    }
-
-    // We have tool calls - verify hospital membership before executing anything
-    if (!(await userHasHospitalAccess(g.admin, user.id, context.hospitalId))) {
-      return json({ error: "Forbidden: no access to this hospital" }, 403);
-    }
-
-    console.log(`Executing ${firstResult.toolCalls.length} tool call(s)`);
-
-    const toolResults: Array<{ toolCallId: string; name: string; args: Record<string, unknown>; result: unknown }> = [];
-
-
-    for (const tc of firstResult.toolCalls) {
-      let args: Record<string, unknown> = {};
-      try {
-        args = JSON.parse(tc.arguments);
-      } catch {
-        console.error("Failed to parse tool args:", tc.arguments);
-      }
-      const result = await executeTool(tc.name, args, context);
-      toolResults.push({ toolCallId: tc.id, name: tc.name, args, result });
-      console.log(`Tool ${tc.name} result:`, JSON.stringify(result));
-    }
-
-    // Build follow-up messages with tool results
-    const followUpMessages = [
-      ...apiMessages,
-    ];
-
-    // Add assistant message with tool calls
-    const assistantMsg: Record<string, unknown> = { role: "assistant" };
-    if (firstResult.content) {
-      assistantMsg.content = firstResult.content;
-    }
-    assistantMsg.tool_calls = firstResult.toolCalls.map(tc => ({
-      id: tc.id,
-      type: "function",
-      function: { name: tc.name, arguments: tc.arguments },
-    }));
-    followUpMessages.push(assistantMsg);
-
-    // Add tool results
-    for (const tr of toolResults) {
-      followUpMessages.push({
-        role: "tool",
-        tool_call_id: tr.toolCallId,
-        content: JSON.stringify(tr.result),
-      });
-    }
-
-    // Get follow-up streaming response
-    const followUpResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: followUpMessages,
-        stream: true,
-      }),
-    });
-
-    if (!followUpResponse.ok) {
-      const t = await followUpResponse.text();
-      console.error("Follow-up error:", t);
-      return new Response(JSON.stringify({ error: "AI service error during follow-up" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Create a custom stream that prepends tool_result events before the AI follow-up
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const encoder = new TextEncoder();
-
-    (async () => {
-      try {
-        // Send tool_result events first
-        for (const tr of toolResults) {
-          const eventData = JSON.stringify({
-            tool_name: tr.name,
-            tool_args: tr.args,
-            result: tr.result,
-          });
-          await writer.write(encoder.encode(`event: tool_result\ndata: ${eventData}\n\n`));
-        }
-
-        // Then pipe the follow-up stream
-        const reader = followUpResponse.body!.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          await writer.write(value);
-        }
-      } catch (e) {
-        console.error("Stream pipe error:", e);
-      } finally {
-        await writer.close();
-      }
-    })();
-
-    return new Response(readable, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    return await runBedrockChat(systemContent, messages, context, corsHeaders);
   } catch (error) {
-    console.error("ALIS chat error:", error);
-    return new Response(
-      JSON.stringify({ error: "ALIS is temporarily unavailable" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("ALIS chat error:", error instanceof Error ? error.message : "unknown");
+    return unavailable();
   }
 });
+
