@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft, ChevronRight, ShieldCheck, Plug } from 'lucide-react';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { EditUserModal } from '@/components/virtualis/EditUserModal';
 import { TableRowSkeleton } from '@/components/ui/skeleton-patterns';
