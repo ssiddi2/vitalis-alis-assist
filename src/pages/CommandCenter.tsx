@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, ArrowRight, Clock, Radar, ShieldCheck } from 'lucide-react';
+import { Activity, ArrowRight, Building2, Clock, Radar, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useHospital } from '@/contexts/HospitalContext';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { TopBar } from '@/components/virtualis/TopBar';
 import { AcuitySignalBars, ACUITY_COLOR, type AcuityLevel } from '@/components/virtualis/acuity/AcuitySignalBars';
 import { AcuityBadge } from '@/components/virtualis/acuity/AcuityBadge';
 import { AcuityAvatar } from '@/components/virtualis/acuity/AcuityAvatar';
 import { ACUITY_RANK } from '@/hooks/useAcuity';
+import { useMyHospitalIds } from '@/hooks/useMyHospitalIds';
+
 
 interface ConsultRow {
   id: string;
   patient_id: string;
+  hospital_id: string;
+
   reason: string;
   specialty: string;
   urgency: string;
@@ -68,36 +74,59 @@ function StatTile({ label, value, color, sub }: { label: string; value: string |
   );
 }
 
+type Scope = 'facility' | 'all';
+
 export default function CommandCenter() {
-  const { selectedHospital } = useHospital();
+  const { selectedHospital, hospitals, setSelectedHospital, setSelectedPatientId } = useHospital();
   const navigate = useNavigate();
+  const { hospitalIds: myHospitalIds } = useMyHospitalIds();
+  const [scope, setScope] = useState<Scope>('facility');
   const [items, setItems] = useState<BoardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [routing, setRouting] = useState<string | null>(null);
   const hospitalId = selectedHospital?.id;
 
+  const facilityNames = useMemo(
+    () => Object.fromEntries(hospitals.map(h => [h.id, h.name])) as Record<string, string>,
+    [hospitals],
+  );
+
+  // Strictly the user's own memberships. In "all" scope we never widen beyond
+  // hospital_users rows for auth.uid(); RLS enforces the same boundary server-side.
+  const scopeIds = useMemo(() => {
+    if (scope === 'all') return myHospitalIds;
+    return hospitalId ? [hospitalId] : [];
+  }, [scope, myHospitalIds, hospitalId]);
+  const scopeKey = scopeIds.join(',');
+
   const fetchBoard = useCallback(async () => {
-    if (!hospitalId) return;
+    const ids = scopeKey ? scopeKey.split(',') : [];
+    if (ids.length === 0) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     const { data: consults } = await supabase
       .from('consult_requests')
-      .select('id, patient_id, reason, specialty, urgency, status, created_at, patient:patients(name, mrn)')
-      .eq('hospital_id', hospitalId)
+      .select('id, patient_id, hospital_id, reason, specialty, urgency, status, created_at, patient:patients(name, mrn)')
+      .in('hospital_id', ids)
       .in('status', ['pending', 'accepted'])
       .order('created_at', { ascending: false });
 
     const rows = (consults || []) as unknown as ConsultRow[];
-    const ids = rows.map(r => r.id);
+    const consultIds = rows.map(r => r.id);
 
     const acuityMap: Record<string, AcuityRow> = {};
-    if (ids.length) {
+    if (consultIds.length) {
       const { data: scores } = await supabase
         .from('acuity_scores')
         .select(
           'source_id, acuity_level, confidence, rationale, suggested_specialty, suggested_specialties, immediate_actions, estimated_response_time, created_at',
         )
         .eq('source_table', 'consult_requests')
-        .in('source_id', ids)
+        .in('source_id', consultIds)
         .order('created_at', { ascending: false });
+
 
       for (const s of scores || []) {
         if (!s.source_id || acuityMap[s.source_id]) continue;
@@ -120,10 +149,11 @@ export default function CommandCenter() {
 
     setItems(rows.map(r => ({ ...r, acuity: acuityMap[r.id] ?? null })));
     setLoading(false);
-  }, [hospitalId]);
+  }, [scopeKey]);
 
   useEffect(() => {
-    if (!hospitalId) {
+    const ids = scopeKey ? scopeKey.split(',') : [];
+    if (ids.length === 0) {
       setItems([]);
       setLoading(false);
       return;
@@ -131,19 +161,22 @@ export default function CommandCenter() {
     setLoading(true);
     void fetchBoard();
 
-
-    const channel = supabase
-      .channel(`command-center-${hospitalId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'consult_requests', filter: `hospital_id=eq.${hospitalId}` }, () => void fetchBoard())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'acuity_scores', filter: `hospital_id=eq.${hospitalId}` }, () => void fetchBoard())
-      .subscribe();
+    // Realtime follows the selected scope: one filtered listener per member facility.
+    let channel = supabase.channel(`command-center-${scopeKey}`);
+    for (const id of ids) {
+      channel = channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'consult_requests', filter: `hospital_id=eq.${id}` }, () => void fetchBoard())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'acuity_scores', filter: `hospital_id=eq.${id}` }, () => void fetchBoard());
+    }
+    channel.subscribe();
 
     const poll = setInterval(() => void fetchBoard(), 20000);
     return () => {
       supabase.removeChannel(channel);
       clearInterval(poll);
     };
-  }, [hospitalId, fetchBoard]);
+  }, [scopeKey, fetchBoard]);
+
 
   const sorted = useMemo(
     () =>
@@ -171,7 +204,18 @@ export default function CommandCenter() {
     return { ...counts, total: items.length, avgConfidence: confN ? Math.round(confSum / confN) : null };
   }, [items]);
 
+  /** Jump into the chart, switching facility context when the item is from another site. */
+  const openPatient = (item: BoardItem) => {
+    if (item.hospital_id !== hospitalId) {
+      const target = hospitals.find(h => h.id === item.hospital_id);
+      if (target) setSelectedHospital(target);
+    }
+    setSelectedPatientId(item.patient_id);
+    navigate('/dashboard');
+  };
+
   const routeToOnCall = async (item: BoardItem) => {
+
     const specialty = item.acuity?.suggestedSpecialty || item.specialty;
     setRouting(item.id);
     const { error } = await supabase
@@ -199,16 +243,41 @@ export default function CommandCenter() {
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
             </span>
             <Label>
-              01 — Live acuity operations · {selectedHospital?.name ?? 'No facility selected'}
+              01 — Live acuity operations ·{' '}
+              {scope === 'all'
+                ? `${myHospitalIds.length} facilit${myHospitalIds.length === 1 ? 'y' : 'ies'}`
+                : selectedHospital?.name ?? 'No facility selected'}
             </Label>
           </div>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
             ALIS <span className="text-primary">Command Center</span>
           </h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Facility-wide acuity triage, ranked in real time by the patented ALIS acuity engine.
+            Acuity triage across the facilities you cover, ranked in real time by the patented ALIS acuity engine.
           </p>
+
+          {/* Scope toggle */}
+          <div className="mt-4 inline-flex rounded-full border border-border bg-secondary/50 p-1">
+            {([
+              { key: 'facility' as Scope, label: 'This facility' },
+              { key: 'all' as Scope, label: 'All my facilities' },
+            ]).map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setScope(opt.key)}
+                className={cn(
+                  'rounded-full px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors',
+                  scope === opt.key
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </header>
+
 
         {/* Stats */}
         <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -232,11 +301,17 @@ export default function CommandCenter() {
             ))}
           </div>
         ) : sorted.length === 0 ? (
-          <div className="glass flex flex-col items-center justify-center rounded-2xl border border-border py-20 text-center shadow-sm">
-            <ShieldCheck className="mb-3 h-8 w-8 text-emerald-500" />
-            <p className="text-lg font-medium text-foreground">No active acuity items — all clear</p>
-            <p className="mt-1 text-sm text-muted-foreground">New consults appear here the moment they are scored.</p>
-          </div>
+          <EmptyState
+            tone="positive"
+            icon={ShieldCheck}
+            title="No active acuity items — all clear"
+            hint={
+              scope === 'all'
+                ? 'Nothing open across the facilities you cover. New consults appear the moment they are scored.'
+                : 'New consults appear here the moment they are scored. Switch to “All my facilities” to cover every site.'
+            }
+          />
+
         ) : (
           <div className="space-y-3">
             {sorted.map(item => {
@@ -264,7 +339,14 @@ export default function CommandCenter() {
                         )}
                         {level && <AcuitySignalBars level={level} />}
                         {level && <AcuityBadge level={level} confidence={item.acuity?.confidence} />}
+                        {scope === 'all' && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                            <Building2 className="h-3 w-3" />
+                            {facilityNames[item.hospital_id] ?? 'Facility'}
+                          </span>
+                        )}
                       </div>
+
 
                       <p className="mt-1.5 text-sm text-foreground/80">{item.reason}</p>
 
@@ -305,7 +387,7 @@ export default function CommandCenter() {
                       </Button>
                       <Button
                         variant="ghost"
-                        onClick={() => navigate('/dashboard')}
+                        onClick={() => openPatient(item)}
                         className="w-full justify-between rounded-full text-muted-foreground"
                       >
                         Open <ArrowRight className="h-4 w-4" />

@@ -26,7 +26,11 @@ export function LabResultsPanel({ patientId }: LabResultsProps) {
       {loading ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Loading labs…</p>
       ) : labs.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-4 text-center">No lab results recorded</p>
+        <div className="py-6 text-center">
+          <FlaskConical className="mx-auto mb-2 h-6 w-6 text-muted-foreground/40" />
+          <p className="text-xs text-muted-foreground">No lab results recorded</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/70">Results appear here as soon as the lab resulted or synced.</p>
+        </div>
       ) : (
         <>
           {/* Mobile: stacked cards */}

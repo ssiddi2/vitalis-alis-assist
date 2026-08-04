@@ -1,6 +1,6 @@
 import { ClinicalTrend } from '@/types/clinical';
 import { usePatientVitals } from '@/hooks/usePatientClinical';
-import { HeartPulse, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Activity, HeartPulse, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VitalsPanelProps {
@@ -30,7 +30,11 @@ export function VitalsPanel({ patientId, trends }: VitalsPanelProps) {
       {loading ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Loading vitals…</p>
       ) : vitals.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-4 text-center">No vitals recorded</p>
+        <div className="py-6 text-center">
+          <Activity className="mx-auto mb-2 h-6 w-6 text-muted-foreground/40" />
+          <p className="text-xs text-muted-foreground">No vitals recorded</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/70">Vitals appear here once documented or synced from the EMR.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
           {vitals.map((vital) => {

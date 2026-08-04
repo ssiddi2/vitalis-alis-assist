@@ -29,6 +29,7 @@ import SmartCallback from "./pages/SmartCallback";
 import Demo from "./pages/Demo";
 import CommandCenter from "./pages/CommandCenter";
 import { SmartContextBanner } from "@/components/virtualis/SmartContextBanner";
+import { GlobalALIS } from "@/components/virtualis/GlobalALIS";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,6 +76,7 @@ const App = () => (
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                <GlobalALIS />
               </InactivityGuard>
             </HospitalProvider>
           </AuthProvider>

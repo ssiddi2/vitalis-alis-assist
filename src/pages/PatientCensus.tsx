@@ -4,6 +4,9 @@ import { useHospital } from '@/contexts/HospitalContext';
 import { usePatients, DBPatient } from '@/hooks/usePatients';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { ArrowLeft, Users } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ACUITY_RANK, useLatestAcuityByPatient } from '@/hooks/useAcuity';
+import { AcuitySignalBars, ACUITY_COLOR } from '@/components/virtualis/acuity/AcuitySignalBars';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import alisLogo from '@/assets/alis-logo.png';
@@ -27,6 +30,11 @@ export default function PatientCensus() {
   const { user } = useAuth();
   const { selectedHospital, setSelectedPatientId, loading: hospitalLoading } = useHospital();
   const { patientsByUnit, loading } = usePatients(selectedHospital?.id);
+
+  // Speak the same language as the Command Center: rank + colour by latest acuity.
+  const allPatientIds = Object.values(patientsByUnit).flat().map(p => p.id);
+  const acuityMap = useLatestAcuityByPatient(allPatientIds);
+  const rankOf = (id: string) => (acuityMap[id] ? ACUITY_RANK[acuityMap[id].level] : 3);
 
   // If hospital context has finished loading and there's no selection, go pick one.
   if (!selectedHospital && !hospitalLoading) {
@@ -105,18 +113,29 @@ export default function PatientCensus() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {patients.map((patient) => (
+                    {[...patients]
+                      .sort((a, b) => rankOf(a.id) - rankOf(b.id) || a.name.localeCompare(b.name))
+                      .map((patient) => {
+                      const acuity = acuityMap[patient.id];
+                      return (
                       <button
                         key={patient.id}
                         onClick={() => handleSelectPatient(patient)}
-                        className="group glass-strong rounded-xl p-3.5 border border-border/50 hover:border-primary/50 transition-all duration-200 text-left hover:shadow-elevated active:scale-[0.98]"
+                        className="group glass-strong relative overflow-hidden rounded-xl p-3.5 pl-4 border border-border/50 hover:border-primary/50 transition-all duration-200 text-left hover:shadow-elevated active:scale-[0.98]"
                       >
+                        {acuity && (
+                          <span
+                            className="absolute inset-y-0 left-0 w-1"
+                            style={{ backgroundColor: ACUITY_COLOR[acuity.level] }}
+                          />
+                        )}
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className={cn('w-2 h-2 rounded-full flex-shrink-0', statusColors[patient.status || 'active'])} />
                             <span className="text-sm font-semibold text-foreground truncate">
                               {patient.name}
                             </span>
+                            {acuity && <AcuitySignalBars level={acuity.level} />}
                           </div>
                           <span className="text-[10px] text-muted-foreground font-mono flex-shrink-0 ml-2 px-1.5 py-0.5 rounded bg-secondary/60">
                             {patient.bed}
@@ -139,17 +158,24 @@ export default function PatientCensus() {
                           )}
                         </div>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </section>
               );
             })}
 
             {!loading && unitEntries.length === 0 && (
-              <div className="text-center py-16">
-                <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground">No patients found for this facility</p>
-              </div>
+              <EmptyState
+                icon={Users}
+                title="No patients on this census yet"
+                hint="Patients appear here as soon as they are admitted or synced from the connected EMR."
+                action={
+                  <Button variant="outline" className="rounded-full" onClick={() => navigate('/command')}>
+                    Open Command Center
+                  </Button>
+                }
+              />
             )}
           </div>
         </main>

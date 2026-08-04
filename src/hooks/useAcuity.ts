@@ -142,3 +142,39 @@ export function useLatestAcuityMap(sourceTable: string, ids: string[]) {
   return map;
 }
 
+
+/** Latest acuity per patient (any source) — for acuity-ranking the census. */
+export function useLatestAcuityByPatient(patientIds: string[]) {
+  const [map, setMap] = useState<Record<string, LatestAcuity>>({});
+  const key = patientIds.join(',');
+
+  useEffect(() => {
+    const list = key ? key.split(',') : [];
+    if (list.length === 0) {
+      setMap({});
+      return;
+    }
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from('acuity_scores')
+        .select('patient_id, acuity_level, confidence, rationale, created_at')
+        .in('patient_id', list)
+        .order('created_at', { ascending: false });
+      if (!active) return;
+      const next: Record<string, LatestAcuity> = {};
+      for (const row of data || []) {
+        if (!row.patient_id || next[row.patient_id]) continue;
+        next[row.patient_id] = {
+          level: toLevel(row.acuity_level),
+          confidence: row.confidence != null ? Number(row.confidence) : null,
+          reasoning: row.rationale ?? null,
+        };
+      }
+      setMap(next);
+    })();
+    return () => { active = false; };
+  }, [key]);
+
+  return map;
+}
