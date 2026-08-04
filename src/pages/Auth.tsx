@@ -212,6 +212,7 @@ export default function Auth() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        maxLength={255}
                         placeholder="you@hospital.com"
                         className={inputClass}
                         required

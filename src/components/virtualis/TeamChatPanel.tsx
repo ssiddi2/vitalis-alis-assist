@@ -121,6 +121,7 @@ export function TeamChatPanel({ patientId, patientName, onBack }: TeamChatPanelP
           <div className="p-4 border-b bg-muted/50">
             <Input
               placeholder="Channel name..."
+              maxLength={100}
               value={newChannelName}
               onChange={(e) => setNewChannelName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreateChannel()}
