@@ -1,6 +1,6 @@
 import { ClinicalTrend } from '@/types/clinical';
 import { usePatientVitals } from '@/hooks/usePatientClinical';
-import { HeartPulse, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Activity, HeartPulse, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VitalsPanelProps {

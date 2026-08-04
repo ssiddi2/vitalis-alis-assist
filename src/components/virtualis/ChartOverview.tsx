@@ -4,7 +4,7 @@ import { InsightCard } from './InsightCard';
 import { ClinicalTrends } from './ClinicalTrends';
 import { usePatientProblems, usePatientMedications, usePatientVitals, usePatientLabs } from '@/hooks/usePatientClinical';
 import { cn } from '@/lib/utils';
-import { Brain, HeartPulse, ClipboardList, Pill, FlaskConical, TrendingUp } from 'lucide-react';
+import { Brain, Inbox, HeartPulse, ClipboardList, Pill, FlaskConical, TrendingUp } from 'lucide-react';
 
 interface OverviewCardProps {
   index: string;
