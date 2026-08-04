@@ -21,7 +21,7 @@ interface SyncPayload {
   synced_at: string;
   latency_ms: number;
   resources: { name: string; count: number }[];
-  sample_patient: { id: string; name: string; gender: string; birthDate: string | null; lastUpdated: string | null } | null;
+  sample_patient: { id: string; lastUpdated: string | null } | null;
 }
 
 export function EMRConnectionModal({ open, onOpenChange, hospital }: EMRConnectionModalProps) {
@@ -32,7 +32,9 @@ export function EMRConnectionModal({ open, onOpenChange, hospital }: EMRConnecti
   const sync = async () => {
     setSyncing(true);
     try {
-      const { data: res, error } = await supabase.functions.invoke<SyncPayload>('fhir-sync', { body: {} });
+      // The FHIR base must be explicitly allowlisted server-side (ALLOWED_FHIR_ISS).
+      const iss = import.meta.env.VITE_FHIR_BASE as string | undefined;
+      const { data: res, error } = await supabase.functions.invoke<SyncPayload>('fhir-sync', { body: { iss } });
       if (!error && res) setData(res);
     } finally {
       setSyncing(false);
@@ -123,14 +125,13 @@ export function EMRConnectionModal({ open, onOpenChange, hospital }: EMRConnecti
             <div className="flex items-center gap-2 mb-2">
               <User className="w-3.5 h-3.5 text-primary" />
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Live Patient Sample
+                Connectivity Probe
               </p>
             </div>
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 space-y-1">
-              <p className="text-xs font-semibold text-foreground">{data.sample_patient.name}</p>
               <p className="text-[10px] text-muted-foreground font-mono">
-                ID: {data.sample_patient.id} · {data.sample_patient.gender}
-                {data.sample_patient.birthDate ? ` · DOB ${data.sample_patient.birthDate}` : ''}
+                Resource ID: {data.sample_patient.id}
+                {data.sample_patient.lastUpdated ? ` · updated ${data.sample_patient.lastUpdated}` : ''}
               </p>
             </div>
           </div>

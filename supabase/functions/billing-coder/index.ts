@@ -4,6 +4,7 @@ import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
 import { suggestBilling, checkDenialRisk, type SuggestedCode } from "../_shared/billing.ts";
 import { badRequest, varray, venum, vtext, vuuid } from "../_shared/validate.ts";
+import { patientInHospital } from "../_shared/tenancy.ts";
 
 const ENCOUNTER_TYPES = ["new_patient", "established_patient", "inpatient", "consult", "telehealth", "procedure"] as const;
 
@@ -32,11 +33,6 @@ serve(async (req) => {
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) return json({ error: "Forbidden" }, 403);
 
     // Every record lookup is scoped to the caller's hospital (no cross-tenant IDOR).
-    const patientInHospital = async (id: string) => {
-      const { data } = await admin.from("patients").select("id")
-        .eq("id", id).eq("hospital_id", hospital_id).maybeSingle();
-      return !!data;
-    };
 
     let noteContent: string | undefined;
     if (note_id) {
@@ -52,7 +48,7 @@ serve(async (req) => {
 
     let payer: string | undefined;
     if (patient_id) {
-      if (!(await patientInHospital(patient_id))) return json({ error: "Not found" }, 404);
+      if (!(await patientInHospital(admin, patient_id, hospital_id!))) return json({ error: "Not found" }, 404);
       const { data } = await admin
         .from("patient_insurance")
         .select("payer_name")

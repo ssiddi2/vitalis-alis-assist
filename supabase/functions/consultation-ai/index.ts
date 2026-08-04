@@ -6,6 +6,7 @@ import { adminClient } from "../_shared/supabase.ts";
 import { completeText } from "../_shared/llm.ts";
 import { BEDROCK_MODEL_ID } from "../_shared/bedrock.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
+import { patientInHospital } from "../_shared/tenancy.ts";
 
 const CONSULT_ACTIONS = [
   "create_thread", "send_message", "generate_note", "refresh_context", "suggest_urgency",
@@ -110,7 +111,11 @@ serve(async (req) => {
         if (!(await userHasHospitalAccess(db, userId, hospitalId))) {
           return jsonRes({ error: "Forbidden" }, 403);
         }
-
+        // The patient id is caller-supplied and loadSharedContext runs on the
+        // service-role client, so it must be proven to belong to this hospital.
+        if (!(await patientInHospital(db, patientId, hospitalId))) {
+          return jsonRes({ error: "Not found" }, 404);
+        }
 
         const sharedContext = await loadSharedContext(patientId);
 
