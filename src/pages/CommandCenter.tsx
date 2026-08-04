@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, ArrowRight, Clock, Radar, ShieldCheck } from 'lucide-react';
+import { Activity, ArrowRight, Building2, Clock, Radar, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useHospital } from '@/contexts/HospitalContext';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { TopBar } from '@/components/virtualis/TopBar';
 import { AcuitySignalBars, ACUITY_COLOR, type AcuityLevel } from '@/components/virtualis/acuity/AcuitySignalBars';
 import { AcuityBadge } from '@/components/virtualis/acuity/AcuityBadge';
 import { AcuityAvatar } from '@/components/virtualis/acuity/AcuityAvatar';
 import { ACUITY_RANK } from '@/hooks/useAcuity';
+import { useMyHospitalIds } from '@/hooks/useMyHospitalIds';
+
 
 interface ConsultRow {
   id: string;
