@@ -755,11 +755,13 @@ serve(async (req) => {
     
 
     
+    const useBedrock = bedrockConfigured();
     const useAnthropic = !!Deno.env.get("ANTHROPIC_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!useAnthropic && !LOVABLE_API_KEY) {
+    if (!useBedrock && !useAnthropic && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
 
     const context = {
       hospitalId: patientContext?.hospital?.id,
