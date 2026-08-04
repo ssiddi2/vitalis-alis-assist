@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
 import { MobileMenu } from './MobileMenu';
 import { NotificationCenter } from './NotificationCenter';
-import { EMRSyncBadge } from './EMRSyncBadge';
+import { EmrConnectionPill } from './EmrConnectionPill';
 import { AmbientStatusIndicator } from './AmbientStatusIndicator';
 import virtualisOneIcon from '@/assets/virtualis-one-header-icon.png.asset.json';
 
