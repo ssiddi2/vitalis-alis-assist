@@ -31,14 +31,28 @@ serve(async (req) => {
     }
     if (!(await userHasHospitalAccess(admin, user.id, hospital_id))) return json({ error: "Forbidden" }, 403);
 
+    // Every record lookup is scoped to the caller's hospital (no cross-tenant IDOR).
+    const patientInHospital = async (id: string) => {
+      const { data } = await admin.from("patients").select("id")
+        .eq("id", id).eq("hospital_id", hospital_id).maybeSingle();
+      return !!data;
+    };
+
     let noteContent: string | undefined;
     if (note_id) {
-      const { data } = await admin.from("clinical_notes").select("content").eq("id", note_id).maybeSingle();
-      if (data?.content) noteContent = typeof data.content === "string" ? data.content : JSON.stringify(data.content);
+      const { data } = await admin
+        .from("clinical_notes")
+        .select("content, patients!inner(hospital_id)")
+        .eq("id", note_id)
+        .eq("patients.hospital_id", hospital_id)
+        .maybeSingle();
+      if (!data) return json({ error: "Not found" }, 404);
+      if (data.content) noteContent = typeof data.content === "string" ? data.content : JSON.stringify(data.content);
     }
 
     let payer: string | undefined;
     if (patient_id) {
+      if (!(await patientInHospital(patient_id))) return json({ error: "Not found" }, 404);
       const { data } = await admin
         .from("patient_insurance")
         .select("payer_name")
@@ -49,6 +63,7 @@ serve(async (req) => {
         .maybeSingle();
       payer = data?.payer_name ?? undefined;
     }
+
 
     const provided: SuggestedCode[] = Array.isArray(inputCodes) ? inputCodes : [];
     const suggestion = provided.length
