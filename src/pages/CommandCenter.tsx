@@ -232,16 +232,41 @@ export default function CommandCenter() {
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
             </span>
             <Label>
-              01 — Live acuity operations · {selectedHospital?.name ?? 'No facility selected'}
+              01 — Live acuity operations ·{' '}
+              {scope === 'all'
+                ? `${myHospitalIds.length} facilit${myHospitalIds.length === 1 ? 'y' : 'ies'}`
+                : selectedHospital?.name ?? 'No facility selected'}
             </Label>
           </div>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
             ALIS <span className="text-primary">Command Center</span>
           </h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Facility-wide acuity triage, ranked in real time by the patented ALIS acuity engine.
+            Acuity triage across the facilities you cover, ranked in real time by the patented ALIS acuity engine.
           </p>
+
+          {/* Scope toggle */}
+          <div className="mt-4 inline-flex rounded-full border border-border bg-secondary/50 p-1">
+            {([
+              { key: 'facility' as Scope, label: 'This facility' },
+              { key: 'all' as Scope, label: 'All my facilities' },
+            ]).map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setScope(opt.key)}
+                className={cn(
+                  'rounded-full px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors',
+                  scope === opt.key
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </header>
+
 
         {/* Stats */}
         <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
