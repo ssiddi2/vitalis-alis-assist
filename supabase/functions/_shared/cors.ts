@@ -3,11 +3,19 @@ const ALLOW_HEADERS =
 
 const PRIMARY_ORIGIN = "https://vitalis-alis-assist.lovable.app";
 
+/** Explicit, non-wildcard origins for this app (published, custom domain, this project's preview). */
+const KNOWN_ORIGINS = [
+  PRIMARY_ORIGIN,
+  "https://www.alisai.health",
+  "https://alisai.health",
+  "https://id-preview--2e29a090-42af-4198-bc03-522b3e857b96.lovable.app",
+];
+
 function isAllowed(origin: string): boolean {
   const extra = (Deno.env.get("ALLOWED_ORIGINS") || "")
     .split(",").map((s) => s.trim()).filter(Boolean);
   if (extra.includes(origin)) return true;
-  if (origin === PRIMARY_ORIGIN) return true;
+  if (KNOWN_ORIGINS.includes(origin)) return true;
   try {
     const { protocol, hostname } = new URL(origin);
     if (protocol !== "https:") return protocol === "http:" && hostname === "localhost";
