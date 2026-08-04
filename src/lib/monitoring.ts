@@ -6,7 +6,7 @@ export const monitoringEnabled = Boolean(DSN);
 
 const PHI_KEYS = [
   'patient', 'name', 'mrn', 'dob', 'transcript', 'note', 'content',
-  'text', 'message', 'address', 'phone', 'insurance', 'diagnosis',
+  'text', 'message', 'address', 'phone', 'insurance', 'diagnosis', 'reason',
 ];
 
 const isPhiKey = (k: string) => {
