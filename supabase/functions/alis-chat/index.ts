@@ -486,7 +486,11 @@ async function runBedrockChat(
     try { args = JSON.parse(tc.arguments); } catch { console.error("Failed to parse tool args"); }
     const result = await executeTool(tc.name, args, context);
     toolResults.push({ toolCallId: tc.id, name: tc.name, args, result });
+    // Non-PHI telemetry only: never log tool payloads.
+    const ok = !!(result as { success?: boolean })?.success;
+    console.log(`tool=${tc.name} success=${ok} bytes=${JSON.stringify(result).length}`);
   }
+
 
   const followUp = await invokeClaudeMessages({
     max_tokens: 2048,
