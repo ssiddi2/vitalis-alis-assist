@@ -77,7 +77,7 @@ function StatTile({ label, value, color, sub }: { label: string; value: string |
 type Scope = 'facility' | 'all';
 
 export default function CommandCenter() {
-  const { selectedHospital, hospitals } = useHospital();
+  const { selectedHospital, hospitals, setSelectedHospital, setSelectedPatientId } = useHospital();
   const navigate = useNavigate();
   const { hospitalIds: myHospitalIds } = useMyHospitalIds();
   const [scope, setScope] = useState<Scope>('facility');
