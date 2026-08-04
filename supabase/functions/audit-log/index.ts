@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     if (error) {
       console.error('Error logging audit event:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to log audit event', details: error.message }),
+        JSON.stringify({ error: 'Failed to log audit event' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
