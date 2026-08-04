@@ -143,8 +143,44 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
     fetchHospitals();
   }, [user, authLoading]);
 
+  /**
+   * Selecting a facility INITIATES that facility's EMR connection; switching
+   * facilities resets first so no stale EMR context survives. A live SMART
+   * session for the facility's EMR counts as connected; otherwise we resolve
+   * the curated (synthetic) sandbox issuer for demos — never a fake link to a
+   * real production EHR.
+   */
+  useEffect(() => {
+    const facilityId = selectedHospital?.id;
+    const emr = selectedHospital?.emr_system;
+    if (!facilityId || !emr) {
+      setEmrConnection(null);
+      return;
+    }
+    setEmrConnection({ status: 'connecting', emr, facilityId, sandbox: false });
+
+    let cancelled = false;
+    const t = setTimeout(() => {
+      if (cancelled) return;
+      const live = loadSmartSession();
+      const sandbox = sandboxForEmr(emr);
+      if (live?.access_token) {
+        setEmrConnection({ status: 'connected', emr, facilityId, sandbox: false });
+      } else if (sandbox) {
+        setEmrConnection({ status: 'connected', emr, facilityId, sandbox: true });
+      } else {
+        setEmrConnection({ status: 'error', emr, facilityId, sandbox: false });
+      }
+    }, 900);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [selectedHospital?.id, selectedHospital?.emr_system]);
+
   return (
-    <HospitalContext.Provider value={{ hospitals, selectedHospital, setSelectedHospital, selectedPatientId, setSelectedPatientId, activeEncounterId, setActiveEncounterId, loading, error }}>
+    <HospitalContext.Provider value={{ hospitals, selectedHospital, setSelectedHospital, selectedPatientId, setSelectedPatientId, activeEncounterId, setActiveEncounterId, emrConnection, loading, error }}>
       {children}
     </HospitalContext.Provider>
   );
