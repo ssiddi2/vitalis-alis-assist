@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { discoverSmart, randomString, sha256, SMART_CLIENT_ID, SMART_SCOPES } from '@/lib/smart';
+import { discoverSmart, randomString, sha256, isHttpsUrl, smartIssAllowed, SMART_CLIENT_ID, SMART_SCOPES } from '@/lib/smart';
 
 export default function SmartLaunch() {
   const [params] = useSearchParams();
