@@ -100,7 +100,7 @@ export function RadiologyReportModal({ study, open, onOpenChange }: RadiologyRep
             <Button
               variant="outline"
               className="w-full h-10 text-xs rounded-lg"
-              onClick={() => window.open(study.viewer_url!, '_blank')}
+              onClick={() => openHttpUrl(study.viewer_url!)}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               Open in PACS Viewer
