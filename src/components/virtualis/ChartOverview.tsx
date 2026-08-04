@@ -36,7 +36,11 @@ function OverviewCard({ index, label, icon: Icon, onViewAll, className, children
 }
 
 const Empty = ({ text }: { text: string }) => (
-  <p className="text-xs text-muted-foreground py-4 text-center">{text}</p>
+  <div className="py-5 text-center">
+    <Inbox className="mx-auto mb-1.5 h-5 w-5 text-muted-foreground/40" />
+    <p className="text-xs text-muted-foreground">{text}</p>
+    <p className="mt-0.5 text-[11px] text-muted-foreground/70">Data appears here once recorded or synced.</p>
+  </div>
 );
 
 interface ChartOverviewProps {
