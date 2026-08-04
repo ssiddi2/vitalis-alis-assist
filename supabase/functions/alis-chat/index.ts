@@ -6,6 +6,8 @@ import { guard } from "../_shared/guard.ts";
 import { adminClient } from "../_shared/supabase.ts";
 import { suggestBilling } from "../_shared/billing.ts";
 import { badRequest, varray, vtext, vuuid } from "../_shared/validate.ts";
+import { bedrockConfigured, invokeClaudeMessages } from "../_shared/bedrock.ts";
+
 
 
 
@@ -645,6 +647,91 @@ async function runAnthropicChat(
   });
 }
 
+// ─────────────────────────────────────────────
+// AWS Bedrock (Claude) — BAA path, preferred. Fail-closed: no non-BAA fallover.
+// ─────────────────────────────────────────────
+/** Detect tools → authorize → execute → follow-up, emitted over the existing SSE contract. */
+async function runBedrockChat(
+  system: string,
+  clientMessages: ChatMessage[],
+  context: { hospitalId?: string; patientId?: string; userId?: string },
+  corsHeaders: Record<string, string>,
+): Promise<Response> {
+  const convo: ChatMessage[] = clientMessages.map((m) => ({
+    role: m.role === "assistant" ? "assistant" : "user",
+    content: m.content,
+  }));
+
+  const encoder = new TextEncoder();
+  const sse = (lines: string) =>
+    new Response(encoder.encode(lines + "data: [DONE]\n\n"), {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
+  const textChunk = (t: string) =>
+    `data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`;
+
+  const first = await invokeClaudeMessages({
+    max_tokens: 2048,
+    system,
+    messages: convo,
+    tools: toAnthropicTools(tools),
+  });
+
+  const blocks: Array<Record<string, unknown>> = first.content || [];
+  const toolCalls = blocks
+    .filter((b) => b.type === "tool_use")
+    .map((b) => ({ id: b.id as string, name: b.name as string, arguments: JSON.stringify(b.input ?? {}) }));
+
+  if (toolCalls.length === 0) {
+    const text = blocks.filter((b) => b.type === "text").map((b) => b.text as string).join("");
+    return sse(textChunk(text));
+  }
+
+  const admin = adminClient();
+  if (!(await userHasHospitalAccess(admin, context.userId!, context.hospitalId))) {
+    return new Response(JSON.stringify({ error: "Forbidden: no access to this hospital" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const toolResults: Array<{ toolCallId: string; name: string; args: Record<string, unknown>; result: unknown }> = [];
+  for (const tc of toolCalls) {
+    let args: Record<string, unknown> = {};
+    try { args = JSON.parse(tc.arguments); } catch { console.error("Failed to parse tool args"); }
+    const result = await executeTool(tc.name, args, context);
+    toolResults.push({ toolCallId: tc.id, name: tc.name, args, result });
+  }
+
+  const followUp = await invokeClaudeMessages({
+    max_tokens: 2048,
+    system,
+    messages: [
+      ...convo,
+      { role: "assistant", content: blocks },
+      {
+        role: "user",
+        content: toolResults.map((tr) => ({
+          type: "tool_result",
+          tool_use_id: tr.toolCallId,
+          content: JSON.stringify(tr.result),
+        })),
+      },
+    ],
+  });
+
+  // deno-lint-ignore no-explicit-any
+  const followText = (followUp.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+
+  const events = toolResults
+    .map((tr) =>
+      `event: tool_result\ndata: ${JSON.stringify({ tool_name: tr.name, tool_args: tr.args, result: tr.result })}\n\n`
+    )
+    .join("");
+
+  return sse(events + textChunk(followText));
+}
+
+
 serve(async (req) => {
   const g = await guard(req, { bucket: "alis-chat", limit: envLimit("RL_ALIS", 30) });
   if (g.response) return g.response;
@@ -668,11 +755,13 @@ serve(async (req) => {
     
 
     
+    const useBedrock = bedrockConfigured();
     const useAnthropic = !!Deno.env.get("ANTHROPIC_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!useAnthropic && !LOVABLE_API_KEY) {
+    if (!useBedrock && !useAnthropic && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
 
     const context = {
       hospitalId: patientContext?.hospital?.id,
@@ -690,6 +779,11 @@ serve(async (req) => {
       ...messages,
     ];
 
+    // Bedrock (BAA) preferred; FAIL-CLOSED — never fall over to a non-BAA vendor with PHI.
+    if (useBedrock) {
+      return await runBedrockChat(systemContent, messages, context, corsHeaders);
+    }
+
     if (useAnthropic) {
       try {
         return await runAnthropicChat(systemContent, messages, context, corsHeaders);
@@ -698,6 +792,7 @@ serve(async (req) => {
         if (!LOVABLE_API_KEY) throw e;
       }
     }
+
 
     // First AI call (non-streaming) to detect tool calls
     const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
