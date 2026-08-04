@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPanel from "./pages/AdminPanel";
 import AIGovernance from "./pages/AIGovernance";
+import EMRConnections from "./pages/EMRConnections";
 import BillingDashboard from "./pages/BillingDashboard";
 import QualityDashboard from "./pages/QualityDashboard";
 import Schedule from "./pages/Schedule";
