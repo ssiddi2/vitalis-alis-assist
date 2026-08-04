@@ -4,6 +4,7 @@ import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
 import { adminClient } from "../_shared/supabase.ts";
 import { completeText } from "../_shared/llm.ts";
+import { BEDROCK_MODEL_ID } from "../_shared/bedrock.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
 
 const CONSULT_ACTIONS = [
