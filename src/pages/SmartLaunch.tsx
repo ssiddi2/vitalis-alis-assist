@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { discoverSmart, randomString, sha256, isHttpsUrl, smartIssAllowed, SMART_CLIENT_ID, SMART_SCOPES } from '@/lib/smart';
+import { discoverSmart, randomString, sha256, isHttpsUrl, smartIssAllowed, getSmartClientId, SMART_SCOPES } from '@/lib/smart';
 
 export default function SmartLaunch() {
   const [params] = useSearchParams();
@@ -30,7 +30,7 @@ export default function SmartLaunch() {
 
         const url = new URL(cfg.authorization_endpoint);
         url.searchParams.set('response_type', 'code');
-        url.searchParams.set('client_id', SMART_CLIENT_ID);
+        url.searchParams.set('client_id', getSmartClientId());
         url.searchParams.set('redirect_uri', redirect_uri);
         url.searchParams.set('scope', SMART_SCOPES);
         url.searchParams.set('state', state);

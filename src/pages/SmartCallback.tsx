@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { SMART_CLIENT_ID, SMART_STORAGE_KEY, type SmartSession } from '@/lib/smart';
+import { getSmartClientId, SMART_STORAGE_KEY, type SmartSession } from '@/lib/smart';
 
 export default function SmartCallback() {
   const [params] = useSearchParams();
@@ -31,7 +31,7 @@ export default function SmartCallback() {
             code,
             code_verifier: pkce.verifier,
             redirect_uri: pkce.redirect_uri,
-            client_id: SMART_CLIENT_ID,
+            client_id: getSmartClientId(),
           },
         });
         if (error) throw error;
