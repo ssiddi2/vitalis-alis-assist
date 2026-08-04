@@ -1,4 +1,5 @@
 import { completeText } from "../_shared/llm.ts";
+import { extractJson } from "../_shared/bedrock.ts";
 
 export type Tier = "fast" | "frontier";
 

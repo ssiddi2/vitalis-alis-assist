@@ -1,5 +1,6 @@
 // Shared medical-coding engine. ALL billing prompt/parse logic lives here (DRY).
 import { completeText } from "./llm.ts";
+import { extractJson } from "./bedrock.ts";
 
 export type CodeType = "CPT" | "ICD-10";
 

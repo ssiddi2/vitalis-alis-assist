@@ -3,6 +3,7 @@ import { userHasHospitalAccess } from "../_shared/auth.ts";
 import { envLimit } from "../_shared/rateLimit.ts";
 import { guard } from "../_shared/guard.ts";
 import { completeText } from "../_shared/llm.ts";
+import { extractJson } from "../_shared/bedrock.ts";
 import { badRequest, venum, vtext, vuuid } from "../_shared/validate.ts";
 
 const NOTE_TYPES = ["progress", "consult", "discharge", "procedure"] as const;
