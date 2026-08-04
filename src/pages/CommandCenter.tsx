@@ -376,7 +376,7 @@ export default function CommandCenter() {
                       </Button>
                       <Button
                         variant="ghost"
-                        onClick={() => navigate('/dashboard')}
+                        onClick={() => openPatient(item)}
                         className="w-full justify-between rounded-full text-muted-foreground"
                       >
                         Open <ArrowRight className="h-4 w-4" />
