@@ -103,7 +103,7 @@ export const dsiRegistry: DsiEntry[] = [
       reliability:
         'Deterministic section structure with low-variance decoding; identical input yields consistent note scaffolding.',
       robustness:
-        'Provider failover chain; on total failure the clinician documents manually with no loss of workflow.',
+        'Bounded retries with backoff against Bedrock; there is no non-BAA fallback, so on total failure the request fails closed and the clinician documents manually with no loss of workflow.',
       fairness:
         'Note generation is content-driven; no demographic attribute alters clinical wording. Templates are reviewed for stigmatizing language.',
       intelligibility:
@@ -183,7 +183,7 @@ export const dsiRegistry: DsiEntry[] = [
       reliability:
         'Guardrail layer is deterministic and always applied, so unsafe proposals are filtered consistently regardless of model output.',
       robustness:
-        'Failover chain across providers; on failure no order is proposed rather than a degraded one.',
+        'Bedrock-only inference with bounded retries; on failure no order is proposed rather than a degraded one.',
       fairness:
         'No demographic or payer attribute influences what is recommended; equity of suggestions monitored across patient panels.',
       intelligibility:
