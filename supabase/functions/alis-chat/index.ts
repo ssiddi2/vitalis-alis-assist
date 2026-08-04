@@ -779,6 +779,11 @@ serve(async (req) => {
       ...messages,
     ];
 
+    // Bedrock (BAA) preferred; FAIL-CLOSED — never fall over to a non-BAA vendor with PHI.
+    if (useBedrock) {
+      return await runBedrockChat(systemContent, messages, context, corsHeaders);
+    }
+
     if (useAnthropic) {
       try {
         return await runAnthropicChat(systemContent, messages, context, corsHeaders);
@@ -787,6 +792,7 @@ serve(async (req) => {
         if (!LOVABLE_API_KEY) throw e;
       }
     }
+
 
     // First AI call (non-streaming) to detect tool calls
     const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
