@@ -83,13 +83,26 @@ const PROVIDERS: Record<string, (a: CompleteArgs) => Promise<string>> = {
   gateway: gatewayText,
 };
 
-/** Tries each available provider in order; returns the first success. Throws if all fail. */
+/**
+ * Bedrock-first + FAIL-CLOSED: when Bedrock is configured, PHI only goes to Bedrock (BAA);
+ * any failure throws rather than falling over to a non-BAA vendor.
+ * Without Bedrock, uses the anthropic → cohere → gateway chain (dev/no-AWS).
+ */
 export async function completeText(args: CompleteArgs): Promise<CompleteResult> {
+  if (bedrockConfigured()) {
+    const system = args.json ? args.system + JSON_NUDGE : args.system;
+    const user = args.messages.map((m) => m.content).join("\n\n");
+    const text = await invokeClaude({ system, user });
+    if (!text) throw new Error("bedrock returned empty text");
+    return { text, provider: "bedrock", model: BEDROCK_MODEL_ID };
+  }
+
   const order = (env("LLM_FALLBACK_ORDER") || "anthropic,cohere,gateway")
     .split(",").map((p) => p.trim()).filter((p) => PROVIDERS[p] && env(KEYS[p]));
   if (!order.length) throw new Error("No LLM provider key configured");
 
   const call = { ...args, system: args.json ? args.system + JSON_NUDGE : args.system };
+
   for (const provider of order) {
     try {
       const text = await PROVIDERS[provider](call);
