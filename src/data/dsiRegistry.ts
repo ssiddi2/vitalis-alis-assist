@@ -45,7 +45,7 @@ export const dsiRegistry: DsiEntry[] = [
     developer: DEVELOPER,
     fundingSource: FUNDING,
     models:
-      'Three-layer cascade: deterministic red-flag rules → Cohere command-r-plus fast classifier → Claude Sonnet escalation for low-confidence or high-stakes cases (Anthropic → Cohere → gateway failover).',
+      'Deterministic red-flag rules first, then a single LLM tier on AWS Bedrock — Anthropic Claude 3.5 Sonnet (model id us.anthropic.claude-3-5-sonnet-20241022-v2:0)). Bedrock is the only inference path — if it is unavailable the request fails closed rather than falling back to a non-BAA vendor.',
     inputs:
       'Free-text clinical reason and notes authored by the requesting clinician, optional structured patient context (age, problem list, vitals) scoped to the user\'s hospital.',
     outputs:
@@ -64,7 +64,7 @@ export const dsiRegistry: DsiEntry[] = [
       reliability:
         'Same input yields stable output at low temperature; scores are persisted so repeat assessments are auditable and comparable.',
       robustness:
-        'Multi-provider failover (Anthropic → Cohere → gateway) plus rule fallback; if all model tiers fail the UI states assessment unavailable rather than guessing.',
+        'Bounded retries with backoff against Bedrock, plus the deterministic rule fallback; if inference is unavailable the UI states assessment unavailable rather than guessing.',
       fairness:
         'Inputs exclude race, insurance status, and payer data. Distribution of scores across demographics is monitored; no demographic feature is used as a predictor.',
       intelligibility:
@@ -74,7 +74,7 @@ export const dsiRegistry: DsiEntry[] = [
       security:
         'Server-side edge function only; JWT-verified, hospital-scoped, rate-limited, locked CORS allowlist. No vendor keys exposed to the browser.',
       privacy:
-        'Runs under BAA-covered infrastructure with RLS enforcement; no training on customer PHI, no retention by model vendors beyond the request.',
+        'Inference runs on AWS Bedrock under the AWS BAA, with RLS enforcement. Bedrock does not use inputs or outputs to train models and does not retain them after the request.',
     },
   },
   {
@@ -85,7 +85,7 @@ export const dsiRegistry: DsiEntry[] = [
       'Drafts a structured SOAP progress note from clinician dictation and available chart context, to reduce documentation burden. The draft is a starting point, never a final record.',
     developer: DEVELOPER,
     fundingSource: FUNDING,
-    models: 'Claude Sonnet primary → Cohere → Lovable gateway failover.',
+    models: 'AWS Bedrock — Anthropic Claude 3.5 Sonnet (model id us.anthropic.claude-3-5-sonnet-20241022-v2:0)), invoked server-side. Bedrock-only: no fallback to non-BAA vendors.',
     inputs:
       'Clinician dictation/free text, encounter type, and hospital-scoped chart context (problems, medications, allergies, recent vitals and labs).',
     outputs: 'Draft SOAP note sections and suggested billing codes for clinician review.',
@@ -113,7 +113,7 @@ export const dsiRegistry: DsiEntry[] = [
       security:
         'JWT-verified, hospital-scoped, rate-limited edge function; input validated and size-capped; keys held server-side.',
       privacy:
-        'PHI processed under BAA with RLS-enforced access; no vendor training on customer data; audit log entry on every generation.',
+        'PHI processed on AWS Bedrock under the AWS BAA with RLS-enforced access; Bedrock does not train on or retain inputs; audit log entry on every generation.',
     },
   },
   {
@@ -124,7 +124,7 @@ export const dsiRegistry: DsiEntry[] = [
       'Suggests E&M and procedure codes from documented medical decision making and predicts payer denial risk at the point of care so gaps can be corrected before submission. Advisory to coders and clinicians.',
     developer: DEVELOPER,
     fundingSource: FUNDING,
-    models: 'Claude Sonnet → Cohere → gateway failover, applied over deterministic AMA E&M MDM rules and the local fee schedule.',
+    models: 'AWS Bedrock — Anthropic Claude 3.5 Sonnet (model id us.anthropic.claude-3-5-sonnet-20241022-v2:0)), applied over deterministic AMA E&M MDM rules and the local fee schedule. Bedrock-only inference.',
     inputs:
       'Signed or draft documentation, diagnoses, orders and procedures, encounter type, patient insurance/coverage attributes, and hospital fee schedule.',
     outputs:
@@ -141,9 +141,9 @@ export const dsiRegistry: DsiEntry[] = [
       validity:
         'Anchored to explicit AMA MDM criteria rather than free inference; suggestions reconciled against realized claim outcomes.',
       reliability:
-        'Rule layer is deterministic; the model layer only explains and fills gaps, keeping code levels reproducible.',
+        'Rule layer is deterministic; the model only explains and fills gaps, keeping code levels reproducible.',
       robustness:
-        'If all model tiers fail, deterministic MDM rules and the fee schedule still return a code suggestion.',
+        'If Bedrock inference is unavailable, deterministic MDM rules and the fee schedule still return a code suggestion.',
       fairness:
         'Coverage type is used only for payer-edit checks, never to alter clinical documentation or care recommendations.',
       intelligibility:
@@ -153,7 +153,7 @@ export const dsiRegistry: DsiEntry[] = [
       security:
         'Guarded edge function with auth, hospital scoping, validation, and rate limiting; audit-logged.',
       privacy:
-        'Minimum-necessary PHI sent; BAA-covered processing; no vendor retention or training.',
+        'Minimum-necessary PHI sent to AWS Bedrock under the AWS BAA; no vendor retention or training.',
     },
   },
   {
@@ -164,7 +164,7 @@ export const dsiRegistry: DsiEntry[] = [
       'Proposes medication, lab, and imaging orders relevant to the active clinical context to reduce ordering friction and omission. Suggestions are staged, never live orders.',
     developer: DEVELOPER,
     fundingSource: FUNDING,
-    models: 'Claude Sonnet → Cohere → gateway failover, with deterministic interaction, allergy, and controlled-substance guardrails.',
+    models: 'AWS Bedrock — Anthropic Claude 3.5 Sonnet (model id us.anthropic.claude-3-5-sonnet-20241022-v2:0)), with deterministic interaction, allergy, and controlled-substance guardrails. Bedrock-only inference.',
     inputs:
       'Active problems, medications, allergies, recent labs and vitals, encounter context, and the clinician\'s conversational request to ALIS.',
     outputs:
@@ -181,7 +181,7 @@ export const dsiRegistry: DsiEntry[] = [
       validity:
         'Recommendations constrained by chart context and validated against interaction, allergy, and formulary rules before surfacing.',
       reliability:
-        'Guardrail layer is deterministic and always applied, so unsafe proposals are filtered consistently regardless of model tier.',
+        'Guardrail layer is deterministic and always applied, so unsafe proposals are filtered consistently regardless of model output.',
       robustness:
         'Failover chain across providers; on failure no order is proposed rather than a degraded one.',
       fairness:
@@ -193,7 +193,7 @@ export const dsiRegistry: DsiEntry[] = [
       security:
         'Auth-gated, hospital-scoped, rate-limited edge functions; transmission credentials remain server-side.',
       privacy:
-        'BAA-covered, RLS-enforced access to chart data; full audit trail on every mutating AI action.',
+        'AWS Bedrock under the AWS BAA, RLS-enforced access to chart data; full audit trail on every mutating AI action.',
     },
   },
 ];
