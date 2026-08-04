@@ -290,11 +290,17 @@ export default function CommandCenter() {
             ))}
           </div>
         ) : sorted.length === 0 ? (
-          <div className="glass flex flex-col items-center justify-center rounded-2xl border border-border py-20 text-center shadow-sm">
-            <ShieldCheck className="mb-3 h-8 w-8 text-emerald-500" />
-            <p className="text-lg font-medium text-foreground">No active acuity items — all clear</p>
-            <p className="mt-1 text-sm text-muted-foreground">New consults appear here the moment they are scored.</p>
-          </div>
+          <EmptyState
+            tone="positive"
+            icon={ShieldCheck}
+            title="No active acuity items — all clear"
+            hint={
+              scope === 'all'
+                ? 'Nothing open across the facilities you cover. New consults appear the moment they are scored.'
+                : 'New consults appear here the moment they are scored. Switch to “All my facilities” to cover every site.'
+            }
+          />
+
         ) : (
           <div className="space-y-3">
             {sorted.map(item => {
