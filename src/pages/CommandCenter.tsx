@@ -113,20 +113,20 @@ export default function CommandCenter() {
       .in('status', ['pending', 'accepted'])
       .order('created_at', { ascending: false });
 
-
     const rows = (consults || []) as unknown as ConsultRow[];
-    const ids = rows.map(r => r.id);
+    const consultIds = rows.map(r => r.id);
 
     const acuityMap: Record<string, AcuityRow> = {};
-    if (ids.length) {
+    if (consultIds.length) {
       const { data: scores } = await supabase
         .from('acuity_scores')
         .select(
           'source_id, acuity_level, confidence, rationale, suggested_specialty, suggested_specialties, immediate_actions, estimated_response_time, created_at',
         )
         .eq('source_table', 'consult_requests')
-        .in('source_id', ids)
+        .in('source_id', consultIds)
         .order('created_at', { ascending: false });
+
 
       for (const s of scores || []) {
         if (!s.source_id || acuityMap[s.source_id]) continue;
