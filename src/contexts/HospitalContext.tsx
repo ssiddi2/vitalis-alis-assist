@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { loadSmartSession } from '@/lib/smart';
+import { sandboxForEmr } from '@/data/emrSandboxes';
 
 export interface Hospital {
   id: string;
@@ -14,6 +16,14 @@ export interface Hospital {
   alertCount?: number;
 }
 
+export interface EmrConnection {
+  status: 'connecting' | 'connected' | 'error';
+  emr: string;
+  facilityId: string;
+  /** true when resolved through a synthetic sandbox issuer rather than a live EHR session. */
+  sandbox: boolean;
+}
+
 interface HospitalContextType {
   hospitals: Hospital[];
   selectedHospital: Hospital | null;
@@ -22,6 +32,7 @@ interface HospitalContextType {
   setSelectedPatientId: (id: string | null) => void;
   activeEncounterId: string | null;
   setActiveEncounterId: (id: string | null) => void;
+  emrConnection: EmrConnection | null;
   loading: boolean;
   error: string | null;
 }
@@ -30,6 +41,7 @@ const HospitalContext = createContext<HospitalContextType | undefined>(undefined
 
 const HOSPITAL_KEY = 'virtualis.selectedHospitalId';
 const PATIENT_KEY = 'virtualis.selectedPatientId';
+
 
 const readStored = (key: string): string | null => {
   try { return sessionStorage.getItem(key); } catch { return null; }
