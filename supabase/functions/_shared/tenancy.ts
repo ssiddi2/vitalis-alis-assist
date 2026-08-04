@@ -1,4 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+/** Structural client type: avoids supabase-js generic drift between functions. */
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = { from: (table: string) => any };
 
 /**
  * Tenancy guards for the service-role client.
