@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { DirectMessageSidebar } from './DirectMessageSidebar';
 import { MobileMenu } from './MobileMenu';
 import { NotificationCenter } from './NotificationCenter';
-import { EMRSyncBadge } from './EMRSyncBadge';
+import { EmrConnectionPill } from './EmrConnectionPill';
 import { AmbientStatusIndicator } from './AmbientStatusIndicator';
 import virtualisOneIcon from '@/assets/virtualis-one-header-icon.png.asset.json';
 
@@ -120,17 +120,14 @@ export function TopBar() {
             </button>
           </>
         )}
+
+        {/* Active-facility EMR connection state */}
+        <EmrConnectionPill className="hidden sm:flex max-w-[240px]" />
       </div>
 
       {/* Desktop Controls */}
       <div className="hidden lg:flex items-center gap-2">
-        {/* EMR Sync Badge */}
-        {selectedHospital && (
-          <EMRSyncBadge
-            emrSystem={selectedHospital.emr_system}
-            connectionStatus={selectedHospital.connection_status}
-          />
-        )}
+
 
         {/* Ambient Mode */}
         <AmbientStatusIndicator isAmbient={isAmbient} onToggle={() => setIsAmbient(prev => !prev)} />

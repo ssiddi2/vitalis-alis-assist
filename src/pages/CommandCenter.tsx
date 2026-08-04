@@ -236,47 +236,56 @@ export default function CommandCenter() {
       <TopBar />
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-4">
         {/* Header */}
-        <header className="mb-6">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-            </span>
-            <Label>
-              01 — Live acuity operations ·{' '}
-              {scope === 'all'
-                ? `${myHospitalIds.length} facilit${myHospitalIds.length === 1 ? 'y' : 'ies'}`
-                : selectedHospital?.name ?? 'No facility selected'}
-            </Label>
-          </div>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            ALIS <span className="text-primary">Command Center</span>
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Acuity triage across the facilities you cover, ranked in real time by the patented ALIS acuity engine.
-          </p>
+        <header className="mb-6 glass rounded-3xl border border-border p-4 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+            <div className="min-w-0 flex-1 basis-[280px]">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
+                </span>
+                <Label>01 — Live acuity operations</Label>
+              </div>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                ALIS <span className="text-primary">Command Center</span>
+              </h1>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                Acuity triage across the facilities you cover, ranked in real time by the patented ALIS acuity engine.
+              </p>
+            </div>
 
-          {/* Scope toggle */}
-          <div className="mt-4 inline-flex rounded-full border border-border bg-secondary/50 p-1">
-            {([
-              { key: 'facility' as Scope, label: 'This facility' },
-              { key: 'all' as Scope, label: 'All my facilities' },
-            ]).map(opt => (
-              <button
-                key={opt.key}
-                onClick={() => setScope(opt.key)}
-                className={cn(
-                  'rounded-full px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] transition-colors',
-                  scope === opt.key
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
+            <div className="flex min-w-0 flex-shrink-0 flex-col items-start gap-2 sm:items-end">
+              <div className="inline-flex rounded-full border border-border bg-secondary/50 p-1">
+                {([
+                  { key: 'facility' as Scope, label: 'This facility' },
+                  { key: 'all' as Scope, label: 'All my facilities' },
+                ]).map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setScope(opt.key)}
+                    className={cn(
+                      'whitespace-nowrap rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors sm:px-4',
+                      scope === opt.key
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex max-w-full items-center gap-1.5 text-muted-foreground">
+                <Building2 className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                <span className="truncate font-mono text-[10px] uppercase tracking-[0.16em]">
+                  {scope === 'all'
+                    ? `${myHospitalIds.length} facilit${myHospitalIds.length === 1 ? 'y' : 'ies'}`
+                    : selectedHospital?.name ?? 'No facility selected'}
+                </span>
+              </div>
+            </div>
           </div>
         </header>
+
 
 
         {/* Stats */}
