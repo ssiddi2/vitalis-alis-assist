@@ -52,8 +52,12 @@ export function OrderEntryModal({ open, onOpenChange, patientId }: OrderEntryMod
       .insert({
         patient_id: patientId,
         order_type: orderType,
-        order_data: { name: name.trim(), priority, details: details.trim() || undefined },
-        rationale: rationale.trim() || null,
+        order_data: {
+          name: name.trim().slice(0, 200),
+          priority,
+          details: details.trim().slice(0, 4000) || undefined,
+        },
+        rationale: rationale.trim().slice(0, 2000) || null,
         status: 'staged',
         created_by: user?.id || null,
       });
@@ -130,6 +134,7 @@ export function OrderEntryModal({ open, onOpenChange, patientId }: OrderEntryMod
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              maxLength={200}
               placeholder="e.g., CBC with Differential, CT Chest w/ Contrast"
               className="mt-1 h-9 text-xs bg-secondary/50"
             />
@@ -140,6 +145,7 @@ export function OrderEntryModal({ open, onOpenChange, patientId }: OrderEntryMod
             <Textarea
               value={rationale}
               onChange={(e) => setRationale(e.target.value)}
+              maxLength={2000}
               placeholder="Why is this order needed?"
               rows={2}
               className="mt-1 text-xs resize-none bg-secondary/50"
@@ -151,6 +157,7 @@ export function OrderEntryModal({ open, onOpenChange, patientId }: OrderEntryMod
             <Textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
+              maxLength={4000}
               placeholder="Dosing, laterality, special instructions..."
               rows={2}
               className="mt-1 text-xs resize-none bg-secondary/50"

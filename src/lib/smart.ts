@@ -18,13 +18,32 @@ export interface SmartConfig {
   capabilities?: string[];
 }
 
+export const isHttpsUrl = (u?: string) => {
+  try { return new URL(u!).protocol === 'https:'; } catch { return false; }
+};
+
+/** Issuer allowlist from VITE_SMART_ISS_ALLOWLIST (comma-separated hosts). Empty = https-only. */
+export const smartIssAllowed = (iss: string) => {
+  if (!isHttpsUrl(iss)) return false;
+  const list = ((import.meta.env.VITE_SMART_ISS_ALLOWLIST as string) || '')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (!list.length) return true;
+  const host = new URL(iss).host.toLowerCase();
+  return list.some(a => host === a.replace(/^https?:\/\//, '').replace(/\/.*$/, ''));
+};
+
 export const discoverSmart = async (iss: string): Promise<SmartConfig> => {
+  if (!smartIssAllowed(iss)) throw new Error('Issuer is not an allowed https FHIR server');
   const base = iss.replace(/\/$/, '');
   const r = await fetch(`${base}/.well-known/smart-configuration`, {
     headers: { Accept: 'application/json' },
   });
   if (!r.ok) throw new Error(`SMART discovery failed: ${r.status}`);
-  return r.json();
+  const cfg = (await r.json()) as SmartConfig;
+  if (!isHttpsUrl(cfg.authorization_endpoint) || !isHttpsUrl(cfg.token_endpoint)) {
+    throw new Error('SMART endpoints must use https');
+  }
+  return cfg;
 };
 
 // Demo default = public Epic-style sandbox client. Override via VITE_SMART_CLIENT_ID.

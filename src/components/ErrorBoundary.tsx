@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { monitoringEnabled, reportError } from '@/lib/monitoring';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -22,6 +23,7 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('[ErrorBoundary] Uncaught error:', error, errorInfo);
+    reportError(error, { boundary: 'app' });
   }
 
   handleReset = () => {
@@ -44,7 +46,9 @@ export class ErrorBoundary extends React.Component<
               Something went wrong
             </h2>
             <p className="text-muted-foreground mb-6">
-              An unexpected error occurred. This has been logged for investigation.
+              {monitoringEnabled
+                ? 'An unexpected error occurred. This has been logged for investigation.'
+                : 'An unexpected error occurred. Please retry, or contact support with the details below.'}
             </p>
             {this.state.error && (
               <div className="mb-6 p-3 bg-secondary rounded-xl text-left">

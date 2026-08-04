@@ -98,6 +98,7 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
               placeholder="Describe the clinical question or concern..."
               value={reason}
               onChange={e => setReason(e.target.value)}
+              maxLength={4000}
               rows={3}
             />
           </div>
@@ -196,7 +197,7 @@ export function ConsultationThreadView({ threadId: initialThreadId, patientId, h
           </ScrollArea>
           {!isCompleted && (
             <form onSubmit={e => { e.preventDefault(); handleSend(); }} className="p-3 border-t flex gap-2 shrink-0">
-              <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Type a message..." className="flex-1 text-sm" disabled={sending} />
+              <Input value={input} onChange={e => setInput(e.target.value)} maxLength={8000} placeholder="Type a message..." className="flex-1 text-sm" disabled={sending} />
               <Button type="submit" size="icon" disabled={!input.trim() || sending}>
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
