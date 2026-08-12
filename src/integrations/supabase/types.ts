@@ -389,6 +389,212 @@ export type Database = {
           },
         ]
       }
+      care_request_events: {
+        Row: {
+          actor_id: string | null
+          care_request_id: string
+          created_at: string
+          event_code: string
+          from_status: string | null
+          hospital_id: string
+          id: string
+          metadata: Json
+          patient_id: string
+          reason: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          care_request_id: string
+          created_at?: string
+          event_code: string
+          from_status?: string | null
+          hospital_id: string
+          id?: string
+          metadata?: Json
+          patient_id: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          care_request_id?: string
+          created_at?: string
+          event_code?: string
+          from_status?: string | null
+          hospital_id?: string
+          id?: string
+          metadata?: Json
+          patient_id?: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "care_request_events_care_request_id_fkey"
+            columns: ["care_request_id"]
+            isOneToOne: false
+            referencedRelation: "care_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      care_requests: {
+        Row: {
+          accessibility_needs: string | null
+          appointment_id: string | null
+          assigned_provider_id: string | null
+          callback_phone: string | null
+          callback_verified_at: string | null
+          consent_accepted_at: string | null
+          consent_version: string | null
+          created_at: string
+          created_by: string
+          decline_reason: string | null
+          emergency_ack_at: string | null
+          encounter_id: string | null
+          hospital_id: string
+          id: string
+          is_established_patient: boolean
+          lock_version: number
+          patient_id: string
+          patient_state_code: string | null
+          payer_preference: Database["public"]["Enums"]["payer_preference"]
+          preferred_language: string | null
+          reason_text: string | null
+          records_status: string
+          red_flag: boolean
+          red_flag_codes: string[]
+          referral_status: string
+          requested_urgency: string
+          safety_screen_completed_at: string | null
+          safety_screen_version: number | null
+          service_line_id: string
+          status: Database["public"]["Enums"]["care_request_status"]
+          submitted_at: string | null
+          symptom_duration: string | null
+          triage_disposition: string | null
+          triage_reason: string | null
+          triaged_at: string | null
+          triaged_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          accessibility_needs?: string | null
+          appointment_id?: string | null
+          assigned_provider_id?: string | null
+          callback_phone?: string | null
+          callback_verified_at?: string | null
+          consent_accepted_at?: string | null
+          consent_version?: string | null
+          created_at?: string
+          created_by: string
+          decline_reason?: string | null
+          emergency_ack_at?: string | null
+          encounter_id?: string | null
+          hospital_id: string
+          id?: string
+          is_established_patient?: boolean
+          lock_version?: number
+          patient_id: string
+          patient_state_code?: string | null
+          payer_preference?: Database["public"]["Enums"]["payer_preference"]
+          preferred_language?: string | null
+          reason_text?: string | null
+          records_status?: string
+          red_flag?: boolean
+          red_flag_codes?: string[]
+          referral_status?: string
+          requested_urgency?: string
+          safety_screen_completed_at?: string | null
+          safety_screen_version?: number | null
+          service_line_id: string
+          status?: Database["public"]["Enums"]["care_request_status"]
+          submitted_at?: string | null
+          symptom_duration?: string | null
+          triage_disposition?: string | null
+          triage_reason?: string | null
+          triaged_at?: string | null
+          triaged_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accessibility_needs?: string | null
+          appointment_id?: string | null
+          assigned_provider_id?: string | null
+          callback_phone?: string | null
+          callback_verified_at?: string | null
+          consent_accepted_at?: string | null
+          consent_version?: string | null
+          created_at?: string
+          created_by?: string
+          decline_reason?: string | null
+          emergency_ack_at?: string | null
+          encounter_id?: string | null
+          hospital_id?: string
+          id?: string
+          is_established_patient?: boolean
+          lock_version?: number
+          patient_id?: string
+          patient_state_code?: string | null
+          payer_preference?: Database["public"]["Enums"]["payer_preference"]
+          preferred_language?: string | null
+          reason_text?: string | null
+          records_status?: string
+          red_flag?: boolean
+          red_flag_codes?: string[]
+          referral_status?: string
+          requested_urgency?: string
+          safety_screen_completed_at?: string | null
+          safety_screen_version?: number | null
+          service_line_id?: string
+          status?: Database["public"]["Enums"]["care_request_status"]
+          submitted_at?: string | null
+          symptom_duration?: string | null
+          triage_disposition?: string | null
+          triage_reason?: string | null
+          triaged_at?: string | null
+          triaged_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "care_requests_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_requests_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_requests_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_requests_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_members: {
         Row: {
           channel_id: string
@@ -2314,6 +2520,60 @@ export type Database = {
           },
         ]
       }
+      provider_service_lines: {
+        Row: {
+          active: boolean
+          created_at: string
+          daily_capacity: number
+          effective_date: string
+          end_date: string | null
+          hospital_id: string
+          id: string
+          provider_user_id: string
+          service_line_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          daily_capacity?: number
+          effective_date?: string
+          end_date?: string | null
+          hospital_id: string
+          id?: string
+          provider_user_id: string
+          service_line_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          daily_capacity?: number
+          effective_date?: string
+          end_date?: string | null
+          hospital_id?: string
+          id?: string
+          provider_user_id?: string
+          service_line_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_service_lines_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_service_lines_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           bucket: string
@@ -2407,6 +2667,134 @@ export type Database = {
           },
         ]
       }
+      safety_screen_templates: {
+        Row: {
+          active: boolean
+          approval_required: boolean
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          disclaimer: string
+          hospital_id: string
+          id: string
+          questions: Json
+          service_line_id: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          approval_required?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          disclaimer?: string
+          hospital_id: string
+          id?: string
+          questions?: Json
+          service_line_id?: string | null
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          active?: boolean
+          approval_required?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          disclaimer?: string
+          hospital_id?: string
+          id?: string
+          questions?: Json
+          service_line_id?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_screen_templates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_screen_templates_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_lines: {
+        Row: {
+          active: boolean
+          allows_established_patients: boolean
+          allows_new_patients: boolean
+          code: string
+          created_at: string
+          hospital_id: string
+          id: string
+          min_age: number
+          modality: Database["public"]["Enums"]["visit_modality"]
+          name: string
+          patient_description: string
+          requires_records: boolean
+          requires_referral: boolean
+          response_window: string
+          sort_order: number
+          updated_at: string
+          visible_to_patients: boolean
+        }
+        Insert: {
+          active?: boolean
+          allows_established_patients?: boolean
+          allows_new_patients?: boolean
+          code: string
+          created_at?: string
+          hospital_id: string
+          id?: string
+          min_age?: number
+          modality?: Database["public"]["Enums"]["visit_modality"]
+          name: string
+          patient_description: string
+          requires_records?: boolean
+          requires_referral?: boolean
+          response_window?: string
+          sort_order?: number
+          updated_at?: string
+          visible_to_patients?: boolean
+        }
+        Update: {
+          active?: boolean
+          allows_established_patients?: boolean
+          allows_new_patients?: boolean
+          code?: string
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          min_age?: number
+          modality?: Database["public"]["Enums"]["visit_modality"]
+          name?: string
+          patient_description?: string
+          requires_records?: boolean
+          requires_referral?: boolean
+          response_window?: string
+          sort_order?: number
+          updated_at?: string
+          visible_to_patients?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_lines_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staged_orders: {
         Row: {
           conversation_id: string | null
@@ -2467,6 +2855,66 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      state_service_availability: {
+        Row: {
+          created_at: string
+          hospital_id: string
+          id: string
+          launch_date: string | null
+          max_age: number | null
+          min_age: number | null
+          modality: Database["public"]["Enums"]["visit_modality"] | null
+          reason: string | null
+          service_line_id: string
+          state_code: string
+          status: Database["public"]["Enums"]["service_availability_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hospital_id: string
+          id?: string
+          launch_date?: string | null
+          max_age?: number | null
+          min_age?: number | null
+          modality?: Database["public"]["Enums"]["visit_modality"] | null
+          reason?: string | null
+          service_line_id: string
+          state_code: string
+          status?: Database["public"]["Enums"]["service_availability_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          launch_date?: string | null
+          max_age?: number | null
+          min_age?: number | null
+          modality?: Database["public"]["Enums"]["visit_modality"] | null
+          reason?: string | null
+          service_line_id?: string
+          state_code?: string
+          status?: Database["public"]["Enums"]["service_availability_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "state_service_availability_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "state_service_availability_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -2748,6 +3196,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      care_routing_status: {
+        Args: {
+          p_hospital_id: string
+          p_service_line_id: string
+          p_state_code: string
+        }
+        Returns: Json
+      }
       encounter_readiness: { Args: { p_encounter_id: string }; Returns: Json }
       get_user_role: {
         Args: { _user_id: string }
@@ -2846,6 +3302,14 @@ export type Database = {
         | "login"
         | "logout"
       billing_status: "pending" | "submitted" | "accepted" | "rejected"
+      care_request_status:
+        | "draft"
+        | "submitted"
+        | "waitlisted"
+        | "triaged"
+        | "scheduled"
+        | "declined"
+        | "cancelled"
       channel_type: "patient_care" | "department" | "consult"
       chat_role: "clinician" | "consultant" | "alis"
       consult_status: "pending" | "accepted" | "completed" | "cancelled"
@@ -2880,6 +3344,7 @@ export type Database = {
         | "push_failed"
         | "rejected"
       patient_type: "inpatient" | "outpatient" | "both"
+      payer_preference: "insurance" | "self_pay" | "unknown"
       prescription_status: "draft" | "signed" | "sent" | "filled" | "cancelled"
       referral_status:
         | "draft"
@@ -2888,7 +3353,9 @@ export type Database = {
         | "completed"
         | "cancelled"
       referral_urgency: "routine" | "urgent" | "stat"
+      service_availability_status: "available" | "waitlist" | "unavailable"
       team_message_type: "text" | "handoff" | "urgent" | "order_link"
+      visit_modality: "video" | "phone" | "async" | "in_person"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3037,6 +3504,15 @@ export const Constants = {
         "logout",
       ],
       billing_status: ["pending", "submitted", "accepted", "rejected"],
+      care_request_status: [
+        "draft",
+        "submitted",
+        "waitlisted",
+        "triaged",
+        "scheduled",
+        "declined",
+        "cancelled",
+      ],
       channel_type: ["patient_care", "department", "consult"],
       chat_role: ["clinician", "consultant", "alis"],
       consult_status: ["pending", "accepted", "completed", "cancelled"],
@@ -3078,10 +3554,13 @@ export const Constants = {
         "rejected",
       ],
       patient_type: ["inpatient", "outpatient", "both"],
+      payer_preference: ["insurance", "self_pay", "unknown"],
       prescription_status: ["draft", "signed", "sent", "filled", "cancelled"],
       referral_status: ["draft", "sent", "scheduled", "completed", "cancelled"],
       referral_urgency: ["routine", "urgent", "stat"],
+      service_availability_status: ["available", "waitlist", "unavailable"],
       team_message_type: ["text", "handoff", "urgent", "order_link"],
+      visit_modality: ["video", "phone", "async", "in_person"],
     },
   },
 } as const
