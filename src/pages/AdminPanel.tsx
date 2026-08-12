@@ -10,6 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft, ChevronRight, ShieldCheck, Plug } from 'lucide-react';
 import { ProviderLicensesPanel } from '@/components/virtualis/ProviderLicensesPanel';
+import { CareCatalogAdmin } from '@/components/virtualis/CareCatalogAdmin';
+
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { EditUserModal } from '@/components/virtualis/EditUserModal';
 import { TableRowSkeleton } from '@/components/ui/skeleton-patterns';
