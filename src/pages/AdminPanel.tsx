@@ -13,6 +13,7 @@ import { ProviderLicensesPanel } from '@/components/virtualis/ProviderLicensesPa
 import { CareCatalogAdmin } from '@/components/virtualis/CareCatalogAdmin';
 import { ErxIntegrationAdmin } from '@/components/virtualis/ErxIntegrationAdmin';
 import { ClearinghouseAdmin } from '@/components/virtualis/ClearinghouseAdmin';
+import { LaunchIntegrations } from '@/components/virtualis/LaunchIntegrations';
 import { DiagnosticsIntegrationAdmin } from '@/components/virtualis/DiagnosticsIntegrationAdmin';
 
 
@@ -311,6 +312,7 @@ export default function AdminPanel() {
               </Select>
               <ProviderLicensesPanel hospitalId={licenseHospitalId || hospitals[0].id} canEdit />
               <CareCatalogAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
+              <LaunchIntegrations hospitalId={licenseHospitalId || hospitals[0].id} />
               <ErxIntegrationAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
               <ClearinghouseAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
               <DiagnosticsIntegrationAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
