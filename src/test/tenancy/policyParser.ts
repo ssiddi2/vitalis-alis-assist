@@ -103,7 +103,13 @@ export function loadEffectivePolicies(): Map<string, Policy[]> {
 /** True when the predicate constrains rows to the caller's hospital membership. */
 export function isTenantScoped(expr: string): boolean {
   const e = expr.toLowerCase();
-  return e.includes("hospital_users") || e.includes("user_hospital_ids") || e.includes("has_hospital_access");
+  return (
+    e.includes("hospital_users") ||
+    e.includes("user_hospital_ids") ||
+    e.includes("has_hospital_access") ||
+    e.includes("patient_in_my_hospital") ||
+    e.includes("is_my_hospital")
+  );
 }
 
 /** True when the predicate is admin-only (acceptable: admins are cross-tenant by design). */
