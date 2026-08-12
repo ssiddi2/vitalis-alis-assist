@@ -33,7 +33,7 @@ export function ErxIntegrationAdmin({ hospitalId }: { hospitalId: string }) {
   };
 
   const update = async (id: string, patch: Record<string, unknown>) => {
-    const { error } = await supabase.from('erx_integration_profiles').update(patch).eq('id', id);
+    const { error } = await supabase.from('erx_integration_profiles').update(patch as never).eq('id', id);
     if (error) return toast.error(error.message);
     refresh();
   };
