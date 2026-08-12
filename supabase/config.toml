@@ -36,3 +36,11 @@ verify_jwt = false
 
 [functions.note-integrity]
 verify_jwt = false
+
+[functions.integration-gateway]
+verify_jwt = false
+
+# Vendors cannot present a Supabase JWT. This endpoint is write-only into the
+# quarantine table: every event fails closed and is never applied.
+[functions.vendor-callback]
+verify_jwt = false
