@@ -1456,6 +1456,178 @@ export type Database = {
           },
         ]
       }
+      erx_inbox: {
+        Row: {
+          correlation_id: string | null
+          error_code: string | null
+          event_id: string
+          hospital_id: string | null
+          id: string
+          message_type: string
+          payload_hash: string
+          received_at: string
+          signature_verified: boolean
+          status: string
+          vendor_reference: string | null
+        }
+        Insert: {
+          correlation_id?: string | null
+          error_code?: string | null
+          event_id: string
+          hospital_id?: string | null
+          id?: string
+          message_type: string
+          payload_hash: string
+          received_at?: string
+          signature_verified?: boolean
+          status?: string
+          vendor_reference?: string | null
+        }
+        Update: {
+          correlation_id?: string | null
+          error_code?: string | null
+          event_id?: string
+          hospital_id?: string | null
+          id?: string
+          message_type?: string
+          payload_hash?: string
+          received_at?: string
+          signature_verified?: boolean
+          status?: string
+          vendor_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erx_inbox_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erx_integration_profiles: {
+        Row: {
+          capabilities: Json
+          created_at: string
+          environment: string
+          epcs_enabled: boolean
+          hospital_id: string
+          id: string
+          last_test_at: string | null
+          last_test_result: string | null
+          notes: string | null
+          secret_ref_names: string[]
+          updated_at: string
+          vendor: string
+          verification_status: string
+        }
+        Insert: {
+          capabilities?: Json
+          created_at?: string
+          environment?: string
+          epcs_enabled?: boolean
+          hospital_id: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          notes?: string | null
+          secret_ref_names?: string[]
+          updated_at?: string
+          vendor: string
+          verification_status?: string
+        }
+        Update: {
+          capabilities?: Json
+          created_at?: string
+          environment?: string
+          epcs_enabled?: boolean
+          hospital_id?: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          notes?: string | null
+          secret_ref_names?: string[]
+          updated_at?: string
+          vendor?: string
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erx_integration_profiles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      erx_outbox: {
+        Row: {
+          correlation_id: string
+          created_at: string
+          error_code: string | null
+          event_id: string
+          hospital_id: string
+          id: string
+          message_type: string
+          payload_hash: string
+          prescription_id: string
+          retry_count: number
+          script_version: string
+          status: string
+          updated_at: string
+          vendor_reference: string | null
+        }
+        Insert: {
+          correlation_id: string
+          created_at?: string
+          error_code?: string | null
+          event_id: string
+          hospital_id: string
+          id?: string
+          message_type: string
+          payload_hash: string
+          prescription_id: string
+          retry_count?: number
+          script_version?: string
+          status?: string
+          updated_at?: string
+          vendor_reference?: string | null
+        }
+        Update: {
+          correlation_id?: string
+          created_at?: string
+          error_code?: string | null
+          event_id?: string
+          hospital_id?: string
+          id?: string
+          message_type?: string
+          payload_hash?: string
+          prescription_id?: string
+          retry_count?: number
+          script_version?: string
+          status?: string
+          updated_at?: string
+          vendor_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "erx_outbox_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "erx_outbox_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_schedule: {
         Row: {
           active: boolean
@@ -1772,6 +1944,177 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medication_history_candidates: {
+        Row: {
+          created_at: string
+          dose: string | null
+          external_id: string | null
+          frequency: string | null
+          id: string
+          medication_text: string
+          patient_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          route: string | null
+          rxcui: string | null
+          source: string
+          source_version: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          dose?: string | null
+          external_id?: string | null
+          frequency?: string | null
+          id?: string
+          medication_text: string
+          patient_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          route?: string | null
+          rxcui?: string | null
+          source: string
+          source_version?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          dose?: string | null
+          external_id?: string | null
+          frequency?: string | null
+          id?: string
+          medication_text?: string
+          patient_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          route?: string | null
+          rxcui?: string | null
+          source?: string
+          source_version?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_history_candidates_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medication_safety_checks: {
+        Row: {
+          check_type: string
+          checked_at: string
+          created_at: string
+          created_by: string | null
+          detail_code: string | null
+          id: string
+          message: string
+          patient_id: string
+          prescription_id: string
+          severity: string
+          source: string
+          source_version: string
+        }
+        Insert: {
+          check_type: string
+          checked_at?: string
+          created_at?: string
+          created_by?: string | null
+          detail_code?: string | null
+          id?: string
+          message: string
+          patient_id: string
+          prescription_id: string
+          severity: string
+          source: string
+          source_version: string
+        }
+        Update: {
+          check_type?: string
+          checked_at?: string
+          created_at?: string
+          created_by?: string | null
+          detail_code?: string | null
+          id?: string
+          message?: string
+          patient_id?: string
+          prescription_id?: string
+          severity?: string
+          source?: string
+          source_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_safety_checks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medication_safety_checks_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medication_safety_overrides: {
+        Row: {
+          check_id: string
+          created_at: string
+          id: string
+          overridden_by: string
+          patient_id: string
+          prescription_id: string
+          rationale: string
+        }
+        Insert: {
+          check_id: string
+          created_at?: string
+          id?: string
+          overridden_by: string
+          patient_id: string
+          prescription_id: string
+          rationale: string
+        }
+        Update: {
+          check_id?: string
+          created_at?: string
+          id?: string
+          overridden_by?: string
+          patient_id?: string
+          prescription_id?: string
+          rationale?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_safety_overrides_check_id_fkey"
+            columns: ["check_id"]
+            isOneToOne: false
+            referencedRelation: "medication_safety_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medication_safety_overrides_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medication_safety_overrides_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -2356,68 +2699,287 @@ export type Database = {
           },
         ]
       }
-      prescriptions: {
+      pdmp_access_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_code: string
+          hospital_id: string
+          id: string
+          pdmp_query_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_code: string
+          hospital_id: string
+          id?: string
+          pdmp_query_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_code?: string
+          hospital_id?: string
+          id?: string
+          pdmp_query_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdmp_access_events_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdmp_access_events_pdmp_query_id_fkey"
+            columns: ["pdmp_query_id"]
+            isOneToOne: false
+            referencedRelation: "pdmp_queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdmp_queries: {
         Row: {
           created_at: string
+          hospital_id: string
+          id: string
+          legal_basis: string
+          patient_id: string
+          purpose: string
+          queried_at: string
+          requested_by: string
+          result_summary_flag: string | null
+          state_code: string
+          status: string
+          vendor_request_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          hospital_id: string
+          id?: string
+          legal_basis: string
+          patient_id: string
+          purpose: string
+          queried_at?: string
+          requested_by: string
+          result_summary_flag?: string | null
+          state_code: string
+          status?: string
+          vendor_request_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          legal_basis?: string
+          patient_id?: string
+          purpose?: string
+          queried_at?: string
+          requested_by?: string
+          result_summary_flag?: string | null
+          state_code?: string
+          status?: string
+          vendor_request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdmp_queries_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdmp_queries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescription_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_code: string
+          from_status: string | null
+          id: string
+          metadata: Json
+          patient_id: string
+          prescription_id: string
+          reason: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_code: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          patient_id: string
+          prescription_id: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_code?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          patient_id?: string
+          prescription_id?: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_events_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescription_events_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescriptions: {
+        Row: {
+          authored_at: string
+          created_at: string
+          days_supply: number | null
           dea_schedule: string | null
+          dispense_as_written: boolean
           dose: string | null
+          duration_days: number | null
           encounter_id: string | null
           end_date: string | null
           frequency: string | null
           id: string
+          indication_code: string | null
+          indication_text: string | null
+          lock_version: number
           medication_name: string
+          ndc: string | null
+          no_encounter_reason: string | null
           patient_id: string
           pharmacy_name: string | null
+          pharmacy_ncpdp_id: string | null
           pharmacy_npi: string | null
           prescriber_id: string
+          prescriber_state_code: string | null
           quantity: number | null
           refills: number | null
+          replaces_prescription_id: string | null
           route: string | null
+          rx_kind: string
+          rxcui: string | null
+          rxnorm_name: string | null
           sig: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signed_hash: string | null
+          signed_snapshot: Json | null
           start_date: string | null
           status: Database["public"]["Enums"]["prescription_status"]
+          transmitted_at: string | null
+          units: string | null
           updated_at: string
         }
         Insert: {
+          authored_at?: string
           created_at?: string
+          days_supply?: number | null
           dea_schedule?: string | null
+          dispense_as_written?: boolean
           dose?: string | null
+          duration_days?: number | null
           encounter_id?: string | null
           end_date?: string | null
           frequency?: string | null
           id?: string
+          indication_code?: string | null
+          indication_text?: string | null
+          lock_version?: number
           medication_name: string
+          ndc?: string | null
+          no_encounter_reason?: string | null
           patient_id: string
           pharmacy_name?: string | null
+          pharmacy_ncpdp_id?: string | null
           pharmacy_npi?: string | null
           prescriber_id: string
+          prescriber_state_code?: string | null
           quantity?: number | null
           refills?: number | null
+          replaces_prescription_id?: string | null
           route?: string | null
+          rx_kind?: string
+          rxcui?: string | null
+          rxnorm_name?: string | null
           sig?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_hash?: string | null
+          signed_snapshot?: Json | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["prescription_status"]
+          transmitted_at?: string | null
+          units?: string | null
           updated_at?: string
         }
         Update: {
+          authored_at?: string
           created_at?: string
+          days_supply?: number | null
           dea_schedule?: string | null
+          dispense_as_written?: boolean
           dose?: string | null
+          duration_days?: number | null
           encounter_id?: string | null
           end_date?: string | null
           frequency?: string | null
           id?: string
+          indication_code?: string | null
+          indication_text?: string | null
+          lock_version?: number
           medication_name?: string
+          ndc?: string | null
+          no_encounter_reason?: string | null
           patient_id?: string
           pharmacy_name?: string | null
+          pharmacy_ncpdp_id?: string | null
           pharmacy_npi?: string | null
           prescriber_id?: string
+          prescriber_state_code?: string | null
           quantity?: number | null
           refills?: number | null
+          replaces_prescription_id?: string | null
           route?: string | null
+          rx_kind?: string
+          rxcui?: string | null
+          rxnorm_name?: string | null
           sig?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_hash?: string | null
+          signed_snapshot?: Json | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["prescription_status"]
+          transmitted_at?: string | null
+          units?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2433,6 +2995,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_replaces_prescription_id_fkey"
+            columns: ["replaces_prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -3216,6 +3785,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_my_hospital: { Args: { _hospital_id: string }; Returns: boolean }
       log_audit_event: {
         Args: {
           p_action_type: Database["public"]["Enums"]["audit_action_type"]
@@ -3229,6 +3799,10 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      patient_in_my_hospital: {
+        Args: { _patient_id: string }
+        Returns: boolean
       }
       reopen_encounter: {
         Args: { p_encounter_id: string; p_reason: string }
