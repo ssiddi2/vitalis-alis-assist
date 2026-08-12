@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { TopBar } from '@/components/virtualis/TopBar';
+import { RevenueCycleQueues } from '@/components/virtualis/RevenueCycleQueues';
+import { useHospital } from '@/contexts/HospitalContext';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { DollarSign, TrendingUp, AlertCircle, CheckCircle2, Clock, FileText, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
