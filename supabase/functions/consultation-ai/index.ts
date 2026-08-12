@@ -326,6 +326,7 @@ serve(async (req) => {
         const { data: note, error } = await db.from("consultation_notes").insert({
           thread_id: threadId,
           patient_id: thread.patient_id,
+          created_by: userId,
           consultation_question: parsed.consultation_question,
           clinical_summary: parsed.clinical_summary,
           specialist_recommendation: parsed.specialist_recommendation,
