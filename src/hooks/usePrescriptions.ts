@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -15,6 +15,7 @@ export interface DBPrescription {
   refills: number | null;
   pharmacy_name: string | null;
   pharmacy_npi: string | null;
+  pharmacy_ncpdp_id: string | null;
   status: string;
   sig: string | null;
   dea_schedule: string | null;
@@ -22,86 +23,78 @@ export interface DBPrescription {
   end_date: string | null;
   created_at: string;
   updated_at: string;
+  lock_version: number;
+  rx_kind: string;
+  rxcui: string | null;
+  rxnorm_name: string | null;
+  ndc: string | null;
+  indication_text: string | null;
+  units: string | null;
+  days_supply: number | null;
+  dispense_as_written: boolean;
+  no_encounter_reason: string | null;
+  prescriber_state_code: string | null;
+  signed_at: string | null;
+  signed_by: string | null;
+  transmitted_at: string | null;
+  signed_hash: string | null;
 }
+
+export type NewPrescription = Partial<DBPrescription> & { patient_id: string; medication_name: string };
 
 export function usePrescriptions(patientId: string | undefined) {
   const [prescriptions, setPrescriptions] = useState<DBPrescription[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (!patientId) {
-      setPrescriptions([]);
+  const refresh = useCallback(async () => {
+    if (!patientId) { setPrescriptions([]); setLoading(false); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setPrescriptions((data as unknown as DBPrescription[]) || []);
+    } catch (err) {
+      console.error('Error fetching prescriptions:', err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    async function fetch() {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('prescriptions')
-          .select('*')
-          .eq('patient_id', patientId)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setPrescriptions((data as DBPrescription[]) || []);
-      } catch (err) {
-        console.error('Error fetching prescriptions:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetch();
   }, [patientId]);
 
-  const createPrescription = async (rx: {
-    patient_id: string;
-    medication_name: string;
-    dose?: string;
-    frequency?: string;
-    route?: string;
-    quantity?: number;
-    refills?: number;
-    sig?: string;
-    pharmacy_name?: string;
-    dea_schedule?: string;
-    encounter_id?: string;
-  }) => {
-    if (!user) throw new Error('Not authenticated');
+  useEffect(() => { refresh(); }, [refresh]);
 
+  const createPrescription = async (rx: NewPrescription) => {
+    if (!user) throw new Error('Not authenticated');
     const { data, error } = await supabase
       .from('prescriptions')
-      .insert({ ...rx, prescriber_id: user.id, status: 'draft' })
+      .insert({ ...rx, prescriber_id: user.id, status: 'draft' } as never)
       .select()
       .single();
-
     if (error) throw error;
-    setPrescriptions(prev => [data as DBPrescription, ...prev]);
-    return data;
+    setPrescriptions(prev => [data as unknown as DBPrescription, ...prev]);
+    return data as unknown as DBPrescription;
   };
 
-  const signPrescription = async (rxId: string) => {
-    const { error } = await supabase
+  /** Optimistic-concurrency update: the database rejects a stale lock_version. */
+  const updatePrescription = async (rx: DBPrescription, patch: Partial<DBPrescription>) => {
+    const { data, error } = await supabase
       .from('prescriptions')
-      .update({ status: 'signed' })
-      .eq('id', rxId);
-
+      .update({ ...patch, lock_version: rx.lock_version + 1 } as never)
+      .eq('id', rx.id)
+      .eq('lock_version', rx.lock_version)
+      .select()
+      .single();
     if (error) throw error;
-    setPrescriptions(prev => prev.map(rx => rx.id === rxId ? { ...rx, status: 'signed' } : rx));
+    const next = data as unknown as DBPrescription;
+    setPrescriptions(prev => prev.map(p => (p.id === next.id ? next : p)));
+    return next;
   };
 
-  const cancelPrescription = async (rxId: string) => {
-    const { error } = await supabase
-      .from('prescriptions')
-      .update({ status: 'cancelled' })
-      .eq('id', rxId);
+  const setStatus = (rx: DBPrescription, status: string) => updatePrescription(rx, { status });
 
-    if (error) throw error;
-    setPrescriptions(prev => prev.map(rx => rx.id === rxId ? { ...rx, status: 'cancelled' } : rx));
-  };
-
-  return { prescriptions, loading, createPrescription, signPrescription, cancelPrescription };
+  return { prescriptions, loading, refresh, createPrescription, updatePrescription, setStatus };
 }
