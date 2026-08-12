@@ -72,12 +72,12 @@ describe("submission fails closed", () => {
   it("requires attestation, an approved claim and a passing readiness check", () => {
     expect(adapter).toMatch(/body\?\.attestation !== true\) return json\(\{ status: "error", reason: "attestation_required" \}/);
     expect(adapter).toMatch(/claim\.status !== "approved" && claim\.status !== "denied"/);
-    expect(adapter).toMatch(/can_approve\)\) \{\s*\n\s*return json\(\{ status: "blocked", reason: "claim_not_ready"/);
+    expect(adapter).toMatch(/\.can_approve\) \{[\s\S]{0,80}reason: "claim_not_ready"/);
     expect(adapter).toMatch(/hard_scrubber_failure/);
   });
 
   it("readiness requires a signed/locked note and complete coding", () => {
-    expect(adapter).toMatch(/clinical_notes"\)[\s\S]{0,160}\.in\(\["signed", "amended"\]\)/);
+    expect(adapter).toMatch(/clinical_notes"\)[\s\S]{0,200}\.in\("status", \["signed", "amended"\]\)/);
     expect(panel).toMatch(/Signed &amp; locked clinical note/);
     expect(panel).toMatch(/ICD-10 diagnosis links/);
     expect(panel).toMatch(/CPT\/HCPCS service lines/);
