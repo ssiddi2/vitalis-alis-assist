@@ -86,12 +86,6 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
   },
 };
 
-/** FHIR R4 bases, allowlisted per environment. Never overridable by a client. */
-export const HEALTH_GORILLA_FHIR_BASE = {
-  sandbox: "https://sandbox.healthgorilla.com/fhir/R4/",
-  production: "https://api.healthgorilla.com/fhir/R4/",
-} as const;
-
 export interface OnboardingRow {
   id: string;
   hospital_id: string;
