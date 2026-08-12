@@ -24,8 +24,8 @@ export interface VendorDef {
   domain: "erx" | "claims" | "diagnostics" | "standalone";
   /** Documented, vendor-owned hosts. Anything else is refused (SSRF guard). */
   hosts: { sandbox: string[]; production: string[] };
-  /** Secret REFERENCE names only — never values. */
-  secretRefs: string[];
+  /** Secret REFERENCE names only — never values. Test and production are separate names. */
+  secretRefs: { sandbox: string[]; production: string[] };
   capabilities: string[];
   /** True when the live transport requires a vendor partner package we do not have. */
   requiresPartnerPackage: boolean;
@@ -40,7 +40,10 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     domain: "erx",
     // DoseSpot issues partner-specific hosts; none are assumed.
     hosts: { sandbox: [], production: [] },
-    secretRefs: ["DOSESPOT_CLIENT_ID_REF", "DOSESPOT_CLIENT_SECRET_REF", "DOSESPOT_CLINIC_ID_REF"],
+    secretRefs: {
+      sandbox: ["DOSESPOT_TEST_CLIENT_ID_REF", "DOSESPOT_TEST_CLIENT_SECRET_REF", "DOSESPOT_TEST_CLINIC_ID_REF"],
+      production: ["DOSESPOT_PROD_CLIENT_ID_REF", "DOSESPOT_PROD_CLIENT_SECRET_REF", "DOSESPOT_PROD_CLINIC_ID_REF"],
+    },
     capabilities: ["new_rx", "cancel_rx", "rx_renewal", "rx_change", "rx_fill", "med_history", "epcs"],
     requiresPartnerPackage: true,
   },
@@ -48,8 +51,11 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     key: "stedi",
     label: "Stedi Clearinghouse APIs",
     domain: "claims",
-    hosts: { sandbox: ["healthcare.us.stedi.com"], production: ["healthcare.us.stedi.com"] },
-    secretRefs: ["STEDI_API_KEY_REF"],
+    hosts: {
+      sandbox: ["healthcare.us.stedi.com", "enrollments.us.stedi.com", "claims.us.stedi.com"],
+      production: ["healthcare.us.stedi.com", "enrollments.us.stedi.com", "claims.us.stedi.com"],
+    },
+    secretRefs: { sandbox: ["STEDI_TEST_API_KEY_REF"], production: ["STEDI_PROD_API_KEY_REF"] },
     capabilities: ["payer_directory", "enrollment", "eligibility_270_271", "claim_837p", "claim_status_276_277", "ack_277ca", "era_835", "attachment_275"],
     requiresPartnerPackage: false,
   },
@@ -58,8 +64,14 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     label: "Health Gorilla Lab Network",
     domain: "diagnostics",
     hosts: { sandbox: ["sandbox.healthgorilla.com"], production: ["api.healthgorilla.com"] },
-    secretRefs: ["HEALTH_GORILLA_CLIENT_ID_REF", "HEALTH_GORILLA_CLIENT_SECRET_REF", "HEALTH_GORILLA_TOKEN_URL_REF"],
-    capabilities: ["oauth_token", "iframe_ordering", "service_request", "diagnostic_report", "observation", "document_reference", "subscription"],
+    secretRefs: {
+      sandbox: ["HEALTH_GORILLA_SANDBOX_CLIENT_ID_REF", "HEALTH_GORILLA_SANDBOX_CLIENT_SECRET_REF"],
+      production: ["HEALTH_GORILLA_PROD_CLIENT_ID_REF", "HEALTH_GORILLA_PROD_CLIENT_SECRET_REF"],
+    },
+    capabilities: [
+      "oauth_token", "capability_statement", "order_create", "order_read", "diagnostic_report",
+      "observation", "document_reference", "org_discovery", "aoe_questionnaire", "iframe_ordering", "subscription",
+    ],
     requiresPartnerPackage: false,
   },
   docupdate: {
