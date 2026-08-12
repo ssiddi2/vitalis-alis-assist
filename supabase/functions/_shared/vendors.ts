@@ -1,0 +1,127 @@
+/**
+ * Launch-vendor registry (DoseSpot, Stedi, Health Gorilla, DocUpdate).
+ *
+ * TRUTHFULNESS RULES ENCODED HERE
+ * - No vendor is contracted, certified or connected. Every gate fails closed.
+ * - Only secret REFERENCE NAMES live in the database. Values are read from the
+ *   server environment at call time and never returned to a client.
+ * - No private/undocumented vendor endpoint is guessed. Concrete request paths
+ *   must be supplied from the vendor's own partner package/OpenAPI schema and
+ *   stored in `capabilities.endpoints`; until then the transport is unavailable.
+ */
+
+export type VendorKey = "dosespot" | "stedi" | "health_gorilla" | "docupdate";
+
+export type VendorState =
+  | "not_contracted" | "baa_pending" | "sandbox_pending" | "sandbox_configured"
+  | "certification_testing" | "production_review" | "production_verified" | "suspended";
+
+export interface VendorDef {
+  key: VendorKey;
+  label: string;
+  domain: "erx" | "claims" | "diagnostics" | "standalone";
+  /** Documented, vendor-owned hosts. Anything else is refused (SSRF guard). */
+  hosts: { sandbox: string[]; production: string[] };
+  /** Secret REFERENCE names only — never values. */
+  secretRefs: string[];
+  capabilities: string[];
+  /** True when the live transport requires a vendor partner package we do not have. */
+  requiresPartnerPackage: boolean;
+  /** True when the vendor is explicitly NOT an integration. */
+  standaloneOnly?: boolean;
+}
+
+export const VENDORS: Record<VendorKey, VendorDef> = {
+  dosespot: {
+    key: "dosespot",
+    label: "DoseSpot Jumpstart (Surescripts-certified ePrescribing)",
+    domain: "erx",
+    // DoseSpot issues partner-specific hosts; none are assumed.
+    hosts: { sandbox: [], production: [] },
+    secretRefs: ["DOSESPOT_CLIENT_ID_REF", "DOSESPOT_CLIENT_SECRET_REF", "DOSESPOT_CLINIC_ID_REF"],
+    capabilities: ["new_rx", "cancel_rx", "rx_renewal", "rx_change", "rx_fill", "med_history", "epcs"],
+    requiresPartnerPackage: true,
+  },
+  stedi: {
+    key: "stedi",
+    label: "Stedi Clearinghouse APIs",
+    domain: "claims",
+    hosts: { sandbox: ["healthcare.us.stedi.com"], production: ["healthcare.us.stedi.com"] },
+    secretRefs: ["STEDI_API_KEY_REF"],
+    capabilities: ["payer_directory", "enrollment", "eligibility_270_271", "claim_837p", "claim_status_276_277", "ack_277ca", "era_835", "attachment_275"],
+    requiresPartnerPackage: false,
+  },
+  health_gorilla: {
+    key: "health_gorilla",
+    label: "Health Gorilla Lab Network",
+    domain: "diagnostics",
+    hosts: { sandbox: ["sandbox.healthgorilla.com"], production: ["api.healthgorilla.com"] },
+    secretRefs: ["HEALTH_GORILLA_CLIENT_ID_REF", "HEALTH_GORILLA_CLIENT_SECRET_REF", "HEALTH_GORILLA_TOKEN_URL_REF"],
+    capabilities: ["oauth_token", "iframe_ordering", "service_request", "diagnostic_report", "observation", "document_reference", "subscription"],
+    requiresPartnerPackage: false,
+  },
+  docupdate: {
+    key: "docupdate",
+    label: "DocUpdate (STANDALONE · NOT INTEGRATED · NON-CONTROLLED ONLY)",
+    domain: "standalone",
+    hosts: { sandbox: [], production: [] },
+    secretRefs: [],
+    capabilities: [],
+    requiresPartnerPackage: true,
+    standaloneOnly: true,
+  },
+};
+
+/** FHIR R4 bases, allowlisted per environment. Never overridable by a client. */
+export const HEALTH_GORILLA_FHIR_BASE = {
+  sandbox: "https://sandbox.healthgorilla.com/fhir/R4/",
+  production: "https://api.healthgorilla.com/fhir/R4/",
+} as const;
+
+export interface OnboardingRow {
+  id: string;
+  hospital_id: string;
+  vendor_key: VendorKey;
+  environment: "sandbox" | "production";
+  state: VendorState;
+  capabilities: Record<string, unknown>;
+  secret_ref_names: string[];
+  last_test_result: string | null;
+  evidence_expires_at: string | null;
+}
+
+/**
+ * Single fail-closed gate for any vendor traffic.
+ * Returns a blocking reason, or null when the call may proceed.
+ */
+export function vendorGate(
+  row: OnboardingRow | null,
+  capability: string,
+  env: "sandbox" | "production",
+): string | null {
+  if (Deno.env.get("INTEGRATION_KILL_SWITCH") === "true") return "kill_switch_active";
+  if (!row) return "no_vendor_profile";
+  const def = VENDORS[row.vendor_key];
+  if (!def) return "unknown_vendor";
+  if (def.standaloneOnly) return "vendor_not_integrated";
+  if (row.environment !== env) return "environment_mismatch";
+  if (row.state === "suspended") return "suspended";
+  if (!def.capabilities.includes(capability)) return "capability_not_supported";
+  if (row.capabilities?.[capability] !== true) return "capability_not_enabled";
+  if (env === "production") {
+    if (row.state !== "production_verified") return "production_not_verified";
+    if (!row.evidence_expires_at || new Date(row.evidence_expires_at) <= new Date()) return "evidence_expired";
+  } else if (row.state === "not_contracted" || row.state === "baa_pending" || row.state === "sandbox_pending") {
+    return "sandbox_not_configured";
+  }
+  const missing = def.secretRefs.filter((r) => !row.secret_ref_names.includes(r));
+  if (missing.length) return "secret_references_missing";
+  if (def.requiresPartnerPackage) return "vendor_partner_package_required";
+  return null;
+}
+
+/** Resolve a secret REFERENCE name to its server-side value. Never logged or returned. */
+export function resolveSecret(refName: string): string | null {
+  if (!/^[A-Z][A-Z0-9_]{2,80}$/.test(refName)) return null;
+  return Deno.env.get(refName.replace(/_REF$/, "")) || Deno.env.get(refName) || null;
+}
