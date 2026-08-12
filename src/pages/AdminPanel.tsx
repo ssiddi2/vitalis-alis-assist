@@ -12,6 +12,7 @@ import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft,
 import { ProviderLicensesPanel } from '@/components/virtualis/ProviderLicensesPanel';
 import { CareCatalogAdmin } from '@/components/virtualis/CareCatalogAdmin';
 import { ErxIntegrationAdmin } from '@/components/virtualis/ErxIntegrationAdmin';
+import { ClearinghouseAdmin } from '@/components/virtualis/ClearinghouseAdmin';
 
 
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
@@ -306,6 +307,7 @@ export default function AdminPanel() {
               <ProviderLicensesPanel hospitalId={licenseHospitalId || hospitals[0].id} canEdit />
               <CareCatalogAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
               <ErxIntegrationAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
+              <ClearinghouseAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
 
             </div>
           )}

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { TopBar } from '@/components/virtualis/TopBar';
+import { RevenueCycleQueues } from '@/components/virtualis/RevenueCycleQueues';
+import { useHospital } from '@/contexts/HospitalContext';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { DollarSign, TrendingUp, AlertCircle, CheckCircle2, Clock, FileText, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,6 +47,7 @@ const STAT_CARDS = [
 
 const BillingDashboard = () => {
   const { user } = useAuth();
+  const { selectedHospital } = useHospital();
   const [events, setEvents] = useState<BillingEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -158,6 +161,9 @@ const BillingDashboard = () => {
               </div>
             </div>
           </div>
+
+          <RevenueCycleQueues hospitalId={selectedHospital?.id} />
+
 
           {/* Denial Workqueue */}
           <div className="p-5 rounded-2xl bg-card border border-border/50">
