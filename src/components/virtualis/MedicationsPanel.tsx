@@ -66,6 +66,9 @@ export function MedicationsPanel({ patientId }: MedicationsPanelProps) {
           })}
         </div>
       )}
+
+      <MedicationHistoryStaging patientId={patientId} />
     </div>
   );
 }
+
