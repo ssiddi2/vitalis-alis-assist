@@ -3,6 +3,8 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   quality:
@@ -20,11 +22,23 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
+      - name: Unit tests
         run: npm test
 
-      - name: Build
+      - name: Multi-tenant RLS tenancy gate
+        run: npm run test:tenancy
+        env:
+          RLS_TEST_SUPABASE_URL: ${{ secrets.RLS_TEST_SUPABASE_URL }}
+          RLS_TEST_ANON_KEY: ${{ secrets.RLS_TEST_ANON_KEY }}
+          RLS_TEST_A_EMAIL: ${{ secrets.RLS_TEST_A_EMAIL }}
+          RLS_TEST_A_PASSWORD: ${{ secrets.RLS_TEST_A_PASSWORD }}
+          RLS_TEST_HOSPITAL_B_ID: ${{ secrets.RLS_TEST_HOSPITAL_B_ID }}
+          RLS_TEST_PATIENT_B_ID: ${{ secrets.RLS_TEST_PATIENT_B_ID }}
+
+      - name: Production build
         run: npm run build
 
-      - name: Dependency audit (non-blocking)
-        run: npm audit --omit=dev --audit-level=high || true
+      - name: Dependency audit (report high, block on critical)
+        run: |
+          npm audit --omit=dev --audit-level=high || true
+          npm audit --omit=dev --audit-level=critical
