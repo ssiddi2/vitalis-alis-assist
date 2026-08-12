@@ -1634,6 +1634,228 @@ export type Database = {
           },
         ]
       }
+      compliance_assessments: {
+        Row: {
+          assessor_id: string | null
+          assessor_org: string | null
+          authority: string | null
+          blocker: string | null
+          created_at: string
+          created_by: string | null
+          evidence_hash: string | null
+          evidence_ref: string | null
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          lock_version: number
+          requirement_id: string
+          status: Database["public"]["Enums"]["compliance_status"]
+          target_date: string | null
+          test_method: string | null
+          test_version: string | null
+          tested_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          assessor_id?: string | null
+          assessor_org?: string | null
+          authority?: string | null
+          blocker?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence_hash?: string | null
+          evidence_ref?: string | null
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          lock_version?: number
+          requirement_id: string
+          status?: Database["public"]["Enums"]["compliance_status"]
+          target_date?: string | null
+          test_method?: string | null
+          test_version?: string | null
+          tested_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assessor_id?: string | null
+          assessor_org?: string | null
+          authority?: string | null
+          blocker?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence_hash?: string | null
+          evidence_ref?: string | null
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          lock_version?: number
+          requirement_id?: string
+          status?: Database["public"]["Enums"]["compliance_status"]
+          target_date?: string | null
+          test_method?: string | null
+          test_version?: string | null
+          tested_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_assessments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_assessments_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: true
+            referencedRelation: "compliance_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_attestations: {
+        Row: {
+          assessment_id: string
+          attestor_id: string
+          attestor_org: string | null
+          attestor_role: Database["public"]["Enums"]["attestor_role"]
+          created_at: string
+          effective_at: string
+          evidence_hash: string | null
+          evidence_ref: string | null
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          statement: string
+        }
+        Insert: {
+          assessment_id: string
+          attestor_id: string
+          attestor_org?: string | null
+          attestor_role: Database["public"]["Enums"]["attestor_role"]
+          created_at?: string
+          effective_at?: string
+          evidence_hash?: string | null
+          evidence_ref?: string | null
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          statement: string
+        }
+        Update: {
+          assessment_id?: string
+          attestor_id?: string
+          attestor_org?: string | null
+          attestor_role?: Database["public"]["Enums"]["attestor_role"]
+          created_at?: string
+          effective_at?: string
+          evidence_hash?: string | null
+          evidence_ref?: string | null
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          statement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_attestations_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_attestations_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_requirements: {
+        Row: {
+          applicability: Database["public"]["Enums"]["compliance_applicability"]
+          applicability_decided_at: string | null
+          applicability_decided_by: string | null
+          applicability_rationale: string | null
+          created_at: string
+          created_by: string | null
+          criterion: string
+          description: string | null
+          domain: string
+          external_dependency: boolean
+          framework_ref: string
+          hospital_id: string
+          id: string
+          owner_user_id: string | null
+          retired: boolean
+          supersedes_id: string | null
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          applicability?: Database["public"]["Enums"]["compliance_applicability"]
+          applicability_decided_at?: string | null
+          applicability_decided_by?: string | null
+          applicability_rationale?: string | null
+          created_at?: string
+          created_by?: string | null
+          criterion: string
+          description?: string | null
+          domain: string
+          external_dependency?: boolean
+          framework_ref: string
+          hospital_id: string
+          id?: string
+          owner_user_id?: string | null
+          retired?: boolean
+          supersedes_id?: string | null
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          applicability?: Database["public"]["Enums"]["compliance_applicability"]
+          applicability_decided_at?: string | null
+          applicability_decided_by?: string | null
+          applicability_rationale?: string | null
+          created_at?: string
+          created_by?: string | null
+          criterion?: string
+          description?: string | null
+          domain?: string
+          external_dependency?: boolean
+          framework_ref?: string
+          hospital_id?: string
+          id?: string
+          owner_user_id?: string | null
+          retired?: boolean
+          supersedes_id?: string | null
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_requirements_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_requirements_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_documents: {
         Row: {
           approved_at: string | null
@@ -6665,6 +6887,7 @@ export type Database = {
         Returns: Json
       }
       claim_readiness: { Args: { p_claim_id: string }; Returns: Json }
+      compliance_readiness: { Args: { p_hospital_id: string }; Returns: Json }
       consent_status: {
         Args: {
           _hospital_id: string
@@ -6781,6 +7004,12 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+      attestor_role:
+        | "independent_assessor"
+        | "external_counsel"
+        | "compliance_officer"
+        | "medical_director"
+        | "vendor"
       audit_action_type:
         | "view"
         | "create"
@@ -6815,6 +7044,14 @@ export type Database = {
         | "paid"
         | "denied"
         | "voided"
+      compliance_applicability: "undetermined" | "applicable" | "not_applicable"
+      compliance_status:
+        | "not_started"
+        | "in_progress"
+        | "internally_ready"
+        | "ready_for_external_test"
+        | "externally_verified"
+        | "not_applicable"
       consult_status: "pending" | "accepted" | "completed" | "cancelled"
       consult_urgency: "routine" | "urgent" | "stat"
       consultation_insight_target: "primary_clinician" | "specialist" | "shared"
@@ -7023,6 +7260,13 @@ export const Constants = {
         "cancelled",
         "no_show",
       ],
+      attestor_role: [
+        "independent_assessor",
+        "external_counsel",
+        "compliance_officer",
+        "medical_director",
+        "vendor",
+      ],
       audit_action_type: [
         "view",
         "create",
@@ -7059,6 +7303,19 @@ export const Constants = {
         "paid",
         "denied",
         "voided",
+      ],
+      compliance_applicability: [
+        "undetermined",
+        "applicable",
+        "not_applicable",
+      ],
+      compliance_status: [
+        "not_started",
+        "in_progress",
+        "internally_ready",
+        "ready_for_external_test",
+        "externally_verified",
+        "not_applicable",
       ],
       consult_status: ["pending", "accepted", "completed", "cancelled"],
       consult_urgency: ["routine", "urgent", "stat"],
