@@ -208,6 +208,10 @@ export default function AdminPanel() {
               <ShieldCheck className="w-4 h-4" />
               AI Governance
             </Button>
+            <Button variant="outline" onClick={() => navigate('/launch-readiness')} className="gap-2 rounded-xl">
+              <ShieldCheck className="w-4 h-4" />
+              Launch Readiness
+            </Button>
 
             <Button onClick={() => setShowCreateForm(!showCreateForm)} className="gap-2 rounded-xl btn-primary-gradient">
               <UserPlus className="w-4 h-4" />
