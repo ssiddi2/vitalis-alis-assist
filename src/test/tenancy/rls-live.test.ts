@@ -121,3 +121,70 @@ describe.skipIf(!enabled)("live RLS: clinician at hospital A cannot touch hospit
     expect(data ?? []).toHaveLength(0);
   });
 });
+
+describe.skipIf(!enabled)("live RLS: scheduling & collaboration writes stay in-tenant", () => {
+  let db: SupabaseClient;
+  let uid: string;
+
+  beforeAll(async () => {
+    db = createClient(url!, anonKey!, { auth: { persistSession: false } });
+    const { data, error } = await db.auth.signInWithPassword({ email: email!, password: password! });
+    expect(error).toBeNull();
+    uid = data.user!.id;
+  });
+
+  const denied = (res: { error: unknown; data: unknown[] | null }) =>
+    expect(res.error || (res.data ?? []).length === 0).toBeTruthy();
+
+  it("cannot create an encounter in hospital B", async () => {
+    denied(await db.from("encounters").insert({
+      patient_id: patientB, provider_id: uid, hospital_id: hospitalB,
+      encounter_type: "office_visit", status: "scheduled",
+    }).select("id"));
+  });
+
+  it("cannot create an appointment in hospital B", async () => {
+    const now = new Date().toISOString();
+    denied(await db.from("appointments").insert({
+      patient_id: patientB, provider_id: uid, hospital_id: hospitalB,
+      encounter_type: "office_visit", start_time: now, end_time: now,
+      duration_minutes: 15, status: "scheduled",
+    }).select("id"));
+  });
+
+  it("cannot create a consult request in hospital B", async () => {
+    denied(await db.from("consult_requests").insert({
+      patient_id: patientB, hospital_id: hospitalB, requesting_user_id: uid,
+      specialty: "cardiology", urgency: "routine", reason: "probe", status: "pending",
+    }).select("id"));
+  });
+
+  it("cannot create a consultation thread in hospital B", async () => {
+    denied(await db.from("consultation_threads").insert({
+      patient_id: patientB, hospital_id: hospitalB, primary_clinician_id: uid,
+      ai_participant_id: "alis", specialty: "cardiology", reason: "probe",
+      shared_context: {}, status: "active",
+    }).select("id"));
+  });
+
+  it("cannot create a team channel in hospital B, nor impersonate another creator", async () => {
+    denied(await db.from("team_channels").insert({
+      hospital_id: hospitalB, name: "probe", channel_type: "department", created_by: uid,
+    }).select("id"));
+    denied(await db.from("team_channels").insert({
+      hospital_id: hospitalB, name: "probe", channel_type: "department",
+      created_by: crypto.randomUUID(),
+    }).select("id"));
+  });
+
+  it("cannot move an own-hospital channel or appointment into hospital B", async () => {
+    const ch = await db.from("team_channels").select("id").limit(1);
+    if ((ch.data ?? []).length) {
+      denied(await db.from("team_channels").update({ hospital_id: hospitalB }).eq("id", ch.data![0].id).select("id"));
+    }
+    const ap = await db.from("appointments").select("id").limit(1);
+    if ((ap.data ?? []).length) {
+      denied(await db.from("appointments").update({ patient_id: patientB }).eq("id", ap.data![0].id).select("id"));
+    }
+  });
+});
