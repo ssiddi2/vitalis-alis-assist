@@ -187,4 +187,17 @@ describe.skipIf(!enabled)("live RLS: scheduling & collaboration writes stay in-t
       denied(await db.from("appointments").update({ patient_id: patientB }).eq("id", ap.data![0].id).select("id"));
     }
   });
+
+  it("cannot re-point vitals at another hospital's patient, nor change a channel's creator", async () => {
+    const v = await db.from("patient_vitals").select("id").limit(1);
+    if ((v.data ?? []).length) {
+      denied(await db.from("patient_vitals").update({ patient_id: patientB }).eq("id", v.data![0].id).select("id"));
+    }
+    const ch = await db.from("team_channels").select("id").limit(1);
+    if ((ch.data ?? []).length) {
+      denied(
+        await db.from("team_channels").update({ created_by: crypto.randomUUID() }).eq("id", ch.data![0].id).select("id"),
+      );
+    }
+  });
 });
