@@ -14,6 +14,7 @@ import { AcuityBadge } from '@/components/virtualis/acuity/AcuityBadge';
 import { AcuityAvatar } from '@/components/virtualis/acuity/AcuityAvatar';
 import { ACUITY_RANK } from '@/hooks/useAcuity';
 import { useMyHospitalIds } from '@/hooks/useMyHospitalIds';
+import { DiagnosticsInbox } from '@/components/virtualis/DiagnosticsInbox';
 
 
 interface ConsultRow {
@@ -408,6 +409,10 @@ export default function CommandCenter() {
             })}
           </div>
         )}
+
+        <div className="mt-8">
+          <DiagnosticsInbox hospitalId={hospitalId} />
+        </div>
 
         <p className="mt-8 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           <Activity className="h-3 w-3 text-primary" /> Live · realtime stream + 20s reconcile
