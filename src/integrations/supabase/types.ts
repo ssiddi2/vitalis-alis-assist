@@ -1777,6 +1777,456 @@ export type Database = {
           },
         ]
       }
+      diagnostic_order_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_code: string
+          from_status: string | null
+          hospital_id: string
+          id: string
+          metadata: Json
+          order_id: string
+          patient_id: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_code: string
+          from_status?: string | null
+          hospital_id: string
+          id?: string
+          metadata?: Json
+          order_id: string
+          patient_id: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_code?: string
+          from_status?: string | null
+          hospital_id?: string
+          id?: string
+          metadata?: Json
+          order_id?: string
+          patient_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnostic_orders: {
+        Row: {
+          body_site: string | null
+          clinical_indication: string | null
+          code: string
+          code_system: string
+          code_version: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          display: string
+          encounter_id: string | null
+          error_code: string | null
+          filler_order_number: string | null
+          hospital_id: string
+          id: string
+          idempotency_key: string | null
+          kind: Database["public"]["Enums"]["diagnostic_kind"]
+          lock_version: number
+          message_profile: string | null
+          modality: string | null
+          ordering_provider_id: string
+          patient_id: string
+          payload_hash: string | null
+          placer_order_number: string | null
+          priority: string
+          signed_snapshot: Json | null
+          staged_order_id: string | null
+          status: Database["public"]["Enums"]["diagnostic_order_status"]
+          transmitted_at: string | null
+          updated_at: string
+          vendor_profile_id: string | null
+        }
+        Insert: {
+          body_site?: string | null
+          clinical_indication?: string | null
+          code: string
+          code_system: string
+          code_version?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          display: string
+          encounter_id?: string | null
+          error_code?: string | null
+          filler_order_number?: string | null
+          hospital_id: string
+          id?: string
+          idempotency_key?: string | null
+          kind: Database["public"]["Enums"]["diagnostic_kind"]
+          lock_version?: number
+          message_profile?: string | null
+          modality?: string | null
+          ordering_provider_id: string
+          patient_id: string
+          payload_hash?: string | null
+          placer_order_number?: string | null
+          priority?: string
+          signed_snapshot?: Json | null
+          staged_order_id?: string | null
+          status?: Database["public"]["Enums"]["diagnostic_order_status"]
+          transmitted_at?: string | null
+          updated_at?: string
+          vendor_profile_id?: string | null
+        }
+        Update: {
+          body_site?: string | null
+          clinical_indication?: string | null
+          code?: string
+          code_system?: string
+          code_version?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          display?: string
+          encounter_id?: string | null
+          error_code?: string | null
+          filler_order_number?: string | null
+          hospital_id?: string
+          id?: string
+          idempotency_key?: string | null
+          kind?: Database["public"]["Enums"]["diagnostic_kind"]
+          lock_version?: number
+          message_profile?: string | null
+          modality?: string | null
+          ordering_provider_id?: string
+          patient_id?: string
+          payload_hash?: string | null
+          placer_order_number?: string | null
+          priority?: string
+          signed_snapshot?: Json | null
+          staged_order_id?: string | null
+          status?: Database["public"]["Enums"]["diagnostic_order_status"]
+          transmitted_at?: string | null
+          updated_at?: string
+          vendor_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_staged_order_id_fkey"
+            columns: ["staged_order_id"]
+            isOneToOne: false
+            referencedRelation: "staged_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_vendor_profile_id_fkey"
+            columns: ["vendor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnostic_result_versions: {
+        Row: {
+          amendment_reason: string | null
+          content_hash: string
+          created_at: string
+          hospital_id: string
+          id: string
+          patient_id: string
+          result_id: string
+          snapshot: Json
+          source_system: string | null
+          status: Database["public"]["Enums"]["diagnostic_result_status"]
+          version: number
+        }
+        Insert: {
+          amendment_reason?: string | null
+          content_hash: string
+          created_at?: string
+          hospital_id: string
+          id?: string
+          patient_id: string
+          result_id: string
+          snapshot: Json
+          source_system?: string | null
+          status: Database["public"]["Enums"]["diagnostic_result_status"]
+          version: number
+        }
+        Update: {
+          amendment_reason?: string | null
+          content_hash?: string
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          result_id?: string
+          snapshot?: Json
+          source_system?: string | null
+          status?: Database["public"]["Enums"]["diagnostic_result_status"]
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_result_versions_result_id_fkey"
+            columns: ["result_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnostic_results: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          code: string
+          code_system: string
+          code_version: string | null
+          created_at: string
+          dicomweb_study_ref: string | null
+          display: string
+          escalation_level: number
+          hospital_id: string
+          id: string
+          imaging_study_id: string | null
+          interpretation: string | null
+          is_abnormal: boolean
+          is_critical: boolean
+          kind: Database["public"]["Enums"]["diagnostic_kind"]
+          lab_result_id: string | null
+          observed_at: string | null
+          order_id: string | null
+          patient_id: string
+          patient_release_status: string
+          payload_hash: string | null
+          provenance: Json
+          reference_range: string | null
+          released_at: string | null
+          released_by: string | null
+          reported_at: string
+          sensitive_category: string | null
+          signature_verified: boolean
+          source_system: string
+          source_version: string | null
+          status: Database["public"]["Enums"]["diagnostic_result_status"]
+          study_instance_uid: string | null
+          unit: string | null
+          updated_at: string
+          value_text: string | null
+          version: number
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          code: string
+          code_system: string
+          code_version?: string | null
+          created_at?: string
+          dicomweb_study_ref?: string | null
+          display: string
+          escalation_level?: number
+          hospital_id: string
+          id?: string
+          imaging_study_id?: string | null
+          interpretation?: string | null
+          is_abnormal?: boolean
+          is_critical?: boolean
+          kind: Database["public"]["Enums"]["diagnostic_kind"]
+          lab_result_id?: string | null
+          observed_at?: string | null
+          order_id?: string | null
+          patient_id: string
+          patient_release_status?: string
+          payload_hash?: string | null
+          provenance?: Json
+          reference_range?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          reported_at?: string
+          sensitive_category?: string | null
+          signature_verified?: boolean
+          source_system: string
+          source_version?: string | null
+          status?: Database["public"]["Enums"]["diagnostic_result_status"]
+          study_instance_uid?: string | null
+          unit?: string | null
+          updated_at?: string
+          value_text?: string | null
+          version?: number
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          code?: string
+          code_system?: string
+          code_version?: string | null
+          created_at?: string
+          dicomweb_study_ref?: string | null
+          display?: string
+          escalation_level?: number
+          hospital_id?: string
+          id?: string
+          imaging_study_id?: string | null
+          interpretation?: string | null
+          is_abnormal?: boolean
+          is_critical?: boolean
+          kind?: Database["public"]["Enums"]["diagnostic_kind"]
+          lab_result_id?: string | null
+          observed_at?: string | null
+          order_id?: string | null
+          patient_id?: string
+          patient_release_status?: string
+          payload_hash?: string | null
+          provenance?: Json
+          reference_range?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          reported_at?: string
+          sensitive_category?: string | null
+          signature_verified?: boolean
+          source_system?: string
+          source_version?: string | null
+          status?: Database["public"]["Enums"]["diagnostic_result_status"]
+          study_instance_uid?: string | null
+          unit?: string | null
+          updated_at?: string
+          value_text?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_results_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_results_imaging_study_id_fkey"
+            columns: ["imaging_study_id"]
+            isOneToOne: false
+            referencedRelation: "imaging_studies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_results_lab_result_id_fkey"
+            columns: ["lab_result_id"]
+            isOneToOne: false
+            referencedRelation: "lab_results"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_results_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_results_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnostic_vendor_profiles: {
+        Row: {
+          capabilities: Json
+          created_at: string
+          created_by: string | null
+          environment: string
+          hospital_id: string
+          id: string
+          kind: string
+          last_test_at: string | null
+          last_test_result: string | null
+          notes: string | null
+          secret_ref_names: string[]
+          standards: Json
+          updated_at: string
+          vendor: string
+          verification_status: string
+        }
+        Insert: {
+          capabilities?: Json
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          hospital_id: string
+          id?: string
+          kind: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          notes?: string | null
+          secret_ref_names?: string[]
+          standards?: Json
+          updated_at?: string
+          vendor: string
+          verification_status?: string
+        }
+        Update: {
+          capabilities?: Json
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          hospital_id?: string
+          id?: string
+          kind?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          notes?: string | null
+          secret_ref_names?: string[]
+          standards?: Json
+          updated_at?: string
+          vendor?: string
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_vendor_profiles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       direct_conversations: {
         Row: {
           created_at: string
@@ -2409,6 +2859,106 @@ export type Database = {
           },
         ]
       }
+      external_record_staging: {
+        Row: {
+          accepted_target_id: string | null
+          accepted_target_table: string | null
+          candidate_patient_id: string | null
+          consent_basis: string
+          created_at: string
+          fhir_profile: string | null
+          hospital_id: string
+          id: string
+          match_basis: Json
+          match_confidence: number
+          patient_id: string | null
+          payload_hash: string
+          provenance: Json
+          resource_type: string
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          signature_verified: boolean
+          source_system: string
+          source_version: string | null
+          status: Database["public"]["Enums"]["record_staging_status"]
+          summary: Json
+          updated_at: string
+        }
+        Insert: {
+          accepted_target_id?: string | null
+          accepted_target_table?: string | null
+          candidate_patient_id?: string | null
+          consent_basis: string
+          created_at?: string
+          fhir_profile?: string | null
+          hospital_id: string
+          id?: string
+          match_basis?: Json
+          match_confidence?: number
+          patient_id?: string | null
+          payload_hash: string
+          provenance?: Json
+          resource_type: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          signature_verified?: boolean
+          source_system: string
+          source_version?: string | null
+          status?: Database["public"]["Enums"]["record_staging_status"]
+          summary?: Json
+          updated_at?: string
+        }
+        Update: {
+          accepted_target_id?: string | null
+          accepted_target_table?: string | null
+          candidate_patient_id?: string | null
+          consent_basis?: string
+          created_at?: string
+          fhir_profile?: string | null
+          hospital_id?: string
+          id?: string
+          match_basis?: Json
+          match_confidence?: number
+          patient_id?: string | null
+          payload_hash?: string
+          provenance?: Json
+          resource_type?: string
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          signature_verified?: boolean
+          source_system?: string
+          source_version?: string | null
+          status?: Database["public"]["Enums"]["record_staging_status"]
+          summary?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_record_staging_candidate_patient_id_fkey"
+            columns: ["candidate_patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_record_staging_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_record_staging_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_schedule: {
         Row: {
           active: boolean
@@ -2562,14 +3112,18 @@ export type Database = {
           accession_number: string | null
           body_part: string | null
           created_at: string
+          dicomweb_study_ref: string | null
           id: string
           impression: string | null
+          instance_count: number | null
           modality: string | null
           patient_id: string
           reading_radiologist: string | null
           report_text: string | null
+          series_count: number | null
           status: string
           study_date: string
+          study_instance_uid: string | null
           study_type: string
           updated_at: string
           viewer_url: string | null
@@ -2578,14 +3132,18 @@ export type Database = {
           accession_number?: string | null
           body_part?: string | null
           created_at?: string
+          dicomweb_study_ref?: string | null
           id?: string
           impression?: string | null
+          instance_count?: number | null
           modality?: string | null
           patient_id: string
           reading_radiologist?: string | null
           report_text?: string | null
+          series_count?: number | null
           status?: string
           study_date?: string
+          study_instance_uid?: string | null
           study_type: string
           updated_at?: string
           viewer_url?: string | null
@@ -2594,14 +3152,18 @@ export type Database = {
           accession_number?: string | null
           body_part?: string | null
           created_at?: string
+          dicomweb_study_ref?: string | null
           id?: string
           impression?: string | null
+          instance_count?: number | null
           modality?: string | null
           patient_id?: string
           reading_radiologist?: string | null
           report_text?: string | null
+          series_count?: number | null
           status?: string
           study_date?: string
+          study_instance_uid?: string | null
           study_type?: string
           updated_at?: string
           viewer_url?: string | null
@@ -2668,6 +3230,131 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interop_inbox: {
+        Row: {
+          correlation_id: string | null
+          hospital_id: string
+          id: string
+          message_control_id: string
+          message_type: string
+          outcome: string
+          payload_hash: string
+          processed_at: string | null
+          received_at: string
+          reject_code: string | null
+          signature_verified: boolean
+          standard: string
+          standard_version: string | null
+          vendor_profile_id: string | null
+        }
+        Insert: {
+          correlation_id?: string | null
+          hospital_id: string
+          id?: string
+          message_control_id: string
+          message_type: string
+          outcome?: string
+          payload_hash: string
+          processed_at?: string | null
+          received_at?: string
+          reject_code?: string | null
+          signature_verified?: boolean
+          standard: string
+          standard_version?: string | null
+          vendor_profile_id?: string | null
+        }
+        Update: {
+          correlation_id?: string | null
+          hospital_id?: string
+          id?: string
+          message_control_id?: string
+          message_type?: string
+          outcome?: string
+          payload_hash?: string
+          processed_at?: string | null
+          received_at?: string
+          reject_code?: string | null
+          signature_verified?: boolean
+          standard?: string
+          standard_version?: string | null
+          vendor_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interop_inbox_vendor_profile_id_fkey"
+            columns: ["vendor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interop_outbox: {
+        Row: {
+          attempts: number
+          blocked_reason: string | null
+          correlation_id: string
+          created_at: string
+          hospital_id: string
+          id: string
+          idempotency_key: string
+          message_type: string
+          order_id: string | null
+          payload_hash: string
+          standard: string
+          standard_version: string | null
+          status: string
+          vendor_profile_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          blocked_reason?: string | null
+          correlation_id: string
+          created_at?: string
+          hospital_id: string
+          id?: string
+          idempotency_key: string
+          message_type: string
+          order_id?: string | null
+          payload_hash: string
+          standard: string
+          standard_version?: string | null
+          status?: string
+          vendor_profile_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          blocked_reason?: string | null
+          correlation_id?: string
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          idempotency_key?: string
+          message_type?: string
+          order_id?: string | null
+          payload_hash?: string
+          standard?: string
+          standard_version?: string | null
+          status?: string
+          vendor_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interop_outbox_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interop_outbox_vendor_profile_id_fkey"
+            columns: ["vendor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_vendor_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -4150,6 +4837,94 @@ export type Database = {
           },
         ]
       }
+      result_acknowledgements: {
+        Row: {
+          action: string
+          actor_id: string
+          callback_method: string | null
+          created_at: string
+          documentation: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          result_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          callback_method?: string | null
+          created_at?: string
+          documentation?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          result_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          callback_method?: string | null
+          created_at?: string
+          documentation?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          result_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_acknowledgements_result_id_fkey"
+            columns: ["result_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      result_release_rules: {
+        Row: {
+          auto_release: boolean
+          category: string
+          created_at: string
+          delay_hours: number
+          hospital_id: string
+          id: string
+          prohibited: boolean
+          rationale: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_release?: boolean
+          category: string
+          created_at?: string
+          delay_hours?: number
+          hospital_id: string
+          id?: string
+          prohibited?: boolean
+          rationale?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_release?: boolean
+          category?: string
+          created_at?: string
+          delay_hours?: number
+          hospital_id?: string
+          id?: string
+          prohibited?: boolean
+          rationale?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_release_rules_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safety_screen_templates: {
         Row: {
           active: boolean
@@ -4271,6 +5046,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "service_lines_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      smart_app_registrations: {
+        Row: {
+          app_name: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          environment: string
+          fhir_version: string
+          hospital_id: string
+          id: string
+          jwks_uri: string | null
+          launch_type: string
+          scopes: string[]
+          secret_ref_names: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          app_name: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          fhir_version?: string
+          hospital_id: string
+          id?: string
+          jwks_uri?: string | null
+          launch_type?: string
+          scopes?: string[]
+          secret_ref_names?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          app_name?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          fhir_version?: string
+          hospital_id?: string
+          id?: string
+          jwks_uri?: string | null
+          launch_type?: string
+          scopes?: string[]
+          secret_ref_names?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_app_registrations_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
@@ -4577,6 +5411,65 @@ export type Database = {
           },
         ]
       }
+      terminology_mappings: {
+        Row: {
+          canonical_code: string
+          canonical_system: string
+          canonical_version: string | null
+          created_at: string
+          display: string | null
+          domain: string
+          hospital_id: string
+          id: string
+          local_code: string
+          local_system: string
+          updated_at: string
+          validated: boolean
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          canonical_code: string
+          canonical_system: string
+          canonical_version?: string | null
+          created_at?: string
+          display?: string | null
+          domain: string
+          hospital_id: string
+          id?: string
+          local_code: string
+          local_system: string
+          updated_at?: string
+          validated?: boolean
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          canonical_code?: string
+          canonical_system?: string
+          canonical_version?: string | null
+          created_at?: string
+          display?: string | null
+          domain?: string
+          hospital_id?: string
+          id?: string
+          local_code?: string
+          local_system?: string
+          updated_at?: string
+          validated?: boolean
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminology_mappings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -4688,6 +5581,10 @@ export type Database = {
         Returns: Json
       }
       claim_readiness: { Args: { p_claim_id: string }; Returns: Json }
+      diagnostic_order_readiness: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       encounter_readiness: { Args: { p_encounter_id: string }; Returns: Json }
       get_user_role: {
         Args: { _user_id: string }
@@ -4819,6 +5716,22 @@ export type Database = {
       consultation_insight_target: "primary_clinician" | "specialist" | "shared"
       consultation_sender_role: "primary_clinician" | "specialist" | "ai"
       consultation_thread_status: "active" | "completed" | "cancelled"
+      diagnostic_kind: "lab" | "imaging"
+      diagnostic_order_status:
+        | "draft"
+        | "ready"
+        | "transmission_pending"
+        | "transmitted"
+        | "acknowledged"
+        | "errored"
+        | "cancelled"
+        | "resulted"
+      diagnostic_result_status:
+        | "preliminary"
+        | "final"
+        | "corrected"
+        | "amended"
+        | "cancelled"
       emr_system: "epic" | "meditech" | "cerner"
       encounter_status:
         | "scheduled"
@@ -4859,6 +5772,7 @@ export type Database = {
         | "accepted"
         | "errored"
         | "discontinued"
+      record_staging_status: "pending" | "accepted" | "rejected" | "corrected"
       referral_status:
         | "draft"
         | "sent"
@@ -5051,6 +5965,24 @@ export const Constants = {
       ],
       consultation_sender_role: ["primary_clinician", "specialist", "ai"],
       consultation_thread_status: ["active", "completed", "cancelled"],
+      diagnostic_kind: ["lab", "imaging"],
+      diagnostic_order_status: [
+        "draft",
+        "ready",
+        "transmission_pending",
+        "transmitted",
+        "acknowledged",
+        "errored",
+        "cancelled",
+        "resulted",
+      ],
+      diagnostic_result_status: [
+        "preliminary",
+        "final",
+        "corrected",
+        "amended",
+        "cancelled",
+      ],
       emr_system: ["epic", "meditech", "cerner"],
       encounter_status: [
         "scheduled",
@@ -5095,6 +6027,7 @@ export const Constants = {
         "errored",
         "discontinued",
       ],
+      record_staging_status: ["pending", "accepted", "rejected", "corrected"],
       referral_status: ["draft", "sent", "scheduled", "completed", "cancelled"],
       referral_urgency: ["routine", "urgent", "stat"],
       service_availability_status: ["available", "waitlist", "unavailable"],
