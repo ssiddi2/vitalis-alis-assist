@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft, ChevronRight, ShieldCheck, Plug } from 'lucide-react';
+import { ProviderLicensesPanel } from '@/components/virtualis/ProviderLicensesPanel';
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { EditUserModal } from '@/components/virtualis/EditUserModal';
 import { TableRowSkeleton } from '@/components/ui/skeleton-patterns';
@@ -44,6 +45,7 @@ export default function AdminPanel() {
   // Search & filter
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [licenseHospitalId, setLicenseHospitalId] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   // Edit modal
@@ -281,6 +283,23 @@ export default function AdminPanel() {
                   <Button type="button" variant="ghost" onClick={() => setShowCreateForm(false)} className="rounded-xl">Cancel</Button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* Provider state authorizations */}
+          {hospitals.length > 0 && (
+            <div className="space-y-3">
+              <Select value={licenseHospitalId || hospitals[0].id} onValueChange={setLicenseHospitalId}>
+                <SelectTrigger className="w-full sm:w-72 h-10 rounded-xl bg-secondary/50 border-border/50">
+                  <SelectValue placeholder="Facility" />
+                </SelectTrigger>
+                <SelectContent>
+                  {hospitals.map((h) => (
+                    <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <ProviderLicensesPanel hospitalId={licenseHospitalId || hospitals[0].id} canEdit />
             </div>
           )}
 

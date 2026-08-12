@@ -975,18 +975,152 @@ export type Database = {
           },
         ]
       }
+      encounter_diagnoses: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          encounter_id: string
+          hospital_id: string
+          icd10_code: string
+          id: string
+          patient_id: string
+          rank: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          encounter_id: string
+          hospital_id: string
+          icd10_code: string
+          id?: string
+          patient_id: string
+          rank?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          encounter_id?: string
+          hospital_id?: string
+          icd10_code?: string
+          id?: string
+          patient_id?: string
+          rank?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encounter_diagnoses_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounter_diagnoses_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounter_diagnoses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      encounter_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          encounter_id: string
+          event_code: string
+          from_status: string | null
+          hospital_id: string
+          id: string
+          metadata: Json
+          patient_id: string
+          reason: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          encounter_id: string
+          event_code: string
+          from_status?: string | null
+          hospital_id: string
+          id?: string
+          metadata?: Json
+          patient_id: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          encounter_id?: string
+          event_code?: string
+          from_status?: string | null
+          hospital_id?: string
+          id?: string
+          metadata?: Json
+          patient_id?: string
+          reason?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encounter_events_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       encounters: {
         Row: {
+          allergy_review_at: string | null
+          allergy_review_by: string | null
           billing_event_id: string | null
+          callback_phone: string | null
+          callback_verified_at: string | null
           check_in_at: string | null
           check_out_at: string | null
           chief_complaint: string | null
+          completed_at: string | null
+          completed_by: string | null
+          consent_accepted_at: string | null
+          consent_method: string | null
+          consent_recorded_by: string | null
+          consent_version: string | null
           created_at: string
+          disposition: string | null
           duration_minutes: number | null
           encounter_type: Database["public"]["Enums"]["encounter_type"]
+          follow_up_instructions: string | null
           hospital_id: string
           id: string
+          identity_verification_method: string | null
+          identity_verified_at: string | null
+          identity_verified_by: string | null
+          lock_version: number
+          med_rec_by: string | null
+          med_rec_completed_at: string | null
+          patient_address_text: string | null
+          patient_country: string | null
           patient_id: string
+          patient_state_code: string | null
+          provider_authorization_id: string | null
+          provider_authorization_snapshot: Json | null
           provider_id: string
           room_number: string | null
           scheduled_at: string | null
@@ -995,16 +1129,39 @@ export type Database = {
           visit_reason: string | null
         }
         Insert: {
+          allergy_review_at?: string | null
+          allergy_review_by?: string | null
           billing_event_id?: string | null
+          callback_phone?: string | null
+          callback_verified_at?: string | null
           check_in_at?: string | null
           check_out_at?: string | null
           chief_complaint?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          consent_accepted_at?: string | null
+          consent_method?: string | null
+          consent_recorded_by?: string | null
+          consent_version?: string | null
           created_at?: string
+          disposition?: string | null
           duration_minutes?: number | null
           encounter_type?: Database["public"]["Enums"]["encounter_type"]
+          follow_up_instructions?: string | null
           hospital_id: string
           id?: string
+          identity_verification_method?: string | null
+          identity_verified_at?: string | null
+          identity_verified_by?: string | null
+          lock_version?: number
+          med_rec_by?: string | null
+          med_rec_completed_at?: string | null
+          patient_address_text?: string | null
+          patient_country?: string | null
           patient_id: string
+          patient_state_code?: string | null
+          provider_authorization_id?: string | null
+          provider_authorization_snapshot?: Json | null
           provider_id: string
           room_number?: string | null
           scheduled_at?: string | null
@@ -1013,16 +1170,39 @@ export type Database = {
           visit_reason?: string | null
         }
         Update: {
+          allergy_review_at?: string | null
+          allergy_review_by?: string | null
           billing_event_id?: string | null
+          callback_phone?: string | null
+          callback_verified_at?: string | null
           check_in_at?: string | null
           check_out_at?: string | null
           chief_complaint?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          consent_accepted_at?: string | null
+          consent_method?: string | null
+          consent_recorded_by?: string | null
+          consent_version?: string | null
           created_at?: string
+          disposition?: string | null
           duration_minutes?: number | null
           encounter_type?: Database["public"]["Enums"]["encounter_type"]
+          follow_up_instructions?: string | null
           hospital_id?: string
           id?: string
+          identity_verification_method?: string | null
+          identity_verified_at?: string | null
+          identity_verified_by?: string | null
+          lock_version?: number
+          med_rec_by?: string | null
+          med_rec_completed_at?: string | null
+          patient_address_text?: string | null
+          patient_country?: string | null
           patient_id?: string
+          patient_state_code?: string | null
+          provider_authorization_id?: string | null
+          provider_authorization_snapshot?: Json | null
           provider_id?: string
           room_number?: string | null
           scheduled_at?: string | null
@@ -1050,6 +1230,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounters_provider_authorization_id_fkey"
+            columns: ["provider_authorization_id"]
+            isOneToOne: false
+            referencedRelation: "provider_licenses"
             referencedColumns: ["id"]
           },
         ]
@@ -2062,6 +2249,62 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_licenses: {
+        Row: {
+          created_at: string
+          effective_date: string
+          expiration_date: string | null
+          hospital_id: string
+          id: string
+          license_number: string
+          provider_user_id: string
+          state_code: string
+          status: string
+          telehealth_permitted: boolean
+          updated_at: string
+          verification_source: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          effective_date?: string
+          expiration_date?: string | null
+          hospital_id: string
+          id?: string
+          license_number: string
+          provider_user_id: string
+          state_code: string
+          status?: string
+          telehealth_permitted?: boolean
+          updated_at?: string
+          verification_source?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          effective_date?: string
+          expiration_date?: string | null
+          hospital_id?: string
+          id?: string
+          license_number?: string
+          provider_user_id?: string
+          state_code?: string
+          status?: string
+          telehealth_permitted?: boolean
+          updated_at?: string
+          verification_source?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_licenses_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           bucket: string
@@ -2496,6 +2739,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      encounter_readiness: { Args: { p_encounter_id: string }; Returns: Json }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2520,6 +2764,56 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      reopen_encounter: {
+        Args: { p_encounter_id: string; p_reason: string }
+        Returns: {
+          allergy_review_at: string | null
+          allergy_review_by: string | null
+          billing_event_id: string | null
+          callback_phone: string | null
+          callback_verified_at: string | null
+          check_in_at: string | null
+          check_out_at: string | null
+          chief_complaint: string | null
+          completed_at: string | null
+          completed_by: string | null
+          consent_accepted_at: string | null
+          consent_method: string | null
+          consent_recorded_by: string | null
+          consent_version: string | null
+          created_at: string
+          disposition: string | null
+          duration_minutes: number | null
+          encounter_type: Database["public"]["Enums"]["encounter_type"]
+          follow_up_instructions: string | null
+          hospital_id: string
+          id: string
+          identity_verification_method: string | null
+          identity_verified_at: string | null
+          identity_verified_by: string | null
+          lock_version: number
+          med_rec_by: string | null
+          med_rec_completed_at: string | null
+          patient_address_text: string | null
+          patient_country: string | null
+          patient_id: string
+          patient_state_code: string | null
+          provider_authorization_id: string | null
+          provider_authorization_snapshot: Json | null
+          provider_id: string
+          room_number: string | null
+          scheduled_at: string | null
+          status: Database["public"]["Enums"]["encounter_status"]
+          updated_at: string
+          visit_reason: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "encounters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       reset_demo_data: { Args: never; Returns: string }
     }

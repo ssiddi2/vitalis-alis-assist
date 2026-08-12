@@ -14,6 +14,7 @@ import {
   Users, Clock, LogIn, Play, CheckCircle2, XCircle,
   Stethoscope, Video, RefreshCw, UserCheck, AlertTriangle
 } from 'lucide-react';
+import { transitionEncounter, StaleEncounterError } from '@/lib/encounterLifecycle';
 import { format, parseISO, isToday, setHours, setMinutes, startOfDay, endOfDay } from 'date-fns';
 
 const ENCOUNTER_ICONS: Record<string, typeof Stethoscope> = {
@@ -76,11 +77,11 @@ export default function Clinic() {
   };
 
   const handleStartVisit = async (appt: typeof appointments[0]) => {
-    // Find the active encounter for this appointment
+    // Move the visit through the enforced lifecycle (server owns every prerequisite).
     try {
       const { data: encounter } = await supabase
         .from('encounters')
-        .select('id')
+        .select('id, status, lock_version')
         .eq('patient_id', appt.patient_id)
         .eq('hospital_id', appt.hospital_id)
         .in('status', ['scheduled', 'checked_in', 'in_progress'])
@@ -89,17 +90,22 @@ export default function Clinic() {
         .single();
 
       if (encounter) {
-        // Mark encounter as in_progress
-        await supabase
-          .from('encounters')
-          .update({ status: 'in_progress', check_in_at: new Date().toISOString() })
-          .eq('id', encounter.id)
-          .is('check_in_at', null); // only set if not already set
-
+        let { status, lock_version } = encounter;
+        if (status === 'scheduled') {
+          ({ status, lock_version } = await transitionEncounter(encounter.id, 'checked_in', lock_version));
+        }
+        if (status === 'checked_in') {
+          await transitionEncounter(encounter.id, 'in_progress', lock_version);
+        }
         setActiveEncounterId(encounter.id);
       }
-    } catch {
-      // No encounter found, navigate without encounter context
+    } catch (err) {
+      toast.error(
+        err instanceof StaleEncounterError
+          ? err.message
+          : err instanceof Error ? err.message : 'Could not start this visit',
+      );
+      return;
     }
 
     setSelectedPatientId(appt.patient_id);
