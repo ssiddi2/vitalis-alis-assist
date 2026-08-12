@@ -117,3 +117,64 @@ describe("scoped write paths added by the RLS hardening pass", () => {
     expect(admin[0].expr.toLowerCase().match(/patient_vitals\.patient_id/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("tenant-scoped INSERT/UPDATE on scheduling & collaboration tables", () => {
+  const of = (table: string, cmd: string) =>
+    (policies.get(table) ?? []).filter((p) => p.cmd === cmd);
+  const latest = (table: string, cmd: string) => {
+    const list = of(table, cmd);
+    expect(list.length, `${table} ${cmd} policy missing`).toBeGreaterThan(0);
+    return list[list.length - 1].expr.toLowerCase();
+  };
+
+  // every write must prove hospital membership AND that the patient lives in that hospital
+  const TENANT_WRITES: Array<[string, string, string]> = [
+    ["appointments", "INSERT", "appointments"],
+    ["appointments", "UPDATE", "appointments"],
+    ["consult_requests", "INSERT", "consult_requests"],
+    ["consult_requests", "UPDATE", "consult_requests"],
+    ["encounters", "INSERT", "encounters"],
+    ["consultation_threads", "INSERT", "consultation_threads"],
+    ["consultation_threads", "UPDATE", "consultation_threads"],
+    ["team_channels", "INSERT", "team_channels"],
+    ["team_channels", "UPDATE", "team_channels"],
+  ];
+
+  it.each(TENANT_WRITES)("%s %s is bound to the caller's hospital", (table, cmd, ref) => {
+    const expr = latest(table, cmd);
+    expect(expr).toContain("hospital_users");
+    expect(expr).toContain(`hu.hospital_id = ${ref}.hospital_id`);
+    expect(expr).toContain(`p.hospital_id = ${ref}.hospital_id`);
+  });
+
+  it.each([
+    ["consult_requests", "requesting_user_id"],
+    ["encounters", "provider_id"],
+    ["consultation_threads", "primary_clinician_id"],
+    ["team_channels", "created_by"],
+  ])("%s INSERT stamps the authenticated actor via %s", (table, actor) => {
+    const expr = latest(table, "INSERT");
+    expect(expr).toContain(`${table}.${actor} = auth.uid()`);
+    expect(expr).toContain("has_role(auth.uid(), 'clinician')");
+  });
+
+  it("appointments INSERT keeps the provider and any encounter inside the same hospital", () => {
+    const expr = latest("appointments", "INSERT");
+    expect(expr).toContain("hp.user_id = appointments.provider_id");
+    expect(expr).toContain("e.hospital_id = appointments.hospital_id");
+  });
+
+  it("consultation_threads and consult_requests keep specialists inside the hospital", () => {
+    for (const table of ["consultation_threads", "consult_requests"]) {
+      const expr = latest(table, "INSERT");
+      expect(expr, table).toContain(`c.hospital_id = ${table}.hospital_id`);
+    }
+  });
+
+  it.each(TENANT_WRITES)("%s %s is never unconditionally permissive", (table, cmd) => {
+    const expr = latest(table, cmd).replace(/\s+/g, " ").trim();
+    expect(expr, `${table} ${cmd}`).not.toMatch(/^\(?\s*true\s*\)?$/);
+    expect(expr).not.toBe("");
+  });
+});
+
