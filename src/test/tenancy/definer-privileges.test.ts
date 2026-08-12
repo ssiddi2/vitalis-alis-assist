@@ -29,7 +29,13 @@ const definitionOf = (name: string) => {
   return all[all.length - 1] ?? "";
 };
 
+const LOCKDOWN_MARKER = "Least-privilege lockdown of SECURITY DEFINER functions";
+
 describe("security definer least privilege", () => {
+  it("the lockdown migration is the last word on definer privileges", () => {
+    expect(sql).toContain(LOCKDOWN_MARKER);
+  });
+
   it("revokes internal definer functions from PUBLIC, anon and authenticated", () => {
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated/);
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION %s TO service_role/);
@@ -39,7 +45,10 @@ describe("security definer least privilege", () => {
   });
 
   it("never grants an internal definer function to anon or authenticated", () => {
-    const grants = sql.split(";").filter((s2) => /GRANT[\s\S]*EXECUTE[\s\S]*FUNCTION/i.test(s2));
+    // only statements at or after the lockdown migration decide the effective ACL
+    const effective = sql.slice(sql.indexOf(LOCKDOWN_MARKER));
+    expect(effective.length).toBeGreaterThan(0);
+    const grants = effective.split(";").filter((s2) => /GRANT[\s\S]*EXECUTE[\s\S]*FUNCTION/i.test(s2));
     for (const name of INTERNAL) {
       const bad = grants.filter((g) => new RegExp(`public\\.${name}\\s*\\(`, "i").test(g) && /\b(anon|authenticated)\b/.test(g));
       expect(bad, name).toEqual([]);
