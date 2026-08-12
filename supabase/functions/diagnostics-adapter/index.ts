@@ -124,12 +124,12 @@ serve(async (req) => {
 
       // advisory, deterministic patient match — never auto-linked
       const { data: candidates } = await admin.from("patients")
-        .select("id, name, date_of_birth, mrn").eq("hospital_id", hospital_id).limit(200);
+        .select("id, name, mrn").eq("hospital_id", hospital_id).limit(200);
       let best = { id: null as string | null, confidence: 0, basis: {} as Record<string, boolean> };
       for (const c of candidates ?? []) {
         const m = matchConfidence(
           { name: body?.patient_name, dob: body?.patient_dob, mrn: body?.patient_mrn },
-          { id: c.id, name: c.name, dob: c.date_of_birth, mrn: c.mrn },
+          { id: c.id, name: c.name, dob: null, mrn: c.mrn },
         );
         if (m.confidence > best.confidence) best = { id: c.id, confidence: m.confidence, basis: m.basis };
       }
