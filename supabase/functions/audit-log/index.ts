@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders as buildCors } from '../_shared/cors.ts';
+import { adminClient } from '../_shared/supabase.ts';
+
 
 
 interface AuditLogRequest {
