@@ -6747,6 +6747,202 @@ export type Database = {
           },
         ]
       }
+      vendor_callback_quarantine: {
+        Row: {
+          correlation_id: string | null
+          created_at: string
+          environment: string | null
+          event_type: string | null
+          hospital_id: string | null
+          id: string
+          payload_hash: string
+          quarantine_reason: string
+          resolved_at: string | null
+          vendor_key: string
+          vendor_reference: string | null
+        }
+        Insert: {
+          correlation_id?: string | null
+          created_at?: string
+          environment?: string | null
+          event_type?: string | null
+          hospital_id?: string | null
+          id?: string
+          payload_hash: string
+          quarantine_reason: string
+          resolved_at?: string | null
+          vendor_key: string
+          vendor_reference?: string | null
+        }
+        Update: {
+          correlation_id?: string | null
+          created_at?: string
+          environment?: string | null
+          event_type?: string | null
+          hospital_id?: string | null
+          id?: string
+          payload_hash?: string
+          quarantine_reason?: string
+          resolved_at?: string | null
+          vendor_key?: string
+          vendor_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_callback_quarantine_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_onboarding: {
+        Row: {
+          approval_evidence_hash: string | null
+          approved_by: string | null
+          blocker: string | null
+          capabilities: Json
+          certification_evidence_hash: string | null
+          checklist: Json
+          contract_evidence_hash: string | null
+          created_at: string
+          credential_evidence_hash: string | null
+          environment: string
+          evidence_expires_at: string | null
+          hospital_id: string
+          id: string
+          last_test_at: string | null
+          last_test_result: string | null
+          next_action: string | null
+          owner_email: string | null
+          owner_name: string | null
+          secret_ref_names: string[]
+          state: Database["public"]["Enums"]["vendor_integration_state"]
+          updated_at: string
+          vendor_key: string
+        }
+        Insert: {
+          approval_evidence_hash?: string | null
+          approved_by?: string | null
+          blocker?: string | null
+          capabilities?: Json
+          certification_evidence_hash?: string | null
+          checklist?: Json
+          contract_evidence_hash?: string | null
+          created_at?: string
+          credential_evidence_hash?: string | null
+          environment: string
+          evidence_expires_at?: string | null
+          hospital_id: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          next_action?: string | null
+          owner_email?: string | null
+          owner_name?: string | null
+          secret_ref_names?: string[]
+          state?: Database["public"]["Enums"]["vendor_integration_state"]
+          updated_at?: string
+          vendor_key: string
+        }
+        Update: {
+          approval_evidence_hash?: string | null
+          approved_by?: string | null
+          blocker?: string | null
+          capabilities?: Json
+          certification_evidence_hash?: string | null
+          checklist?: Json
+          contract_evidence_hash?: string | null
+          created_at?: string
+          credential_evidence_hash?: string | null
+          environment?: string
+          evidence_expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          next_action?: string | null
+          owner_email?: string | null
+          owner_name?: string | null
+          secret_ref_names?: string[]
+          state?: Database["public"]["Enums"]["vendor_integration_state"]
+          updated_at?: string
+          vendor_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_onboarding_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_onboarding_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          detail: Json
+          event_type: string
+          from_state:
+            | Database["public"]["Enums"]["vendor_integration_state"]
+            | null
+          hospital_id: string
+          id: string
+          onboarding_id: string
+          to_state:
+            | Database["public"]["Enums"]["vendor_integration_state"]
+            | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json
+          event_type: string
+          from_state?:
+            | Database["public"]["Enums"]["vendor_integration_state"]
+            | null
+          hospital_id: string
+          id?: string
+          onboarding_id: string
+          to_state?:
+            | Database["public"]["Enums"]["vendor_integration_state"]
+            | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json
+          event_type?: string
+          from_state?:
+            | Database["public"]["Enums"]["vendor_integration_state"]
+            | null
+          hospital_id?: string
+          id?: string
+          onboarding_id?: string
+          to_state?:
+            | Database["public"]["Enums"]["vendor_integration_state"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_onboarding_events_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_onboarding_events_onboarding_id_fkey"
+            columns: ["onboarding_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_onboarding"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_metrics: {
         Row: {
           billing_codes_suggested: number
@@ -7123,6 +7319,15 @@ export type Database = {
       referral_urgency: "routine" | "urgent" | "stat"
       service_availability_status: "available" | "waitlist" | "unavailable"
       team_message_type: "text" | "handoff" | "urgent" | "order_link"
+      vendor_integration_state:
+        | "not_contracted"
+        | "baa_pending"
+        | "sandbox_pending"
+        | "sandbox_configured"
+        | "certification_testing"
+        | "production_review"
+        | "production_verified"
+        | "suspended"
       visit_modality: "video" | "phone" | "async" | "in_person"
     }
     CompositeTypes: {
@@ -7393,6 +7598,16 @@ export const Constants = {
       referral_urgency: ["routine", "urgent", "stat"],
       service_availability_status: ["available", "waitlist", "unavailable"],
       team_message_type: ["text", "handoff", "urgent", "order_link"],
+      vendor_integration_state: [
+        "not_contracted",
+        "baa_pending",
+        "sandbox_pending",
+        "sandbox_configured",
+        "certification_testing",
+        "production_review",
+        "production_verified",
+        "suspended",
+      ],
       visit_modality: ["video", "phone", "async", "in_person"],
     },
   },

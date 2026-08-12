@@ -32,6 +32,7 @@ import CommandCenter from "./pages/CommandCenter";
 import FindCare from "./pages/FindCare";
 import TriageQueue from "./pages/TriageQueue";
 import LaunchReadiness from "./pages/LaunchReadiness";
+import ShippingChecklist from "./pages/ShippingChecklist";
 
 import { SmartContextBanner } from "@/components/virtualis/SmartContextBanner";
 import { GlobalALIS } from "@/components/virtualis/GlobalALIS";
@@ -75,6 +76,7 @@ const App = () => (
                   <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
                   <Route path="/governance" element={<ProtectedRoute requiredRole="admin"><AIGovernance /></ProtectedRoute>} />
                   <Route path="/launch-readiness" element={<ProtectedRoute requiredRole="admin"><LaunchReadiness /></ProtectedRoute>} />
+                  <Route path="/shipping-checklist" element={<ProtectedRoute requiredRole="admin"><ShippingChecklist /></ProtectedRoute>} />
                   <Route path="/emr-connections" element={<ProtectedRoute requiredRole="admin"><EMRConnections /></ProtectedRoute>} />
 
                   <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
