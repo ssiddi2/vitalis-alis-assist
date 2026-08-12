@@ -669,6 +669,673 @@ export type Database = {
           },
         ]
       }
+      claim_events: {
+        Row: {
+          actor_id: string | null
+          claim_id: string
+          created_at: string
+          event_code: string
+          from_status: string | null
+          hospital_id: string
+          id: string
+          metadata: Json
+          reason: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          claim_id: string
+          created_at?: string
+          event_code: string
+          from_status?: string | null
+          hospital_id: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          claim_id?: string
+          created_at?: string
+          event_code?: string
+          from_status?: string | null
+          hospital_id?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_events_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_events_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_inbox: {
+        Row: {
+          claim_id: string | null
+          correlation_id: string | null
+          created_at: string
+          error_code: string | null
+          event_id: string
+          hospital_id: string
+          id: string
+          message_type: string
+          payload_hash: string
+          signature_verified: boolean
+          status: string
+        }
+        Insert: {
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          event_id: string
+          hospital_id: string
+          id?: string
+          message_type: string
+          payload_hash: string
+          signature_verified?: boolean
+          status?: string
+        }
+        Update: {
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          event_id?: string
+          hospital_id?: string
+          id?: string
+          message_type?: string
+          payload_hash?: string
+          signature_verified?: boolean
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_inbox_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_inbox_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_lines: {
+        Row: {
+          charge_amount: number
+          claim_id: string
+          code_set: string
+          code_version: string
+          cpt_code: string
+          created_at: string
+          diagnosis_pointers: number[]
+          hospital_id: string
+          id: string
+          line_number: number
+          modifiers: string[]
+          service_date: string | null
+          units: number
+        }
+        Insert: {
+          charge_amount?: number
+          claim_id: string
+          code_set?: string
+          code_version?: string
+          cpt_code: string
+          created_at?: string
+          diagnosis_pointers?: number[]
+          hospital_id: string
+          id?: string
+          line_number: number
+          modifiers?: string[]
+          service_date?: string | null
+          units?: number
+        }
+        Update: {
+          charge_amount?: number
+          claim_id?: string
+          code_set?: string
+          code_version?: string
+          cpt_code?: string
+          created_at?: string
+          diagnosis_pointers?: number[]
+          hospital_id?: string
+          id?: string
+          line_number?: number
+          modifiers?: string[]
+          service_date?: string | null
+          units?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_lines_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_lines_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_outbox: {
+        Row: {
+          claim_id: string
+          correlation_id: string
+          created_at: string
+          error_code: string | null
+          event_id: string
+          hospital_id: string
+          id: string
+          message_type: string
+          payload_hash: string
+          retry_count: number
+          status: string
+          vendor_reference: string | null
+          x12_version: string
+        }
+        Insert: {
+          claim_id: string
+          correlation_id: string
+          created_at?: string
+          error_code?: string | null
+          event_id: string
+          hospital_id: string
+          id?: string
+          message_type: string
+          payload_hash: string
+          retry_count?: number
+          status?: string
+          vendor_reference?: string | null
+          x12_version?: string
+        }
+        Update: {
+          claim_id?: string
+          correlation_id?: string
+          created_at?: string
+          error_code?: string | null
+          event_id?: string
+          hospital_id?: string
+          id?: string
+          message_type?: string
+          payload_hash?: string
+          retry_count?: number
+          status?: string
+          vendor_reference?: string | null
+          x12_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_outbox_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_outbox_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_remittances: {
+        Row: {
+          adjustment_codes: string[]
+          allowed_amount: number | null
+          claim_id: string
+          control_number: string | null
+          correlation_id: string | null
+          denial_code: string | null
+          hospital_id: string
+          id: string
+          paid_amount: number | null
+          patient_responsibility: number | null
+          payer_id: string | null
+          payload_hash: string | null
+          received_at: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          status: string
+          summary: Json
+          transaction_type: string
+        }
+        Insert: {
+          adjustment_codes?: string[]
+          allowed_amount?: number | null
+          claim_id: string
+          control_number?: string | null
+          correlation_id?: string | null
+          denial_code?: string | null
+          hospital_id: string
+          id?: string
+          paid_amount?: number | null
+          patient_responsibility?: number | null
+          payer_id?: string | null
+          payload_hash?: string | null
+          received_at?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          status: string
+          summary?: Json
+          transaction_type: string
+        }
+        Update: {
+          adjustment_codes?: string[]
+          allowed_amount?: number | null
+          claim_id?: string
+          control_number?: string | null
+          correlation_id?: string | null
+          denial_code?: string | null
+          hospital_id?: string
+          id?: string
+          paid_amount?: number | null
+          patient_responsibility?: number | null
+          payer_id?: string | null
+          payload_hash?: string | null
+          received_at?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          status?: string
+          summary?: Json
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_remittances_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_remittances_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_remittances_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "payers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_scrub_overrides: {
+        Row: {
+          claim_id: string
+          created_at: string
+          hospital_id: string
+          id: string
+          overridden_by: string
+          rationale: string
+          result_id: string
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          hospital_id: string
+          id?: string
+          overridden_by: string
+          rationale: string
+          result_id: string
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          overridden_by?: string
+          rationale?: string
+          result_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_scrub_overrides_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_scrub_overrides_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_scrub_overrides_result_id_fkey"
+            columns: ["result_id"]
+            isOneToOne: true
+            referencedRelation: "claim_scrub_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_scrub_results: {
+        Row: {
+          checked_at: string
+          claim_id: string
+          hospital_id: string
+          id: string
+          message: string
+          rule_code: string
+          severity: string
+          source: string
+          source_version: string
+        }
+        Insert: {
+          checked_at?: string
+          claim_id: string
+          hospital_id: string
+          id?: string
+          message: string
+          rule_code: string
+          severity: string
+          source: string
+          source_version: string
+        }
+        Update: {
+          checked_at?: string
+          claim_id?: string
+          hospital_id?: string
+          id?: string
+          message?: string
+          rule_code?: string
+          severity?: string
+          source?: string
+          source_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_scrub_results_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claim_scrub_results_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claims: {
+        Row: {
+          acknowledged_at: string | null
+          adjudicated_at: string | null
+          allowed_amount: number | null
+          appeal_filed_at: string | null
+          appeal_notes: string | null
+          appeal_status: string | null
+          billing_provider_npi: string | null
+          billing_type: string
+          claim_type: string
+          control_number: string | null
+          correction_reason: string | null
+          correlation_id: string | null
+          coverage_id: string | null
+          created_at: string
+          created_by: string | null
+          denial_code: string | null
+          denial_reason: string | null
+          encounter_id: string
+          enrollment_id: string | null
+          hospital_id: string
+          id: string
+          idempotency_key: string | null
+          lock_version: number
+          medical_necessity_note_id: string | null
+          medical_necessity_rationale: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          patient_id: string
+          patient_responsibility: number | null
+          payer_id: string | null
+          place_of_service: string | null
+          rendering_provider_id: string
+          rendering_provider_npi: string | null
+          replaces_claim_id: string | null
+          status: Database["public"]["Enums"]["claim_status"]
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_hash: string | null
+          submitted_snapshot: Json | null
+          total_charge: number
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          adjudicated_at?: string | null
+          allowed_amount?: number | null
+          appeal_filed_at?: string | null
+          appeal_notes?: string | null
+          appeal_status?: string | null
+          billing_provider_npi?: string | null
+          billing_type?: string
+          claim_type?: string
+          control_number?: string | null
+          correction_reason?: string | null
+          correlation_id?: string | null
+          coverage_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          denial_code?: string | null
+          denial_reason?: string | null
+          encounter_id: string
+          enrollment_id?: string | null
+          hospital_id: string
+          id?: string
+          idempotency_key?: string | null
+          lock_version?: number
+          medical_necessity_note_id?: string | null
+          medical_necessity_rationale?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          patient_id: string
+          patient_responsibility?: number | null
+          payer_id?: string | null
+          place_of_service?: string | null
+          rendering_provider_id: string
+          rendering_provider_npi?: string | null
+          replaces_claim_id?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_hash?: string | null
+          submitted_snapshot?: Json | null
+          total_charge?: number
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          adjudicated_at?: string | null
+          allowed_amount?: number | null
+          appeal_filed_at?: string | null
+          appeal_notes?: string | null
+          appeal_status?: string | null
+          billing_provider_npi?: string | null
+          billing_type?: string
+          claim_type?: string
+          control_number?: string | null
+          correction_reason?: string | null
+          correlation_id?: string | null
+          coverage_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          denial_code?: string | null
+          denial_reason?: string | null
+          encounter_id?: string
+          enrollment_id?: string | null
+          hospital_id?: string
+          id?: string
+          idempotency_key?: string | null
+          lock_version?: number
+          medical_necessity_note_id?: string | null
+          medical_necessity_rationale?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          patient_id?: string
+          patient_responsibility?: number | null
+          payer_id?: string | null
+          place_of_service?: string | null
+          rendering_provider_id?: string
+          rendering_provider_npi?: string | null
+          replaces_claim_id?: string | null
+          status?: Database["public"]["Enums"]["claim_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_hash?: string | null
+          submitted_snapshot?: Json | null
+          total_charge?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claims_coverage_id_fkey"
+            columns: ["coverage_id"]
+            isOneToOne: false
+            referencedRelation: "patient_insurance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "provider_payer_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_medical_necessity_note_id_fkey"
+            columns: ["medical_necessity_note_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "payers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_replaces_claim_id_fkey"
+            columns: ["replaces_claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clearinghouse_profiles: {
+        Row: {
+          capabilities: Json
+          created_at: string
+          environment: string
+          hospital_id: string
+          id: string
+          last_test_at: string | null
+          last_test_result: string | null
+          notes: string | null
+          secret_ref_names: string[]
+          updated_at: string
+          vendor: string
+          verification_status: string
+        }
+        Insert: {
+          capabilities?: Json
+          created_at?: string
+          environment?: string
+          hospital_id: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          notes?: string | null
+          secret_ref_names?: string[]
+          updated_at?: string
+          vendor: string
+          verification_status?: string
+        }
+        Update: {
+          capabilities?: Json
+          created_at?: string
+          environment?: string
+          hospital_id?: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          notes?: string | null
+          secret_ref_names?: string[]
+          updated_at?: string
+          vendor?: string
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clearinghouse_profiles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_notes: {
         Row: {
           author_id: string | null
@@ -1190,8 +1857,118 @@ export type Database = {
           },
         ]
       }
+      eligibility_checks: {
+        Row: {
+          coinsurance_percent: number | null
+          control_number: string
+          copay_amount: number | null
+          correlation_id: string
+          coverage_active: boolean | null
+          coverage_id: string | null
+          deductible_remaining: number | null
+          encounter_id: string | null
+          hospital_id: string
+          id: string
+          patient_id: string
+          payer_id: string | null
+          payload_hash: string | null
+          plan_summary: Json
+          requested_at: string
+          requested_by: string
+          responded_at: string | null
+          response_code: string | null
+          service_date: string | null
+          status: string
+          transaction_type: string
+        }
+        Insert: {
+          coinsurance_percent?: number | null
+          control_number: string
+          copay_amount?: number | null
+          correlation_id: string
+          coverage_active?: boolean | null
+          coverage_id?: string | null
+          deductible_remaining?: number | null
+          encounter_id?: string | null
+          hospital_id: string
+          id?: string
+          patient_id: string
+          payer_id?: string | null
+          payload_hash?: string | null
+          plan_summary?: Json
+          requested_at?: string
+          requested_by: string
+          responded_at?: string | null
+          response_code?: string | null
+          service_date?: string | null
+          status?: string
+          transaction_type?: string
+        }
+        Update: {
+          coinsurance_percent?: number | null
+          control_number?: string
+          copay_amount?: number | null
+          correlation_id?: string
+          coverage_active?: boolean | null
+          coverage_id?: string | null
+          deductible_remaining?: number | null
+          encounter_id?: string | null
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          payer_id?: string | null
+          payload_hash?: string | null
+          plan_summary?: Json
+          requested_at?: string
+          requested_by?: string
+          responded_at?: string | null
+          response_code?: string | null
+          service_date?: string | null
+          status?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eligibility_checks_coverage_id_fkey"
+            columns: ["coverage_id"]
+            isOneToOne: false
+            referencedRelation: "patient_insurance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eligibility_checks_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eligibility_checks_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eligibility_checks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eligibility_checks_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "payers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       encounter_diagnoses: {
         Row: {
+          code_set: string
+          code_version: string
           created_at: string
           created_by: string | null
           description: string
@@ -1204,6 +1981,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          code_set?: string
+          code_version?: string
           created_at?: string
           created_by?: string | null
           description: string
@@ -1216,6 +1995,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          code_set?: string
+          code_version?: string
           created_at?: string
           created_by?: string | null
           description?: string
@@ -2423,9 +3204,11 @@ export type Database = {
           created_at: string
           effective_date: string | null
           group_number: string | null
+          hospital_id: string | null
           id: string
           member_id: string
           patient_id: string
+          payer_id: string | null
           payer_name: string
           plan_name: string | null
           rank: string
@@ -2434,6 +3217,8 @@ export type Database = {
           subscriber_name: string | null
           termination_date: string | null
           updated_at: string
+          verification_status: string
+          verified_at: string | null
         }
         Insert: {
           active?: boolean
@@ -2441,9 +3226,11 @@ export type Database = {
           created_at?: string
           effective_date?: string | null
           group_number?: string | null
+          hospital_id?: string | null
           id?: string
           member_id: string
           patient_id: string
+          payer_id?: string | null
           payer_name: string
           plan_name?: string | null
           rank?: string
@@ -2452,6 +3239,8 @@ export type Database = {
           subscriber_name?: string | null
           termination_date?: string | null
           updated_at?: string
+          verification_status?: string
+          verified_at?: string | null
         }
         Update: {
           active?: boolean
@@ -2459,9 +3248,11 @@ export type Database = {
           created_at?: string
           effective_date?: string | null
           group_number?: string | null
+          hospital_id?: string | null
           id?: string
           member_id?: string
           patient_id?: string
+          payer_id?: string | null
           payer_name?: string
           plan_name?: string | null
           rank?: string
@@ -2470,13 +3261,29 @@ export type Database = {
           subscriber_name?: string | null
           termination_date?: string | null
           updated_at?: string
+          verification_status?: string
+          verified_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "patient_insurance_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "patient_insurance_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_insurance_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "payers"
             referencedColumns: ["id"]
           },
         ]
@@ -2692,6 +3499,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "patients_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payers: {
+        Row: {
+          active: boolean
+          claim_rules: Json
+          created_at: string
+          hospital_id: string
+          id: string
+          name: string
+          payer_code: string | null
+          updated_at: string
+          x12_payer_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          claim_rules?: Json
+          created_at?: string
+          hospital_id: string
+          id?: string
+          name: string
+          payer_code?: string | null
+          updated_at?: string
+          x12_payer_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          claim_rules?: Json
+          created_at?: string
+          hospital_id?: string
+          id?: string
+          name?: string
+          payer_code?: string | null
+          updated_at?: string
+          x12_payer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payers_hospital_id_fkey"
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
@@ -3085,6 +3936,69 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_payer_enrollments: {
+        Row: {
+          created_at: string
+          effective_date: string | null
+          end_date: string | null
+          enrollment_status: string
+          hospital_id: string
+          id: string
+          npi: string | null
+          payer_id: string
+          provider_user_id: string
+          taxonomy_code: string | null
+          updated_at: string
+          verification_source: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          effective_date?: string | null
+          end_date?: string | null
+          enrollment_status?: string
+          hospital_id: string
+          id?: string
+          npi?: string | null
+          payer_id: string
+          provider_user_id: string
+          taxonomy_code?: string | null
+          updated_at?: string
+          verification_source?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          effective_date?: string | null
+          end_date?: string | null
+          enrollment_status?: string
+          hospital_id?: string
+          id?: string
+          npi?: string | null
+          payer_id?: string
+          provider_user_id?: string
+          taxonomy_code?: string | null
+          updated_at?: string
+          verification_source?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_payer_enrollments_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_payer_enrollments_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "payers"
             referencedColumns: ["id"]
           },
         ]
@@ -3773,6 +4687,7 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_readiness: { Args: { p_claim_id: string }; Returns: Json }
       encounter_readiness: { Args: { p_encounter_id: string }; Returns: Json }
       get_user_role: {
         Args: { _user_id: string }
@@ -3886,6 +4801,19 @@ export type Database = {
         | "cancelled"
       channel_type: "patient_care" | "department" | "consult"
       chat_role: "clinician" | "consultant" | "alis"
+      claim_status:
+        | "draft"
+        | "scrubbed"
+        | "approved"
+        | "submission_pending"
+        | "submitted"
+        | "acknowledged"
+        | "accepted"
+        | "rejected"
+        | "adjudicated"
+        | "paid"
+        | "denied"
+        | "voided"
       consult_status: "pending" | "accepted" | "completed" | "cancelled"
       consult_urgency: "routine" | "urgent" | "stat"
       consultation_insight_target: "primary_clinician" | "specialist" | "shared"
@@ -4100,6 +5028,20 @@ export const Constants = {
       ],
       channel_type: ["patient_care", "department", "consult"],
       chat_role: ["clinician", "consultant", "alis"],
+      claim_status: [
+        "draft",
+        "scrubbed",
+        "approved",
+        "submission_pending",
+        "submitted",
+        "acknowledged",
+        "accepted",
+        "rejected",
+        "adjudicated",
+        "paid",
+        "denied",
+        "voided",
+      ],
       consult_status: ["pending", "accepted", "completed", "cancelled"],
       consult_urgency: ["routine", "urgent", "stat"],
       consultation_insight_target: [
