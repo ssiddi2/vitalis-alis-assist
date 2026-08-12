@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { Shield, UserPlus, Users, ArrowLeft, Mail, Loader2, Search, ChevronLeft, ChevronRight, ShieldCheck, Plug } from 'lucide-react';
 import { ProviderLicensesPanel } from '@/components/virtualis/ProviderLicensesPanel';
 import { CareCatalogAdmin } from '@/components/virtualis/CareCatalogAdmin';
+import { ErxIntegrationAdmin } from '@/components/virtualis/ErxIntegrationAdmin';
+
 
 import { FuturisticBackground } from '@/components/virtualis/FuturisticBackground';
 import { EditUserModal } from '@/components/virtualis/EditUserModal';
@@ -303,6 +305,8 @@ export default function AdminPanel() {
               </Select>
               <ProviderLicensesPanel hospitalId={licenseHospitalId || hospitals[0].id} canEdit />
               <CareCatalogAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
+              <ErxIntegrationAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
+
             </div>
           )}
 

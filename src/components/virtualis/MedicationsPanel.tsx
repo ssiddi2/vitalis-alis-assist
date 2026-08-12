@@ -1,6 +1,8 @@
 import { Pill, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePatientMedications } from '@/hooks/usePatientClinical';
+import { MedicationHistoryStaging } from './MedicationHistoryStaging';
+
 
 interface MedicationsPanelProps {
   patientId: string;
@@ -64,6 +66,9 @@ export function MedicationsPanel({ patientId }: MedicationsPanelProps) {
           })}
         </div>
       )}
+
+      <MedicationHistoryStaging patientId={patientId} />
     </div>
   );
 }
+
