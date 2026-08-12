@@ -93,6 +93,9 @@ describe("scoped write paths added by the RLS hardening pass", () => {
     // parser concatenates USING + WITH CHECK: the post-update check binds thread↔patient
     expect(expr).toContain("ct.patient_id = consultation_notes.patient_id");
     expect(expr).toContain("hospital_users");
+    // only the treating clinician (or an admin) may write, never a viewer
+    expect(expr).toContain("has_role(auth.uid(), 'clinician')");
+    expect(expr.match(/ct\.primary_clinician_id = auth\.uid\(\)/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   it("patient_vitals writes are hospital- and patient-scoped, with no clinician delete", () => {
