@@ -110,13 +110,44 @@ describe("scoped write paths added by the RLS hardening pass", () => {
     const clinicianVitals = writes.filter((p) => /own hospital vitals/i.test(p.name));
     expect(clinicianVitals.map((p) => p.cmd).sort()).toEqual(["INSERT", "UPDATE"]);
     for (const p of clinicianVitals) expect(p.expr.toLowerCase()).toContain("patient_vitals.patient_id");
-    const admin = writes.filter((p) => p.cmd === "ALL");
-    expect(admin).toHaveLength(1);
-    expect(admin[0].expr.toLowerCase()).toContain("has_role(auth.uid(), 'admin')");
-    // scoped in both USING and WITH CHECK (two occurrences of the predicate)
-    expect(admin[0].expr.toLowerCase().match(/patient_vitals\.patient_id/g)?.length).toBeGreaterThanOrEqual(2);
+    // the broad admin ALL policy is gone: admins get discrete UPDATE + DELETE paths
+    expect(writes.filter((p) => p.cmd === "ALL")).toHaveLength(0);
+    const adminUpdate = writes.find((p) => p.cmd === "UPDATE" && /admin/i.test(p.name));
+    const adminDelete = writes.find((p) => p.cmd === "DELETE" && /admin/i.test(p.name));
+    expect(adminUpdate, "admin UPDATE policy missing").toBeTruthy();
+    expect(adminDelete, "admin DELETE policy missing").toBeTruthy();
+    for (const p of [adminUpdate!, adminDelete!]) {
+      const expr = p.expr.toLowerCase();
+      expect(expr, p.name).toMatch(/has_role\(auth\.uid\(\), 'admin'/);
+      expect(expr, p.name).toContain("hu.user_id = auth.uid()");
+    }
+    // USING (old row) and WITH CHECK (new row) both bind patient → hospital membership
+    expect(adminUpdate!.expr.toLowerCase().match(/patient_vitals\.patient_id/g)?.length).toBeGreaterThanOrEqual(2);
+    // no clinician-facing DELETE path was introduced
+    expect(writes.filter((p) => p.cmd === "DELETE" && !/admin/i.test(p.name))).toHaveLength(0);
   });
 });
+
+describe("actor stamping triggers (policy-inexpressible invariants)", () => {
+  const sql = readdirSync(path.resolve(process.cwd(), "supabase/migrations"))
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => readFileSync(path.resolve(process.cwd(), "supabase/migrations", f), "utf8"))
+    .join("\n")
+    .toLowerCase();
+
+  it("patient_vitals rows can never be re-pointed at another patient", () => {
+    expect(sql).toContain("create trigger prevent_vitals_reassignment");
+    expect(sql).toMatch(/new\.patient_id is distinct from old\.patient_id/);
+  });
+
+  it("team_channels stamps created_by from the session and freezes creator + hospital", () => {
+    expect(sql).toContain("create trigger stamp_team_channel_actor");
+    expect(sql).toMatch(/new\.created_by\s*:=\s*coalesce\(auth\.uid\(\)/);
+    expect(sql).toMatch(/new\.created_by is distinct from old\.created_by/);
+    expect(sql).toMatch(/new\.hospital_id is distinct from old\.hospital_id/);
+  });
+});
+
 
 describe("tenant-scoped INSERT/UPDATE on scheduling & collaboration tables", () => {
   const of = (table: string, cmd: string) =>
