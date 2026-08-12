@@ -39,9 +39,10 @@ describe("security definer least privilege", () => {
   });
 
   it("never grants an internal definer function to anon or authenticated", () => {
+    const grants = sql.split(";").filter((s2) => /GRANT[\s\S]*EXECUTE[\s\S]*FUNCTION/i.test(s2));
     for (const name of INTERNAL) {
-      const args = "\\([^)]*\\)";
-      expect(sql, name).not.toMatch(new RegExp(`GRANT[^;]*EXECUTE[^;]*public\\.${name}${args}[^;]*TO[^;]*(anon|authenticated)`, "i"));
+      const bad = grants.filter((g) => new RegExp(`public\\.${name}\\s*\\(`, "i").test(g) && /\b(anon|authenticated)\b/.test(g));
+      expect(bad, name).toEqual([]);
     }
   });
 
@@ -67,7 +68,9 @@ describe("security definer least privilege", () => {
   });
 
   it("every RLS policy calls the role helpers with auth.uid(), never a client-supplied id", () => {
-    const calls = [...sql.matchAll(/has_(?:governance_)?role\s*\(\s*([^,]+),/g)].map((m) => m[1].trim());
+    const calls = [...sql.matchAll(/has_(?:governance_)?role\s*\(\s*([^,]+),/g)]
+      .map((m) => m[1].trim())
+      .filter((a) => !a.startsWith("_")); // skip the function declarations themselves
     expect(calls.length).toBeGreaterThan(0);
     for (const first of calls) expect(first).toBe("auth.uid()");
   });
