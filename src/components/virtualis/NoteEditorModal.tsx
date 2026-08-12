@@ -17,6 +17,8 @@ import { DsiInfo } from '@/components/virtualis/DsiInfo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNoteIntegrity } from '@/hooks/useNoteIntegrity';
 import { addAddendum, cosignNote, signNote } from '@/lib/noteIntegrity';
+import { CoverageClaimPanel } from '@/components/virtualis/CoverageClaimPanel';
+
 
 const NOTE_TYPE_LABELS: Record<NoteType, string> = {
   progress: 'Progress Note',
