@@ -47,6 +47,7 @@ const STAT_CARDS = [
 
 const BillingDashboard = () => {
   const { user } = useAuth();
+  const { selectedHospital } = useHospital();
   const [events, setEvents] = useState<BillingEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
