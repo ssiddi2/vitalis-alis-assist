@@ -5,6 +5,7 @@ import { DBPatient } from '@/hooks/usePatients';
 import { PatientHeader } from './PatientHeader';
 import { PatientChartTabs } from './PatientChartTabs';
 import { AllergyStrip } from './AllergyStrip';
+import { EncounterReadinessPanel } from './EncounterReadinessPanel';
 
 import { ImagingStudy } from './ImagingPanel';
 import { Stethoscope } from 'lucide-react';
@@ -65,6 +66,16 @@ export function PatientDashboard({ patient, insights, trends, clinicalNotes, ima
         <PatientHeader patient={headerPatient} encounter={encounter} encounterDuration={encounterDuration} />
 
         <AllergyStrip patientId={patient.id} onViewAll={() => setActiveTab('allergies')} />
+
+        {encounter && patient.hospital_id && (
+          <EncounterReadinessPanel
+            className="mb-4"
+            encounterId={encounter.id}
+            patientId={patient.id}
+            hospitalId={patient.hospital_id}
+            status={encounter.status}
+          />
+        )}
 
         {!encounter && (patient.attending_physician || patient.unit) && (
           <div className="mb-4 flex items-center gap-3 flex-wrap">
