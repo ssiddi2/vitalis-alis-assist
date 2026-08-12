@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:tenancy": "vitest run src/test/tenancy"
   },
   "dependencies": {
     "@elevenlabs/react": "^0.14.0",
@@ -93,5 +94,10 @@
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "postcss": "^8.5.12",
+    "nanoid": "^3.3.16",
+    "yaml": "^2.8.3"
   }
 }
