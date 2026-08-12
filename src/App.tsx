@@ -79,6 +79,9 @@ const App = () => (
                   <Route path="/quality" element={<ProtectedRoute><QualityDashboard /></ProtectedRoute>} />
                   <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
                   <Route path="/clinic" element={<ProtectedRoute><Clinic /></ProtectedRoute>} />
+                  <Route path="/find-care" element={<ProtectedRoute><FindCare /></ProtectedRoute>} />
+                  <Route path="/triage" element={<ProtectedRoute><TriageQueue /></ProtectedRoute>} />
+
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
