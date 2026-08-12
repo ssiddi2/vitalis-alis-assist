@@ -162,7 +162,7 @@ const BillingDashboard = () => {
             </div>
           </div>
 
-          <RevenueCycleQueues hospitalId={selectedHospitalId ?? undefined} />
+          <RevenueCycleQueues hospitalId={selectedHospital?.id} />
 
 
           {/* Denial Workqueue */}
