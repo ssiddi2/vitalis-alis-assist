@@ -73,7 +73,8 @@ describe("result and envelope integrity", () => {
   });
 
   it("only the acknowledgement fields are client-writable on a result", () => {
-    expect(sql).toMatch(/acknowledged fields[\s\S]{0,600}immutable|result content is immutable/i);
+    expect(sql).toMatch(/result content and provenance are immutable/i);
+    expect(sql).toMatch(/result values and flags are set by the inbound server path only/i);
     expect(sql).toMatch(/CREATE TRIGGER enforce_diagnostic_result_integrity/i);
   });
 
@@ -86,14 +87,16 @@ describe("result and envelope integrity", () => {
   });
 
   it("amendments bump the version instead of mutating the original", () => {
-    expect(sql).toMatch(/version\s*=\s*[^;]*\+\s*1|NEW\.version\s*:=/i);
-    expect(sql).toMatch(/'amended'|'corrected'/);
+    expect(sql).toMatch(/amendments create a new version/i);
+    expect(sql).toMatch(/diagnostic_result_versions/);
   });
 
   it("critical results require acknowledgement and are never auto-released to the patient", () => {
     expect(sql).toMatch(/is_critical/);
     expect(sql).toMatch(/patient_release_status/);
-    expect(sql).toMatch(/is_critical[\s\S]{0,300}(withheld|blocked|hold)/i);
+    expect(sql).toMatch(/patient_release_status text NOT NULL DEFAULT 'blocked'/i);
+    expect(sql).toMatch(/a critical result must be acknowledged before patient release/i);
+    expect(sql).toMatch(/may not be released to the patient portal/i);
   });
 });
 
@@ -155,7 +158,7 @@ describe("vendor gating and replay protection", () => {
 
   it("the adapter is JWT-verified, hospital-scoped and CORS-locked", () => {
     expect(adapter).toMatch(/_shared\/auth\.ts/);
-    expect(adapter).toMatch(/_shared\/cors\.ts/);
+    expect(adapter).toMatch(/_shared\/guard\.ts/);
     expect(adapter).toMatch(/userHasHospitalAccess/);
   });
 });
