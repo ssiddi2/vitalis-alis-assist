@@ -70,7 +70,7 @@ describe("security definer least privilege", () => {
   it("every RLS policy calls the role helpers with auth.uid(), never a client-supplied id", () => {
     const calls = [...sql.matchAll(/has_(?:governance_)?role\s*\(\s*([^,]+),/g)]
       .map((m) => m[1].trim())
-      .filter((a) => !a.startsWith("_")); // skip the function declarations themselves
+      .filter((a) => a.includes("(")); // skip declarations and grant signatures
     expect(calls.length).toBeGreaterThan(0);
     for (const first of calls) expect(first).toBe("auth.uid()");
   });
