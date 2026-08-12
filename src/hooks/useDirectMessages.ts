@@ -72,6 +72,7 @@ export function useDirectMessages() {
         .from('direct_messages')
         .update({ is_read: true })
         .eq('conversation_id', conversationId)
+        .eq('is_read', false)
         .neq('sender_id', user?.id);
 
     } catch (err) {
