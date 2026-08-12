@@ -547,6 +547,8 @@ export type Database = {
       }
       consult_requests: {
         Row: {
+          accepted_at: string | null
+          accepted_by: string | null
           channel_id: string | null
           consultant_id: string | null
           created_at: string
@@ -562,6 +564,8 @@ export type Database = {
           urgency: Database["public"]["Enums"]["consult_urgency"]
         }
         Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
           channel_id?: string | null
           consultant_id?: string | null
           created_at?: string
@@ -577,6 +581,8 @@ export type Database = {
           urgency?: Database["public"]["Enums"]["consult_urgency"]
         }
         Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
           channel_id?: string | null
           consultant_id?: string | null
           created_at?: string
@@ -947,6 +953,7 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean
+          read_at: string | null
           sender_id: string
         }
         Insert: {
@@ -955,6 +962,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          read_at?: string | null
           sender_id: string
         }
         Update: {
@@ -963,6 +971,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          read_at?: string | null
           sender_id?: string
         }
         Relationships: [
