@@ -3345,7 +3345,18 @@ export type Database = {
         | "rejected"
       patient_type: "inpatient" | "outpatient" | "both"
       payer_preference: "insurance" | "self_pay" | "unknown"
-      prescription_status: "draft" | "signed" | "sent" | "filled" | "cancelled"
+      prescription_status:
+        | "draft"
+        | "signed"
+        | "sent"
+        | "filled"
+        | "cancelled"
+        | "ready_for_review"
+        | "transmission_pending"
+        | "transmitted"
+        | "accepted"
+        | "errored"
+        | "discontinued"
       referral_status:
         | "draft"
         | "sent"
@@ -3555,7 +3566,19 @@ export const Constants = {
       ],
       patient_type: ["inpatient", "outpatient", "both"],
       payer_preference: ["insurance", "self_pay", "unknown"],
-      prescription_status: ["draft", "signed", "sent", "filled", "cancelled"],
+      prescription_status: [
+        "draft",
+        "signed",
+        "sent",
+        "filled",
+        "cancelled",
+        "ready_for_review",
+        "transmission_pending",
+        "transmitted",
+        "accepted",
+        "errored",
+        "discontinued",
+      ],
       referral_status: ["draft", "sent", "scheduled", "completed", "cancelled"],
       referral_urgency: ["routine", "urgent", "stat"],
       service_availability_status: ["available", "waitlist", "unavailable"],
