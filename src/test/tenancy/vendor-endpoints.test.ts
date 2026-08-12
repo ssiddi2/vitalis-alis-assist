@@ -227,7 +227,8 @@ describe("Stedi transport (mocked)", () => {
       .toBe("payer_transaction_enrollment_inactive");
     expect(stediProductionGate(prod, target, [{ transaction: "837P", status: "active", provider_npi: "1234567893", payer_id: "60054" }]))
       .toBeNull();
-    expect(stediProductionGate(prod({ last_test_result: "passed" } as never) ?? prod, target, [])).toBeTruthy();
+    expect(stediProductionGate({ ...prod, last_test_result: "passed" }, target, []))
+      .toBe("production_readiness_test_missing");
   });
 });
 
