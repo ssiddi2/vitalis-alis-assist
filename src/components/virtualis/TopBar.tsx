@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, CalendarDays, Users, Radar, ShieldCheck, X } from 'lucide-react';
+import { User, LogOut, Shield, Building2, ChevronLeft, DollarSign, BarChart3, CalendarDays, Users, Radar, ShieldCheck, Stethoscope, ClipboardList, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TwoFactorSetup } from './TwoFactorSetup';
 import { useMfaFactors } from '@/hooks/useMfa';
@@ -142,6 +142,13 @@ export function TopBar() {
         <button onClick={() => navigate('/clinic')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
           <Users className="w-3 h-3" /> Clinic
         </button>
+        <button onClick={() => navigate('/find-care')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
+          <Stethoscope className="w-3 h-3" /> Find care
+        </button>
+        <button onClick={() => navigate('/triage')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
+          <ClipboardList className="w-3 h-3" /> Triage
+        </button>
+
         <button onClick={() => navigate('/billing')} className="flex items-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-accent border border-transparent hover:border-border transition-all">
           <DollarSign className="w-3 h-3" /> RCM
         </button>
