@@ -130,6 +130,8 @@ export async function gatewayFetch(call: GatewayCall): Promise<GatewayResult> {
       log(call, res.status, Date.now() - started, attempt);
       return { status: res.status, ok: res.ok, json, correlationId: call.correlationId, durationMs: Date.now() - started };
     } catch (err) {
+      // A deliberate refusal (redirect off-host) is never retried.
+      if (err instanceof GatewayError) { bumpBreaker(key); throw err; }
       if (attempt === MAX_ATTEMPTS) {
         bumpBreaker(key);
         log(call, lastStatus || 0, Date.now() - started, attempt, redact(err instanceof Error ? err.message : err));
