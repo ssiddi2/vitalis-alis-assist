@@ -19,7 +19,7 @@ const sql = readdirSync(MIGRATIONS)
 
 const policies = loadEffectivePolicies();
 const fn = (name: string) => {
-  const i = sql.lastIndexOf(`FUNCTION public.${name}`);
+  const i = sql.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${name}`);
   expect(i, `function ${name} not found`).toBeGreaterThan(-1);
   return sql.slice(i, sql.indexOf("$$;", i));
 };
