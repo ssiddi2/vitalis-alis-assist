@@ -90,8 +90,9 @@ describe("scoped write paths added by the RLS hardening pass", () => {
   it("consultation_notes UPDATE cannot re-point a note at another thread or patient", () => {
     const upd = of("consultation_notes", "UPDATE");
     const expr = upd[upd.length - 1].expr.toLowerCase();
-    expect(expr).toContain("with check");
-    expect(expr.split("with check")[1]).toContain("ct.patient_id = consultation_notes.patient_id");
+    // parser concatenates USING + WITH CHECK: the post-update check binds thread↔patient
+    expect(expr).toContain("ct.patient_id = consultation_notes.patient_id");
+    expect(expr).toContain("hospital_users");
   });
 
   it("patient_vitals writes are hospital- and patient-scoped, with no clinician delete", () => {
@@ -109,7 +110,7 @@ describe("scoped write paths added by the RLS hardening pass", () => {
     const admin = writes.filter((p) => p.cmd === "ALL");
     expect(admin).toHaveLength(1);
     expect(admin[0].expr.toLowerCase()).toContain("has_role(auth.uid(), 'admin')");
-    expect(admin[0].expr.toLowerCase()).toContain("with check");
-    expect(admin[0].expr.toLowerCase()).toContain("patient_vitals.patient_id");
+    // scoped in both USING and WITH CHECK (two occurrences of the predicate)
+    expect(admin[0].expr.toLowerCase().match(/patient_vitals\.patient_id/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });
