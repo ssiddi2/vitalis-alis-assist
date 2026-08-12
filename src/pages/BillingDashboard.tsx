@@ -159,6 +159,9 @@ const BillingDashboard = () => {
             </div>
           </div>
 
+          <RevenueCycleQueues hospitalId={selectedHospitalId ?? undefined} />
+
+
           {/* Denial Workqueue */}
           <div className="p-5 rounded-2xl bg-card border border-border/50">
             <div className="flex items-center justify-between mb-4">
