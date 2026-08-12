@@ -64,7 +64,7 @@ serve(async (req) => {
         (["sandbox", "production"] as const).map((environment) => ({
           hospital_id, vendor_key: key, environment,
           state: "not_contracted",
-          secret_ref_names: VENDORS[key].secretRefs,
+          secret_ref_names: VENDORS[key].secretRefs[environment],
           capabilities: { endpoints: {} },
           checklist: Object.fromEntries([...CHECKLIST, ...VENDOR_CHECKLIST[key]].map((c) => [c, false])),
           next_action: VENDORS[key].standaloneOnly
@@ -125,7 +125,7 @@ serve(async (req) => {
       domain: def.domain,
       integration_status: "INTERNAL READINESS ONLY — no live vendor connection",
       allowlisted_hosts: def.hosts,
-      secret_reference_names: def.secretRefs,
+      secret_reference_names: def.secretRefs,  // per-environment reference names only
       capabilities_requested: def.capabilities,
       checklist: [...CHECKLIST, ...VENDOR_CHECKLIST[vendor_key]],
       standalone_only: Boolean(def.standaloneOnly),

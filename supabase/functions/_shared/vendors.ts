@@ -24,8 +24,8 @@ export interface VendorDef {
   domain: "erx" | "claims" | "diagnostics" | "standalone";
   /** Documented, vendor-owned hosts. Anything else is refused (SSRF guard). */
   hosts: { sandbox: string[]; production: string[] };
-  /** Secret REFERENCE names only — never values. */
-  secretRefs: string[];
+  /** Secret REFERENCE names only — never values. Test and production are separate names. */
+  secretRefs: { sandbox: string[]; production: string[] };
   capabilities: string[];
   /** True when the live transport requires a vendor partner package we do not have. */
   requiresPartnerPackage: boolean;
@@ -40,7 +40,10 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     domain: "erx",
     // DoseSpot issues partner-specific hosts; none are assumed.
     hosts: { sandbox: [], production: [] },
-    secretRefs: ["DOSESPOT_CLIENT_ID_REF", "DOSESPOT_CLIENT_SECRET_REF", "DOSESPOT_CLINIC_ID_REF"],
+    secretRefs: {
+      sandbox: ["DOSESPOT_TEST_CLIENT_ID_REF", "DOSESPOT_TEST_CLIENT_SECRET_REF", "DOSESPOT_TEST_CLINIC_ID_REF"],
+      production: ["DOSESPOT_PROD_CLIENT_ID_REF", "DOSESPOT_PROD_CLIENT_SECRET_REF", "DOSESPOT_PROD_CLINIC_ID_REF"],
+    },
     capabilities: ["new_rx", "cancel_rx", "rx_renewal", "rx_change", "rx_fill", "med_history", "epcs"],
     requiresPartnerPackage: true,
   },
@@ -48,8 +51,11 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     key: "stedi",
     label: "Stedi Clearinghouse APIs",
     domain: "claims",
-    hosts: { sandbox: ["healthcare.us.stedi.com"], production: ["healthcare.us.stedi.com"] },
-    secretRefs: ["STEDI_API_KEY_REF"],
+    hosts: {
+      sandbox: ["healthcare.us.stedi.com", "enrollments.us.stedi.com", "claims.us.stedi.com"],
+      production: ["healthcare.us.stedi.com", "enrollments.us.stedi.com", "claims.us.stedi.com"],
+    },
+    secretRefs: { sandbox: ["STEDI_TEST_API_KEY_REF"], production: ["STEDI_PROD_API_KEY_REF"] },
     capabilities: ["payer_directory", "enrollment", "eligibility_270_271", "claim_837p", "claim_status_276_277", "ack_277ca", "era_835", "attachment_275"],
     requiresPartnerPackage: false,
   },
@@ -58,8 +64,14 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     label: "Health Gorilla Lab Network",
     domain: "diagnostics",
     hosts: { sandbox: ["sandbox.healthgorilla.com"], production: ["api.healthgorilla.com"] },
-    secretRefs: ["HEALTH_GORILLA_CLIENT_ID_REF", "HEALTH_GORILLA_CLIENT_SECRET_REF", "HEALTH_GORILLA_TOKEN_URL_REF"],
-    capabilities: ["oauth_token", "iframe_ordering", "service_request", "diagnostic_report", "observation", "document_reference", "subscription"],
+    secretRefs: {
+      sandbox: ["HEALTH_GORILLA_SANDBOX_CLIENT_ID_REF", "HEALTH_GORILLA_SANDBOX_CLIENT_SECRET_REF"],
+      production: ["HEALTH_GORILLA_PROD_CLIENT_ID_REF", "HEALTH_GORILLA_PROD_CLIENT_SECRET_REF"],
+    },
+    capabilities: [
+      "oauth_token", "capability_statement", "order_create", "order_read", "diagnostic_report",
+      "observation", "document_reference", "org_discovery", "aoe_questionnaire", "iframe_ordering", "subscription",
+    ],
     requiresPartnerPackage: false,
   },
   docupdate: {
@@ -67,18 +79,12 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     label: "DocUpdate (STANDALONE · NOT INTEGRATED · NON-CONTROLLED ONLY)",
     domain: "standalone",
     hosts: { sandbox: [], production: [] },
-    secretRefs: [],
+    secretRefs: { sandbox: [], production: [] },
     capabilities: [],
     requiresPartnerPackage: true,
     standaloneOnly: true,
   },
 };
-
-/** FHIR R4 bases, allowlisted per environment. Never overridable by a client. */
-export const HEALTH_GORILLA_FHIR_BASE = {
-  sandbox: "https://sandbox.healthgorilla.com/fhir/R4/",
-  production: "https://api.healthgorilla.com/fhir/R4/",
-} as const;
 
 export interface OnboardingRow {
   id: string;
@@ -90,6 +96,14 @@ export interface OnboardingRow {
   secret_ref_names: string[];
   last_test_result: string | null;
   evidence_expires_at: string | null;
+}
+
+/** Result string a passed end-to-end production-readiness test must record. */
+export const PRODUCTION_READINESS_PASS = "production_readiness_passed";
+
+/** Secret reference names for one environment. Test and production never overlap. */
+export function secretRefsFor(def: VendorDef, env: "sandbox" | "production"): string[] {
+  return def.secretRefs[env];
 }
 
 /**
@@ -113,11 +127,16 @@ export function vendorGate(
   if (expectedEnv === "production") {
     if (row.state !== "production_verified") return "production_not_verified";
     if (!row.evidence_expires_at || new Date(row.evidence_expires_at) <= new Date()) return "evidence_expired";
+    if (row.capabilities?.baa_verified !== true) return "baa_evidence_missing";
+    if (row.capabilities?.mfa_enforced !== true) return "vendor_portal_mfa_not_enforced";
+    if (row.last_test_result !== PRODUCTION_READINESS_PASS) return "production_readiness_test_missing";
   } else if (row.state === "not_contracted" || row.state === "baa_pending" || row.state === "sandbox_pending") {
     return "sandbox_not_configured";
   }
-  const missing = def.secretRefs.filter((r) => !row.secret_ref_names.includes(r));
-  if (missing.length) return "secret_references_missing";
+  const expected = secretRefsFor(def, expectedEnv);
+  const otherEnv = expectedEnv === "production" ? "sandbox" : "production";
+  if (secretRefsFor(def, otherEnv).some((r) => row.secret_ref_names.includes(r))) return "cross_environment_secret_reference";
+  if (expected.some((r) => !row.secret_ref_names.includes(r))) return "secret_references_missing";
   if (def.requiresPartnerPackage) return "vendor_partner_package_required";
   return null;
 }

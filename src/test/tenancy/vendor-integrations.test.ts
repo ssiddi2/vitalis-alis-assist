@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { isTenantScoped, loadEffectivePolicies } from "./policyParser";
-import { vendorGate, VENDORS, type OnboardingRow } from "../../../supabase/functions/_shared/vendors";
+import { PRODUCTION_READINESS_PASS, vendorGate, VENDORS, type OnboardingRow } from "../../../supabase/functions/_shared/vendors";
 import { assertAllowedUrl, redact, GatewayError } from "../../../supabase/functions/_shared/gateway";
 import { EVENT_ALLOWLIST, isReplay, verifyCallback } from "../../../supabase/functions/_shared/vendorCallbacks";
 import {
@@ -25,7 +25,7 @@ const TABLES = ["vendor_onboarding", "vendor_onboarding_events", "vendor_callbac
 const row = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   id: "r", hospital_id: "h", vendor_key: "stedi", environment: "sandbox",
   state: "sandbox_configured", capabilities: { eligibility_270_271: true },
-  secret_ref_names: ["STEDI_API_KEY_REF"], last_test_result: "passed",
+  secret_ref_names: ["STEDI_TEST_API_KEY_REF"], last_test_result: "passed",
   evidence_expires_at: new Date(Date.now() + 86_400_000).toISOString(),
   ...over,
 });
@@ -62,11 +62,19 @@ describe("vendor onboarding tenancy", () => {
 
 describe("fail-closed vendor gate", () => {
   it("blocks production unless the profile is verified with unexpired evidence", () => {
-    expect(vendorGate(row({ environment: "production", state: "production_review" }), "eligibility_270_271", "production"))
-      .toBe("production_not_verified");
-    expect(vendorGate(row({ environment: "production", state: "production_verified", evidence_expires_at: "2020-01-01T00:00:00Z" }), "eligibility_270_271", "production"))
-      .toBe("evidence_expired");
-    expect(vendorGate(row({ environment: "production", state: "production_verified" }), "eligibility_270_271", "production")).toBeNull();
+    const prod = (over: Partial<OnboardingRow> = {}) => row({
+      environment: "production", state: "production_verified",
+      secret_ref_names: ["STEDI_PROD_API_KEY_REF"],
+      capabilities: { eligibility_270_271: true, baa_verified: true, mfa_enforced: true },
+      last_test_result: PRODUCTION_READINESS_PASS, ...over,
+    });
+    expect(vendorGate(prod({ state: "production_review" }), "eligibility_270_271", "production")).toBe("production_not_verified");
+    expect(vendorGate(prod({ evidence_expires_at: "2020-01-01T00:00:00Z" }), "eligibility_270_271", "production")).toBe("evidence_expired");
+    expect(vendorGate(prod({ capabilities: { eligibility_270_271: true, mfa_enforced: true } }), "eligibility_270_271", "production")).toBe("baa_evidence_missing");
+    expect(vendorGate(prod({ capabilities: { eligibility_270_271: true, baa_verified: true } }), "eligibility_270_271", "production")).toBe("vendor_portal_mfa_not_enforced");
+    expect(vendorGate(prod({ last_test_result: "passed" }), "eligibility_270_271", "production")).toBe("production_readiness_test_missing");
+    expect(vendorGate(prod({ secret_ref_names: ["STEDI_TEST_API_KEY_REF"] }), "eligibility_270_271", "production")).toBe("cross_environment_secret_reference");
+    expect(vendorGate(prod(), "eligibility_270_271", "production")).toBeNull();
   });
 
   it("keeps sandbox and production strictly separate", () => {
@@ -94,12 +102,12 @@ describe("fail-closed vendor gate", () => {
     expect(VENDORS.dosespot.requiresPartnerPackage).toBe(true);
     expect(vendorGate(row({
       vendor_key: "dosespot", capabilities: { new_rx: true },
-      secret_ref_names: VENDORS.dosespot.secretRefs,
+      secret_ref_names: VENDORS.dosespot.secretRefs.sandbox,
     }), "new_rx", "sandbox")).toBe("vendor_partner_package_required");
   });
 
   it("DoseSpot separates controlled from non-controlled prescribing", () => {
-    const nonControlled = row({ vendor_key: "dosespot", capabilities: { new_rx: true }, secret_ref_names: VENDORS.dosespot.secretRefs });
+    const nonControlled = row({ vendor_key: "dosespot", capabilities: { new_rx: true }, secret_ref_names: VENDORS.dosespot.secretRefs.sandbox });
     expect(doseSpotPrescribingGate(nonControlled, true)).not.toBeNull();
     expect(doseSpotPrescribingGate(nonControlled, false)).toBe("vendor_partner_package_required");
     expect(doseSpotPrescribingGate(row({ vendor_key: "dosespot", capabilities: { epcs: false } }), true)).not.toBeNull();
@@ -207,7 +215,8 @@ describe("onboarding packets and claim guards", () => {
 
   it("stores secret reference names only — never values", () => {
     for (const def of Object.values(VENDORS)) {
-      for (const ref of def.secretRefs) expect(ref).toMatch(/^[A-Z][A-Z0-9_]+_REF$/);
+      for (const ref of [...def.secretRefs.sandbox, ...def.secretRefs.production]) expect(ref).toMatch(/^[A-Z][A-Z0-9_]+_REF$/);
+      expect(def.secretRefs.sandbox.filter((r) => def.secretRefs.production.includes(r))).toEqual([]);
     }
   });
 

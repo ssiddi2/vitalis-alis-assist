@@ -69,7 +69,7 @@ export const VENDORS: Record<VendorKey, VendorMeta> = {
     tagline: 'Embedded Surescripts-certified ePrescribing',
     domain: 'Medications / e-Rx',
     capabilities: ['new_rx', 'cancel_rx', 'rx_renewal', 'rx_change', 'rx_fill', 'med_history', 'epcs'],
-    secretRefs: ['DOSESPOT_CLIENT_ID_REF', 'DOSESPOT_CLIENT_SECRET_REF', 'DOSESPOT_CLINIC_ID_REF'],
+    secretRefs: ['DOSESPOT_{TEST|PROD}_CLIENT_ID_REF', 'DOSESPOT_{TEST|PROD}_CLIENT_SECRET_REF', 'DOSESPOT_{TEST|PROD}_CLINIC_ID_REF'],
     artifacts: [
       { artifact: 'Signed Jumpstart agreement + BAA', unlocks: 'Move sandbox profile out of not_contracted' },
       { artifact: 'Partner package (hosts, SSO/launch rules, endpoint + signing schema)', unlocks: 'Enables the embedded launch boundary and live transport' },
@@ -88,7 +88,7 @@ export const VENDORS: Record<VendorKey, VendorMeta> = {
     tagline: '270/271, 837P, 276/277, 277CA, 835 and 275 attachments',
     domain: 'Revenue cycle',
     capabilities: ['payer_directory', 'enrollment', 'eligibility_270_271', 'claim_837p', 'claim_status_276_277', 'ack_277ca', 'era_835', 'attachment_275'],
-    secretRefs: ['STEDI_API_KEY_REF'],
+    secretRefs: ['STEDI_TEST_API_KEY_REF (sandbox)', 'STEDI_PROD_API_KEY_REF (production)'],
     artifacts: [
       { artifact: 'Contract + BAA + pricing schedule', unlocks: 'Sandbox provisioning' },
       { artifact: 'Test API key', unlocks: 'Payer directory + mock eligibility test connection' },
@@ -107,7 +107,7 @@ export const VENDORS: Record<VendorKey, VendorMeta> = {
     tagline: 'FHIR R4 / OAuth 2.0 national lab ordering and results',
     domain: 'Diagnostics',
     capabilities: ['oauth_token', 'iframe_ordering', 'service_request', 'diagnostic_report', 'observation', 'document_reference', 'subscription'],
-    secretRefs: ['HEALTH_GORILLA_CLIENT_ID_REF', 'HEALTH_GORILLA_CLIENT_SECRET_REF', 'HEALTH_GORILLA_TOKEN_URL_REF'],
+    secretRefs: ['HEALTH_GORILLA_{SANDBOX|PROD}_CLIENT_ID_REF', 'HEALTH_GORILLA_{SANDBOX|PROD}_CLIENT_SECRET_REF'],
     artifacts: [
       { artifact: 'Contract + BAA', unlocks: 'Sandbox tenant provisioning' },
       { artifact: 'OAuth client id/secret + token URL', unlocks: 'Server-side token handling and sandbox FHIR reads' },
