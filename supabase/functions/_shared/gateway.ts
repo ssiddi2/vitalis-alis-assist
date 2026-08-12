@@ -56,6 +56,8 @@ export interface GatewayCall {
   method?: "GET" | "POST";
   headers?: Record<string, string>;
   body?: unknown;
+  /** Send the body as application/x-www-form-urlencoded (OAuth token calls). */
+  form?: boolean;
   /** Stable per logical operation: makes retries and vendor replays safe. */
   idempotencyKey: string;
   correlationId: string;
@@ -89,18 +91,28 @@ export async function gatewayFetch(call: GatewayCall): Promise<GatewayResult> {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
     try {
+      const isGet = call.method === "GET";
       const res = await fetch(url, {
         method: call.method ?? "POST",
         signal: ac.signal,
+        // Never follow a redirect: it could leave the allowlisted vendor host
+        // and carry the Authorization header to an unapproved origin.
+        redirect: "manual",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": call.form ? "application/x-www-form-urlencoded" : "application/json",
           "Accept": "application/json",
           "Idempotency-Key": call.idempotencyKey,
           "X-Correlation-Id": call.correlationId,
           ...(call.headers ?? {}),
         },
-        body: call.method === "GET" ? undefined : JSON.stringify(call.body ?? {}),
+        body: isGet ? undefined
+          : call.form ? new URLSearchParams(call.body as Record<string, string>).toString()
+          : JSON.stringify(call.body ?? {}),
       });
+      if (res.status >= 300 && res.status < 400) {
+        log(call, res.status, Date.now() - started, attempt, "redirect_refused");
+        throw new GatewayError("redirect_refused", 502);
+      }
       lastStatus = res.status;
       const text = await res.text();
       let json: unknown = null;
