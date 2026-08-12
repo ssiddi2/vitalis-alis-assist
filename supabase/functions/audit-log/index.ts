@@ -90,18 +90,24 @@ Deno.serve(async (req) => {
       ...(body.hospital_id && !hospitalIdUuid ? { external_hospital_id: body.hospital_id } : {}),
     };
 
-    // Call the security definer function to insert audit log
-    const { data, error } = await supabase.rpc('log_audit_event', {
-      p_action_type: body.action_type,
-      p_resource_type: body.resource_type,
-      p_resource_id: body.resource_id || null,
-      p_patient_id: patientIdUuid,
-      p_hospital_id: hospitalIdUuid,
-      p_metadata: metadata,
-      p_ip_address: ipAddress,
-      p_user_agent: userAgent,
-      p_session_id: body.session_id || null,
-    });
+    // Insert with the service-role client (the SECURITY DEFINER routine is backend-only).
+    // user_id comes from the verified JWT, never from the request body.
+    const { data, error } = await adminClient()
+      .from('audit_logs')
+      .insert({
+        user_id: user.id,
+        action_type: body.action_type,
+        resource_type: body.resource_type,
+        resource_id: body.resource_id || null,
+        patient_id: patientIdUuid,
+        hospital_id: hospitalIdUuid,
+        metadata,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        session_id: body.session_id || null,
+      })
+      .select('id')
+      .single();
 
     if (error) {
       console.error('Error logging audit event:', error);
@@ -112,7 +118,8 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, log_id: data }),
+      JSON.stringify({ success: true, log_id: data?.id }),
+
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
