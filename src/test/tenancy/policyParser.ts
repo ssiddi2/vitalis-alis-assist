@@ -58,6 +58,25 @@ export function loadEffectivePolicies(): Map<string, Policy[]> {
     for (const raw of statements(sql)) {
       const stmt = raw.replace(/--[^\n]*/g, "").trim();
 
+      // Policies created dynamically inside a DO $$ ... $$ block: expand the
+      // CREATE POLICY templates over every table named in the block.
+      if (/^DO\s*\$\$/i.test(stmt)) {
+        const tables = new Set<string>();
+        for (const arr of stmt.matchAll(/ARRAY\s*\[([^\]]+)\]/gi)) {
+          for (const m of arr[1].matchAll(/'([a-z0-9_]+)'/gi)) tables.add(m[1]);
+        }
+        for (const m of stmt.matchAll(/,\s*'([a-z0-9_]+)'\s*\)/gi)) tables.add(m[1]);
+        for (const m of stmt.matchAll(/CREATE\s+POLICY\s+("[^"]+")\s+ON\s+\S+\s+FOR\s+(ALL|SELECT|INSERT|UPDATE|DELETE)/gi)) {
+          const name = unquote(m[1]);
+          const cmd = m[2].toUpperCase() as Policy["cmd"];
+          for (const table of tables) {
+            const list = (byTable.get(table) ?? []).filter((p) => !(p.name === name && p.cmd === cmd));
+            byTable.set(table, [...list, { table, name, cmd, expr: stmt }]);
+          }
+        }
+        continue;
+      }
+
       const drop = /^DROP\s+POLICY\s+(?:IF\s+EXISTS\s+)?("[^"]+"|\S+)\s+ON\s+(\S+)/is.exec(stmt);
       if (drop) {
         const table = strip(drop[2]);
@@ -90,5 +109,6 @@ export function isTenantScoped(expr: string): boolean {
 /** True when the predicate is admin-only (acceptable: admins are cross-tenant by design). */
 export function isAdminOnly(expr: string): boolean {
   const e = expr.replace(/\s+/g, " ").trim().toLowerCase();
-  return /^has_role\(\s*auth\.uid\(\)\s*,\s*'admin'::app_role\s*\)$/.test(e);
+  return /^\(?\s*(?:public\.)?has_role\(\s*auth\.uid\(\)\s*,\s*'admin'(?:::app_role)?\s*\)\s*\)?$/.test(e);
 }
+
