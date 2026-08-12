@@ -68,3 +68,65 @@ export function estimate(
   const patient = Math.min(totalCharge, copay + deductible + coins);
   return { basis: 'insurance' as const, patientResponsibility: patient, planPays: totalCharge - patient };
 }
+
+/* ---------- VirtualisNote Coverage & Claim workspace ---------- */
+
+export type ConnectionLabel = 'not_connected' | 'sandbox' | 'production_verified';
+export interface ConnectionState { label: ConnectionLabel; environment: 'sandbox' | 'production' | null; blocked: string | null }
+
+export const CONNECTION_COPY: Record<ConnectionLabel, string> = {
+  not_connected: 'NOT CONNECTED',
+  sandbox: 'SANDBOX / TEST DATA',
+  production_verified: 'PRODUCTION VERIFIED',
+};
+
+export interface ClaimCapabilities {
+  can_submit: boolean;
+  can_initiate_eligibility: boolean;
+  eligibility: ConnectionState;
+  claim: ConnectionState;
+  attachments_enabled: boolean;
+}
+
+export interface ClaimReadiness {
+  found: boolean;
+  claim: {
+    id: string; status: string; billing_type: string; total_charge: number;
+    place_of_service: string | null; denial_code: string | null; denial_reason: string | null;
+    submitted_at: string | null; encounter_id: string; patient_id: string;
+  } | null;
+  readiness?: { can_approve?: boolean; blocks?: string[]; status?: string } | null;
+  note_signed?: boolean;
+  line_count?: number;
+  diagnosis_count?: number;
+  findings?: Array<{ rule_code: string; severity: string; message: string }>;
+  connection: ConnectionState;
+  can_submit: boolean;
+}
+
+export interface ClaimPreview {
+  transaction: string; billing_type: string; place_of_service: string | null; payer: string | null;
+  rendering_provider_npi: string | null; billing_provider_npi: string | null; total_charge: number;
+  diagnoses: Array<{ code: string; code_set: string }>;
+  service_lines: Array<{ cpt_code: string; units: number; charge_amount: number; modifiers: string[]; diagnosis_pointers: number[] }>;
+}
+
+export const claimCapabilities = (hospital_id: string) =>
+  call<ClaimCapabilities>({ action: 'capabilities', hospital_id });
+
+export const claimReadiness = (hospital_id: string, encounter_id: string) =>
+  call<ClaimReadiness>({ action: 'readiness', hospital_id, encounter_id });
+
+export const claimPreview = (hospital_id: string, claim_id: string) =>
+  call<{ preview: ClaimPreview; connection: ConnectionState }>({ action: 'preview', hospital_id, claim_id });
+
+export const checkEncounterEligibility = (hospital_id: string, patient_id: string, encounter_id?: string, coverage_id?: string) =>
+  call<{ status: string; reason?: string; connection: ConnectionState; benefits: null | Record<string, unknown> }>({
+    action: 'eligibility_check', hospital_id, patient_id, encounter_id, coverage_id,
+  });
+
+/** Submission always carries an explicit human attestation — never auto-submitted. */
+export const submitClaimAttested = (hospital_id: string, claim_id: string, correction_reason?: string) =>
+  call<{ status: string; reason?: string; correlation_id?: string; blocks?: string[] }>({
+    action: 'submit', hospital_id, claim_id, attestation: true, correction_reason,
+  });
