@@ -24,6 +24,7 @@ const PHI_TABLES = [
   "order_sets",
   "note_versions",
   "note_addenda",
+  "consultation_notes",
 ] as const;
 
 const policies = loadEffectivePolicies();
@@ -68,5 +69,44 @@ describe("multi-tenant RLS: no cross-hospital access", () => {
         expect(p.expr.toLowerCase(), describePolicy(p)).not.toContain("to anon");
       }
     }
+  });
+});
+
+describe("scoped write paths added by the RLS hardening pass", () => {
+  const of = (table: string, cmd: string) =>
+    (policies.get(table) ?? []).filter((p) => p.cmd === cmd);
+
+  it("consultation_notes INSERT requires clinician/admin membership, thread+patient match and created_by", () => {
+    const ins = of("consultation_notes", "INSERT");
+    expect(ins).toHaveLength(1);
+    const expr = ins[0].expr.toLowerCase();
+    expect(expr).toContain("has_role(auth.uid(), 'clinician')");
+    expect(expr).toContain("created_by = auth.uid()");
+    expect(expr).toContain("hospital_users");
+    expect(expr).toContain("ct.patient_id = consultation_notes.patient_id");
+    expect(expr).toContain("p.hospital_id = ct.hospital_id");
+  });
+
+  it("consultation_notes UPDATE cannot re-point a note at another thread or patient", () => {
+    const upd = of("consultation_notes", "UPDATE");
+    const expr = upd[upd.length - 1].expr.toLowerCase();
+    expect(expr).toContain("with check");
+    expect(expr.split("with check")[1]).toContain("ct.patient_id = consultation_notes.patient_id");
+  });
+
+  it("patient_vitals writes are hospital- and patient-scoped, with no clinician delete", () => {
+    const writes = (policies.get("patient_vitals") ?? []).filter((p) => p.cmd !== "SELECT");
+    expect(writes.length).toBeGreaterThan(0);
+    for (const p of writes) {
+      expect(p.expr.toLowerCase(), p.name).toContain("hospital_users");
+      expect(p.expr.toLowerCase(), p.name).toContain("patient_vitals.patient_id");
+    }
+    // clinicians get INSERT + UPDATE only; deletion stays admin-only (FOR ALL, same hospital)
+    const clinician = writes.filter((p) => /clinician/i.test(p.expr));
+    expect(clinician.map((p) => p.cmd).sort()).toEqual(["INSERT", "UPDATE"]);
+    const admin = writes.filter((p) => p.cmd === "ALL");
+    expect(admin).toHaveLength(1);
+    expect(admin[0].expr.toLowerCase()).toContain("has_role(auth.uid(), 'admin')");
+    expect(admin[0].expr.toLowerCase()).toContain("with check");
   });
 });
