@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, FileSignature, Shield, Save, Sparkles, Loader2, Plug, HardDrive } from 'lucide-react';
+import { Check, FileSignature, Shield, Save, Sparkles, Loader2, Plug, HardDrive, Lock, History, UserCheck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { VoiceDictationButton } from './VoiceDictationButton';
 import { ClinicalNote, NoteType } from '@/types/hospital';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -13,6 +14,9 @@ import { loadSmartSession } from '@/lib/smart';
 import { writeNoteToEhr } from '@/lib/ehrWriteback';
 import { cn } from '@/lib/utils';
 import { DsiInfo } from '@/components/virtualis/DsiInfo';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNoteIntegrity } from '@/hooks/useNoteIntegrity';
+import { addAddendum, cosignNote, signNote } from '@/lib/noteIntegrity';
 
 const NOTE_TYPE_LABELS: Record<NoteType, string> = {
   progress: 'Progress Note',
@@ -54,8 +58,15 @@ export function NoteEditorModal({
   const [accepted, setAccepted] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [addReason, setAddReason] = useState('');
+  const [addText, setAddText] = useState('');
+  const [busy, setBusy] = useState(false);
   const { logSign, logAction } = useAuditLog();
   const { selectedHospital } = useHospital();
+  const { user } = useAuth();
+
+  const isSigned = !!note && (note.status === 'signed' || note.status === 'amended');
+  const { versions, addenda, refresh } = useNoteIntegrity(note?.id, open && isSigned);
 
   const smart = loadSmartSession();
   const issHost = (() => {
@@ -142,19 +153,21 @@ export function NoteEditorModal({
   };
 
   const handleSign = async () => {
+    if (!selectedHospital?.id) {
+      toast.error('No facility selected');
+      return;
+    }
     setSigned(true);
 
-    const { error } = await supabase
-      .from('clinical_notes')
-      .update({
-        content: { subjective, objective, assessment, plan, billing_codes: accepted },
-        status: 'signed' as const,
-        signed_at: new Date().toISOString(),
-      })
-      .eq('id', note.id);
+    const { error } = await signNote({
+      note_id: note.id,
+      hospital_id: selectedHospital.id,
+      lock_version: note.lock_version ?? undefined,
+      content: { subjective, objective, assessment, plan, billing_codes: accepted },
+    });
 
     if (error) {
-      toast.error('Failed to sign note');
+      toast.error(error);
       setSigned(false);
       return;
     }
@@ -197,7 +210,7 @@ export function NoteEditorModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <FileSignature className="h-5 w-5 text-info" />
-            {mode === 'sign' ? 'Review & Sign' : 'Edit Note'}
+            {isSigned ? 'Signed Note' : mode === 'sign' ? 'Review & Sign' : 'Edit Note'}
           </DialogTitle>
           <DialogDescription asChild>
             <span className="text-[10px] px-2 py-0.5 bg-info/10 text-info rounded-full font-semibold uppercase">
@@ -225,7 +238,7 @@ export function NoteEditorModal({
               rows={3}
               maxLength={20000}
               className="text-xs resize-none bg-white border-slate-200"
-              disabled={signed || generating}
+              disabled={signed || generating || isSigned}
             />
             <div className="flex items-center justify-end">
               <DsiInfo interventionId="ambient-note" />
@@ -233,7 +246,7 @@ export function NoteEditorModal({
             <Button
               type="button"
               onClick={handleGenerate}
-              disabled={generating || signed}
+              disabled={generating || signed || isSigned}
               className="w-full h-9 text-xs rounded-xl btn-primary-gradient"
             >
               {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-2" />}
@@ -296,7 +309,8 @@ export function NoteEditorModal({
                 rows={3}
                 maxLength={8000}
                 className="text-xs resize-none bg-secondary/50 border-border/50 focus:border-primary/50"
-                disabled={signed}
+                disabled={signed || isSigned}
+                readOnly={isSigned}
               />
             </div>
           ))}
