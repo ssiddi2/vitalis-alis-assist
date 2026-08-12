@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_attestations: {
+        Row: {
+          attested_at: string
+          attested_by: string
+          hospital_id: string
+          id: string
+          kind: string
+          notes: string | null
+          roles_granted: string[]
+          user_id: string
+        }
+        Insert: {
+          attested_at?: string
+          attested_by: string
+          hospital_id: string
+          id?: string
+          kind: string
+          notes?: string | null
+          roles_granted?: string[]
+          user_id: string
+        }
+        Update: {
+          attested_at?: string
+          attested_by?: string
+          hospital_id?: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          roles_granted?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_attestations_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       acuity_feedback: {
         Row: {
           acuity_id: string | null
@@ -1418,6 +1459,363 @@ export type Database = {
           },
         ]
       }
+      clinical_protocols: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          change_summary: string | null
+          content: Json
+          created_at: string
+          created_by: string | null
+          effective_end: string | null
+          effective_start: string | null
+          generated_by_ai: boolean
+          hospital_id: string
+          id: string
+          kind: string
+          lock_version: number
+          next_review_date: string | null
+          owner_user_id: string | null
+          review_cadence_months: number
+          scope: string | null
+          service_line_id: string | null
+          source_evidence: string | null
+          state_code: string | null
+          status: string
+          supersedes_id: string | null
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          change_summary?: string | null
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          effective_end?: string | null
+          effective_start?: string | null
+          generated_by_ai?: boolean
+          hospital_id: string
+          id?: string
+          kind: string
+          lock_version?: number
+          next_review_date?: string | null
+          owner_user_id?: string | null
+          review_cadence_months?: number
+          scope?: string | null
+          service_line_id?: string | null
+          source_evidence?: string | null
+          state_code?: string | null
+          status?: string
+          supersedes_id?: string | null
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          change_summary?: string | null
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          effective_end?: string | null
+          effective_start?: string | null
+          generated_by_ai?: boolean
+          hospital_id?: string
+          id?: string
+          kind?: string
+          lock_version?: number
+          next_review_date?: string | null
+          owner_user_id?: string | null
+          review_cadence_months?: number
+          scope?: string | null
+          service_line_id?: string | null
+          source_evidence?: string | null
+          state_code?: string | null
+          status?: string
+          supersedes_id?: string | null
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_protocols_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_protocols_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_protocols_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      complaints: {
+        Row: {
+          acknowledged_at: string | null
+          category: string
+          created_at: string
+          created_by: string
+          hospital_id: string
+          id: string
+          owner_id: string | null
+          patient_ref: string | null
+          received_at: string
+          resolution: string | null
+          resolved_at: string | null
+          source: string
+          status: string
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          category: string
+          created_at?: string
+          created_by: string
+          hospital_id: string
+          id?: string
+          owner_id?: string | null
+          patient_ref?: string | null
+          received_at?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          source?: string
+          status?: string
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string
+          hospital_id?: string
+          id?: string
+          owner_id?: string | null
+          patient_ref?: string | null
+          received_at?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          source?: string
+          status?: string
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaints_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_patient_ref_fkey"
+            columns: ["patient_ref"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_documents: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          body_hash: string
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          effective_end: string | null
+          effective_start: string | null
+          hospital_id: string
+          id: string
+          jurisdiction_state_code: string | null
+          lock_version: number
+          next_review_date: string | null
+          owner_user_id: string | null
+          purpose: string
+          review_cadence_months: number
+          service_line_id: string | null
+          source_evidence: string | null
+          status: string
+          supersedes_id: string | null
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body_hash: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_end?: string | null
+          effective_start?: string | null
+          hospital_id: string
+          id?: string
+          jurisdiction_state_code?: string | null
+          lock_version?: number
+          next_review_date?: string | null
+          owner_user_id?: string | null
+          purpose: string
+          review_cadence_months?: number
+          service_line_id?: string | null
+          source_evidence?: string | null
+          status?: string
+          supersedes_id?: string | null
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body_hash?: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_end?: string | null
+          effective_start?: string | null
+          hospital_id?: string
+          id?: string
+          jurisdiction_state_code?: string | null
+          lock_version?: number
+          next_review_date?: string | null
+          owner_user_id?: string | null
+          purpose?: string
+          review_cadence_months?: number
+          service_line_id?: string | null
+          source_evidence?: string | null
+          status?: string
+          supersedes_id?: string | null
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_documents_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_documents_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "consent_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_records: {
+        Row: {
+          accepted_at: string | null
+          consent_document_id: string
+          created_at: string
+          created_by: string | null
+          declined_at: string | null
+          evidence_hash: string
+          hospital_id: string
+          id: string
+          method: string
+          patient_id: string
+          presented_at: string
+          purpose: string
+          signer_name: string | null
+          signer_relationship: string
+          updated_at: string
+          withdrawal_reason: string | null
+          withdrawn_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          consent_document_id: string
+          created_at?: string
+          created_by?: string | null
+          declined_at?: string | null
+          evidence_hash: string
+          hospital_id: string
+          id?: string
+          method?: string
+          patient_id: string
+          presented_at?: string
+          purpose: string
+          signer_name?: string | null
+          signer_relationship?: string
+          updated_at?: string
+          withdrawal_reason?: string | null
+          withdrawn_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          consent_document_id?: string
+          created_at?: string
+          created_by?: string | null
+          declined_at?: string | null
+          evidence_hash?: string
+          hospital_id?: string
+          id?: string
+          method?: string
+          patient_id?: string
+          presented_at?: string
+          purpose?: string
+          signer_name?: string | null
+          signer_relationship?: string
+          updated_at?: string
+          withdrawal_reason?: string | null
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_records_consent_document_id_fkey"
+            columns: ["consent_document_id"]
+            isOneToOne: false
+            referencedRelation: "consent_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_records_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consent_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consult_requests: {
         Row: {
           accepted_at: string | null
@@ -1725,6 +2123,56 @@ export type Database = {
             columns: ["specialist_id"]
             isOneToOne: false
             referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      continuity_exercises: {
+        Row: {
+          created_at: string
+          findings: string | null
+          hospital_id: string
+          id: string
+          kind: string
+          next_due_date: string | null
+          performed_at: string
+          performed_by: string
+          result: string
+          rpo_minutes: number | null
+          rto_minutes: number | null
+        }
+        Insert: {
+          created_at?: string
+          findings?: string | null
+          hospital_id: string
+          id?: string
+          kind: string
+          next_due_date?: string | null
+          performed_at?: string
+          performed_by: string
+          result: string
+          rpo_minutes?: number | null
+          rto_minutes?: number | null
+        }
+        Update: {
+          created_at?: string
+          findings?: string | null
+          hospital_id?: string
+          id?: string
+          kind?: string
+          next_due_date?: string | null
+          performed_at?: string
+          performed_by?: string
+          result?: string
+          rpo_minutes?: number | null
+          rto_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "continuity_exercises_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -3039,6 +3487,88 @@ export type Database = {
         }
         Relationships: []
       }
+      governance_approvals: {
+        Row: {
+          approver_id: string
+          approver_role: string
+          created_at: string
+          decision: string
+          hospital_id: string
+          id: string
+          rationale: string
+          subject_id: string
+          subject_type: string
+        }
+        Insert: {
+          approver_id: string
+          approver_role: string
+          created_at?: string
+          decision: string
+          hospital_id: string
+          id?: string
+          rationale: string
+          subject_id: string
+          subject_type: string
+        }
+        Update: {
+          approver_id?: string
+          approver_role?: string
+          created_at?: string
+          decision?: string
+          hospital_id?: string
+          id?: string
+          rationale?: string
+          subject_id?: string
+          subject_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "governance_approvals_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      governance_roles: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          hospital_id: string
+          id: string
+          revoked_at: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          hospital_id: string
+          id?: string
+          revoked_at?: string | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          hospital_id?: string
+          id?: string
+          revoked_at?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "governance_roles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hospital_users: {
         Row: {
           access_level: string
@@ -3106,6 +3636,138 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      identity_verification_profiles: {
+        Row: {
+          assurance_level: string
+          capabilities: Json
+          created_at: string
+          environment: string
+          hospital_id: string
+          id: string
+          last_test_at: string | null
+          last_test_result: string | null
+          secret_ref_names: string[]
+          updated_at: string
+          vendor: string
+          verification_status: string
+        }
+        Insert: {
+          assurance_level?: string
+          capabilities?: Json
+          created_at?: string
+          environment?: string
+          hospital_id: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          secret_ref_names?: string[]
+          updated_at?: string
+          vendor: string
+          verification_status?: string
+        }
+        Update: {
+          assurance_level?: string
+          capabilities?: Json
+          created_at?: string
+          environment?: string
+          hospital_id?: string
+          id?: string
+          last_test_at?: string | null
+          last_test_result?: string | null
+          secret_ref_names?: string[]
+          updated_at?: string
+          vendor?: string
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_verification_profiles_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      identity_verifications: {
+        Row: {
+          assurance_level: string
+          created_at: string
+          created_by: string | null
+          exception_reason: string | null
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          metadata: Json
+          patient_id: string | null
+          profile_id: string | null
+          reference_id: string | null
+          result: string
+          reviewer_id: string | null
+          subject_type: string
+          subject_user_id: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          assurance_level?: string
+          created_at?: string
+          created_by?: string | null
+          exception_reason?: string | null
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          metadata?: Json
+          patient_id?: string | null
+          profile_id?: string | null
+          reference_id?: string | null
+          result: string
+          reviewer_id?: string | null
+          subject_type: string
+          subject_user_id?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          assurance_level?: string
+          created_at?: string
+          created_by?: string | null
+          exception_reason?: string | null
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          metadata?: Json
+          patient_id?: string | null
+          profile_id?: string | null
+          reference_id?: string | null
+          result?: string
+          reviewer_id?: string | null
+          subject_type?: string
+          subject_user_id?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_verifications_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "identity_verifications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "identity_verifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "identity_verification_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       imaging_studies: {
         Row: {
@@ -3230,6 +3892,71 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incident_reports: {
+        Row: {
+          affected_record_estimate: number | null
+          closed_at: string | null
+          contained_at: string | null
+          created_at: string
+          discovered_at: string
+          hospital_id: string
+          id: string
+          kind: string
+          notification_assessment: string | null
+          notification_required: boolean | null
+          reported_by: string
+          risk_assessment: Json
+          severity: string
+          status: string
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          affected_record_estimate?: number | null
+          closed_at?: string | null
+          contained_at?: string | null
+          created_at?: string
+          discovered_at?: string
+          hospital_id: string
+          id?: string
+          kind: string
+          notification_assessment?: string | null
+          notification_required?: boolean | null
+          reported_by: string
+          risk_assessment?: Json
+          severity?: string
+          status?: string
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          affected_record_estimate?: number | null
+          closed_at?: string | null
+          contained_at?: string | null
+          created_at?: string
+          discovered_at?: string
+          hospital_id?: string
+          id?: string
+          kind?: string
+          notification_assessment?: string | null
+          notification_required?: boolean | null
+          reported_by?: string
+          risk_assessment?: Json
+          severity?: string
+          status?: string
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_reports_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -3412,6 +4139,72 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      launch_readiness_gates: {
+        Row: {
+          blocker: string | null
+          created_at: string
+          created_by: string | null
+          evidence_ref: string | null
+          gate_key: string
+          gate_type: string
+          hospital_id: string
+          id: string
+          service_line_id: string | null
+          state_code: string
+          status: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          blocker?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence_ref?: string | null
+          gate_key: string
+          gate_type?: string
+          hospital_id: string
+          id?: string
+          service_line_id?: string | null
+          state_code: string
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          blocker?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence_ref?: string | null
+          gate_key?: string
+          gate_type?: string
+          hospital_id?: string
+          id?: string
+          service_line_id?: string | null
+          state_code?: string
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "launch_readiness_gates_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "launch_readiness_gates_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -4768,6 +5561,57 @@ export type Database = {
         }
         Relationships: []
       }
+      readiness_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_code: string
+          from_status: string | null
+          gate_id: string | null
+          hospital_id: string
+          id: string
+          metadata: Json
+          to_status: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_code: string
+          from_status?: string | null
+          gate_id?: string | null
+          hospital_id: string
+          id?: string
+          metadata?: Json
+          to_status?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_code?: string
+          from_status?: string | null
+          gate_id?: string | null
+          hospital_id?: string
+          id?: string
+          metadata?: Json
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "readiness_events_gate_id_fkey"
+            columns: ["gate_id"]
+            isOneToOne: false
+            referencedRelation: "launch_readiness_gates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readiness_events_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           completed_date: string | null
@@ -5112,6 +5956,71 @@ export type Database = {
           },
         ]
       }
+      staff_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          credential_type: string
+          effective_date: string | null
+          expiration_date: string | null
+          hospital_id: string
+          id: string
+          issuing_authority: string | null
+          notes: string | null
+          psv_evidence_ref: string | null
+          psv_source: string | null
+          psv_verified_at: string | null
+          state_code: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          credential_type: string
+          effective_date?: string | null
+          expiration_date?: string | null
+          hospital_id: string
+          id?: string
+          issuing_authority?: string | null
+          notes?: string | null
+          psv_evidence_ref?: string | null
+          psv_source?: string | null
+          psv_verified_at?: string | null
+          state_code?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          credential_type?: string
+          effective_date?: string | null
+          expiration_date?: string | null
+          hospital_id?: string
+          id?: string
+          issuing_authority?: string | null
+          notes?: string | null
+          psv_evidence_ref?: string | null
+          psv_source?: string | null
+          psv_verified_at?: string | null
+          state_code?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_credentials_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staged_orders: {
         Row: {
           conversation_id: string | null
@@ -5315,6 +6224,72 @@ export type Database = {
           },
         ]
       }
+      support_cases: {
+        Row: {
+          assignee_id: string | null
+          category: string
+          created_at: string
+          description: string
+          hospital_id: string
+          id: string
+          patient_ref: string | null
+          priority: string
+          requester_id: string
+          resolution: string | null
+          resolved_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          category: string
+          created_at?: string
+          description: string
+          hospital_id: string
+          id?: string
+          patient_ref?: string | null
+          priority?: string
+          requester_id: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          hospital_id?: string
+          id?: string
+          patient_ref?: string | null
+          priority?: string
+          requester_id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_cases_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_cases_patient_ref_fkey"
+            columns: ["patient_ref"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_channels: {
         Row: {
           channel_type: Database["public"]["Enums"]["channel_type"]
@@ -5491,6 +6466,65 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_agreements: {
+        Row: {
+          baa_executed_at: string | null
+          baa_status: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          phi_access: boolean
+          risk_review_at: string | null
+          service: string
+          status: string
+          updated_at: string
+          vendor: string
+        }
+        Insert: {
+          baa_executed_at?: string | null
+          baa_status?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          phi_access?: boolean
+          risk_review_at?: string | null
+          service: string
+          status?: string
+          updated_at?: string
+          vendor: string
+        }
+        Update: {
+          baa_executed_at?: string | null
+          baa_status?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          phi_access?: boolean
+          risk_review_at?: string | null
+          service?: string
+          status?: string
+          updated_at?: string
+          vendor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_agreements_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_metrics: {
         Row: {
           billing_codes_suggested: number
@@ -5567,6 +6601,56 @@ export type Database = {
           },
         ]
       }
+      workforce_training: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          curriculum: string
+          evidence_ref: string | null
+          expires_at: string | null
+          hospital_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          curriculum: string
+          evidence_ref?: string | null
+          expires_at?: string | null
+          hospital_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          curriculum?: string
+          evidence_ref?: string | null
+          expires_at?: string | null
+          hospital_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workforce_training_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -5581,6 +6665,14 @@ export type Database = {
         Returns: Json
       }
       claim_readiness: { Args: { p_claim_id: string }; Returns: Json }
+      consent_status: {
+        Args: {
+          _hospital_id: string
+          _patient_id: string
+          _state_code?: string
+        }
+        Returns: Json
+      }
       diagnostic_order_readiness: {
         Args: { p_order_id: string }
         Returns: Json
@@ -5590,6 +6682,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      has_governance_role: {
+        Args: { _hospital_id: string; _role: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5598,6 +6694,14 @@ export type Database = {
         Returns: boolean
       }
       is_my_hospital: { Args: { _hospital_id: string }; Returns: boolean }
+      launch_readiness: {
+        Args: {
+          p_hospital_id: string
+          p_service_line_id: string
+          p_state_code: string
+        }
+        Returns: Json
+      }
       log_audit_event: {
         Args: {
           p_action_type: Database["public"]["Enums"]["audit_action_type"]
