@@ -306,6 +306,7 @@ export default function AdminPanel() {
               <ProviderLicensesPanel hospitalId={licenseHospitalId || hospitals[0].id} canEdit />
               <CareCatalogAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
               <ErxIntegrationAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
+              <ClearinghouseAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
 
             </div>
           )}
