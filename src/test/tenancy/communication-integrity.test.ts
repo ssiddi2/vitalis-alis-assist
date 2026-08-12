@@ -60,7 +60,7 @@ describe("communication integrity", () => {
 
   it("consult UPDATE WITH CHECK keeps patient, consultant and channel inside the hospital", () => {
     const upd = (policies.get("consult_requests") ?? []).find((p) => p.cmd === "UPDATE");
-    const check = upd?.check ?? "";
+    const check = upd?.expr ?? "";
     for (const t of ["patients", "consultants", "team_channels", "hospital_users"]) {
       expect(check, `containment for ${t} missing`).toContain(t);
     }
@@ -100,15 +100,15 @@ describe("communication integrity", () => {
   it("direct message UPDATE policy excludes the sender and only allows is_read = true", () => {
     const upd = (policies.get("direct_messages") ?? []).find((p) => p.cmd === "UPDATE");
     expect(upd?.expr).toMatch(/sender_id\s*<>\s*auth\.uid\(\)/);
-    expect(upd?.check).toMatch(/is_read\s*=\s*true/);
-    expect(upd?.check).toMatch(/sender_id\s*<>\s*auth\.uid\(\)/);
+    expect(upd?.expr).toMatch(/is_read\s*=\s*true/);
+    expect(upd?.expr).toMatch(/sender_id\s*<>\s*auth\.uid\(\)/);
   });
 
   it("direct message INSERT binds sender to auth.uid() and proves conversation membership", () => {
     const ins = (policies.get("direct_messages") ?? []).find((p) => p.cmd === "INSERT");
-    expect(ins?.check).toMatch(/sender_id\s*=\s*auth\.uid\(\)/);
-    expect(ins?.check).toMatch(/participant_1\s*=\s*auth\.uid\(\)/);
-    expect(ins?.check).toMatch(/hospital_users/);
+    expect(ins?.expr).toMatch(/sender_id\s*=\s*auth\.uid\(\)/);
+    expect(ins?.expr).toMatch(/participant_1\s*=\s*auth\.uid\(\)/);
+    expect(ins?.expr).toMatch(/hospital_users/);
   });
 
   // ---- team messages ----
@@ -122,9 +122,9 @@ describe("communication integrity", () => {
 
   it("team message INSERT requires channel membership and hospital containment", () => {
     const ins = (policies.get("team_messages") ?? []).find((p) => p.cmd === "INSERT");
-    expect(ins?.check).toMatch(/sender_id\s*=\s*auth\.uid\(\)/);
-    expect(ins?.check).toMatch(/channel_members/);
-    expect(ins?.check).toMatch(/hospital_users/);
+    expect(ins?.expr).toMatch(/sender_id\s*=\s*auth\.uid\(\)/);
+    expect(ins?.expr).toMatch(/channel_members/);
+    expect(ins?.expr).toMatch(/hospital_users/);
   });
 
   // ---- acuity provenance ----
@@ -133,14 +133,14 @@ describe("communication integrity", () => {
     expect(trigger(`${table}_append_only`, table)).toBe(true);
     const ins = (policies.get(table) ?? []).find((p) => p.cmd === "INSERT");
     const actor = table === "acuity_scores" ? "created_by" : "recorded_by";
-    expect(ins?.check).toMatch(new RegExp(`${actor}\\s*=\\s*auth\\.uid\\(\\)`));
-    expect(ins?.check).toMatch(/hospital_users/);
+    expect(ins?.expr).toMatch(new RegExp(`${actor}\\s*=\\s*auth\\.uid\\(\\)`));
+    expect(ins?.expr).toMatch(/hospital_users/);
   });
 
   it("acuity rows cannot reference a patient or score from another hospital", () => {
-    const scores = (policies.get("acuity_scores") ?? []).find((p) => p.cmd === "INSERT")?.check ?? "";
+    const scores = (policies.get("acuity_scores") ?? []).find((p) => p.cmd === "INSERT")?.expr ?? "";
     expect(scores).toMatch(/patients p[\s\S]*p\.hospital_id\s*=\s*acuity_scores\.hospital_id/);
-    const fb = (policies.get("acuity_feedback") ?? []).find((p) => p.cmd === "INSERT")?.check ?? "";
+    const fb = (policies.get("acuity_feedback") ?? []).find((p) => p.cmd === "INSERT")?.expr ?? "";
     expect(fb).toMatch(/acuity_scores s[\s\S]*s\.hospital_id\s*=\s*acuity_feedback\.hospital_id/);
   });
 
