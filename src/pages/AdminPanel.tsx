@@ -300,8 +300,10 @@ export default function AdminPanel() {
                 </SelectContent>
               </Select>
               <ProviderLicensesPanel hospitalId={licenseHospitalId || hospitals[0].id} canEdit />
+              <CareCatalogAdmin hospitalId={licenseHospitalId || hospitals[0].id} />
             </div>
           )}
+
 
           {/* User list */}
           <div className="glass-strong rounded-2xl border border-border/50 shadow-elevated overflow-hidden">
