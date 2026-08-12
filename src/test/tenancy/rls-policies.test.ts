@@ -24,6 +24,7 @@ const PHI_TABLES = [
   "order_sets",
   "note_versions",
   "note_addenda",
+  "consultation_notes",
 ] as const;
 
 const policies = loadEffectivePolicies();
@@ -68,5 +69,51 @@ describe("multi-tenant RLS: no cross-hospital access", () => {
         expect(p.expr.toLowerCase(), describePolicy(p)).not.toContain("to anon");
       }
     }
+  });
+});
+
+describe("scoped write paths added by the RLS hardening pass", () => {
+  const of = (table: string, cmd: string) =>
+    (policies.get(table) ?? []).filter((p) => p.cmd === cmd);
+
+  it("consultation_notes INSERT requires clinician/admin membership, thread+patient match and created_by", () => {
+    const ins = of("consultation_notes", "INSERT");
+    expect(ins).toHaveLength(1);
+    const expr = ins[0].expr.toLowerCase();
+    expect(expr).toContain("has_role(auth.uid(), 'clinician')");
+    expect(expr).toContain("created_by = auth.uid()");
+    expect(expr).toContain("hospital_users");
+    expect(expr).toContain("ct.patient_id = consultation_notes.patient_id");
+    expect(expr).toContain("p.hospital_id = ct.hospital_id");
+  });
+
+  it("consultation_notes UPDATE cannot re-point a note at another thread or patient", () => {
+    const upd = of("consultation_notes", "UPDATE");
+    const expr = upd[upd.length - 1].expr.toLowerCase();
+    // parser concatenates USING + WITH CHECK: the post-update check binds thread↔patient
+    expect(expr).toContain("ct.patient_id = consultation_notes.patient_id");
+    expect(expr).toContain("hospital_users");
+    // only the treating clinician (or an admin) may write, never a viewer
+    expect(expr).toContain("has_role(auth.uid(), 'clinician')");
+    expect(expr.match(/ct\.primary_clinician_id = auth\.uid\(\)/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("patient_vitals writes are hospital- and patient-scoped, with no clinician delete", () => {
+    const writes = (policies.get("patient_vitals") ?? []).filter((p) => p.cmd !== "SELECT");
+    expect(writes.length).toBeGreaterThan(0);
+    for (const p of writes) {
+      const expr = p.expr.toLowerCase();
+      expect(expr, p.name).toContain("hospital_users");
+      expect(isTenantScoped(p.expr) || isAdminOnly(p.expr), p.name).toBe(true);
+    }
+    // clinicians get INSERT + UPDATE only; deletion stays admin-only, same hospital
+    const clinicianVitals = writes.filter((p) => /own hospital vitals/i.test(p.name));
+    expect(clinicianVitals.map((p) => p.cmd).sort()).toEqual(["INSERT", "UPDATE"]);
+    for (const p of clinicianVitals) expect(p.expr.toLowerCase()).toContain("patient_vitals.patient_id");
+    const admin = writes.filter((p) => p.cmd === "ALL");
+    expect(admin).toHaveLength(1);
+    expect(admin[0].expr.toLowerCase()).toContain("has_role(auth.uid(), 'admin')");
+    // scoped in both USING and WITH CHECK (two occurrences of the predicate)
+    expect(admin[0].expr.toLowerCase().match(/patient_vitals\.patient_id/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });

@@ -35,8 +35,34 @@ describe("signed note integrity", () => {
     }
   });
 
-  it.each(NOTE_TABLES)("%s: client roles have no DELETE policy", (table) => {
+  it.each(["note_versions", "note_addenda"] as const)("%s: no client role can delete", (table) => {
     expect((policies.get(table) ?? []).filter((p) => p.cmd === "DELETE" || p.cmd === "ALL")).toHaveLength(0);
+  });
+
+  it("clinical notes: the only delete path is an author's own unsigned draft", () => {
+    const del = (policies.get("clinical_notes") ?? []).filter((p) => p.cmd === "DELETE" || p.cmd === "ALL");
+    expect(del).toHaveLength(1);
+    const expr = del[0].expr.toLowerCase();
+    expect(expr).toContain("status = 'draft'");
+    expect(expr).toContain("signed_at is null");
+    expect(expr).toContain("signed_by is null");
+    expect(expr).toContain("content_hash is null");
+    expect(expr).toContain("cosigned_at is null");
+    expect(expr).toContain("author_id = auth.uid()");
+    expect(expr).toContain("hospital_users");
+  });
+
+  it("the integrity trigger only permits deletion of a pure draft, for every role", () => {
+    expect(sql).toMatch(/IF OLD\.status <> 'draft' OR OLD\.signed_at IS NOT NULL OR OLD\.content_hash IS NOT NULL THEN/);
+  });
+
+  it("draft deletion is audited without clinical content", () => {
+    expect(sql).toContain("audit_note_draft_delete");
+    expect(sql).toContain("'note.draft_deleted'");
+    const fnBlock = sql.slice(sql.indexOf("audit_note_draft_delete"), sql.indexOf("Generic PHI audit"));
+    expect(fnBlock).not.toMatch(/to_jsonb\(OLD\)|OLD\.content/);
+    // the generic row-dumping audit trigger no longer fires on note deletes
+    expect(sql).toMatch(/CREATE TRIGGER audit_clinical_notes_changes\s+AFTER INSERT OR UPDATE ON public\.clinical_notes/);
   });
 
   it("clinical notes are only updatable by their author while still a draft", () => {

@@ -712,6 +712,7 @@ export type Database = {
           clinical_summary: string | null
           consultation_question: string | null
           created_at: string
+          created_by: string | null
           generated_by: string
           id: string
           patient_id: string
@@ -727,6 +728,7 @@ export type Database = {
           clinical_summary?: string | null
           consultation_question?: string | null
           created_at?: string
+          created_by?: string | null
           generated_by?: string
           id?: string
           patient_id: string
@@ -742,6 +744,7 @@ export type Database = {
           clinical_summary?: string | null
           consultation_question?: string | null
           created_at?: string
+          created_by?: string | null
           generated_by?: string
           id?: string
           patient_id?: string

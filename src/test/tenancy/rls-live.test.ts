@@ -15,6 +15,8 @@ const email = process.env.RLS_TEST_A_EMAIL;
 const password = process.env.RLS_TEST_A_PASSWORD;
 const hospitalB = process.env.RLS_TEST_HOSPITAL_B_ID;
 const patientB = process.env.RLS_TEST_PATIENT_B_ID;
+/** Optional: a SIGNED note in the caller's own hospital, to prove deletion is refused. */
+const signedNote = process.env.RLS_TEST_SIGNED_NOTE_ID;
 
 const enabled = Boolean(url && anonKey && email && password && hospitalB && patientB);
 
@@ -69,6 +71,48 @@ describe.skipIf(!enabled)("live RLS: clinician at hospital A cannot touch hospit
     const sel = await db.from(table).select("id").eq("patient_id", patientB!);
     expect(sel.data ?? []).toHaveLength(0);
     const del = await db.from(table).delete().eq("patient_id", patientB!).select("id");
+    expect(del.error || (del.data ?? []).length === 0).toBeTruthy();
+  });
+
+  it("cannot INSERT PHI rows for a hospital B patient", async () => {
+    const notes = await db.from("clinical_notes").insert({
+      patient_id: patientB, note_type: "progress", content: { probe: true }, status: "draft",
+    }).select("id");
+    expect(notes.error || (notes.data ?? []).length === 0).toBeTruthy();
+
+    const vitals = await db.from("patient_vitals").insert({
+      patient_id: patientB, insights: {}, trends: {},
+    }).select("id");
+    expect(vitals.error || (vitals.data ?? []).length === 0).toBeTruthy();
+  });
+
+  it("cannot UPDATE hospital B vitals or re-point them at a hospital B patient", async () => {
+    const upd = await db.from("patient_vitals").update({ insights: { probe: true } }).eq("patient_id", patientB!).select("id");
+    expect(upd.error || (upd.data ?? []).length === 0).toBeTruthy();
+
+    const mine = await db.from("patient_vitals").select("id").limit(1);
+    if ((mine.data ?? []).length) {
+      const move = await db.from("patient_vitals").update({ patient_id: patientB }).eq("id", mine.data![0].id).select("id");
+      expect(move.error || (move.data ?? []).length === 0).toBeTruthy();
+    }
+  });
+
+  it("cannot create a consultation note for a hospital B thread", async () => {
+    const res = await db.from("consultation_notes").insert({
+      thread_id: crypto.randomUUID(), patient_id: patientB, generated_by: "probe", status: "draft",
+    }).select("id");
+    expect(res.error || (res.data ?? []).length === 0).toBeTruthy();
+  });
+
+  it.skipIf(!signedNote)("cannot delete a SIGNED note, even in its own hospital", async () => {
+    const del = await db.from("clinical_notes").delete().eq("id", signedNote!).select("id");
+    expect(del.error || (del.data ?? []).length === 0).toBeTruthy();
+    const still = await db.from("clinical_notes").select("id").eq("id", signedNote!);
+    expect((still.data ?? []).length).toBe(1);
+  });
+
+  it.each(["note_versions", "note_addenda"] as const)("cannot delete %s", async (table) => {
+    const del = await db.from(table).delete().neq("id", crypto.randomUUID()).select("id");
     expect(del.error || (del.data ?? []).length === 0).toBeTruthy();
   });
 
