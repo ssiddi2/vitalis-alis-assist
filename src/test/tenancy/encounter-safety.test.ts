@@ -53,8 +53,8 @@ describe("encounter safety", () => {
     for (const token of [
       "identity_verified_at",
       "patient_state_code",
-      "telehealth_consent_accepted_at",
-      "callback_phone_verified",
+      "consent_accepted_at",
+      "callback_verified_at",
       "provider_licenses",
     ]) {
       expect(body, `start prerequisite missing: ${token}`).toContain(token);
