@@ -123,7 +123,7 @@ describe("care request lifecycle enforcement", () => {
   });
 
   it("state coverage defaults to unavailable and never silently schedules", () => {
-    expect(sql).toMatch(/status\s+text\s+NOT NULL\s+DEFAULT\s+'unavailable'/i);
+    expect(sql).toMatch(/status\s+public\.service_availability_status\s+NOT NULL\s+DEFAULT\s+'unavailable'/i);
     expect(sql).toMatch(/this service is not available in the patient state yet/i);
     expect(sql).toMatch(/waitlisted/);
   });
