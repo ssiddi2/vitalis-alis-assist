@@ -22,6 +22,8 @@ const PHI_TABLES = [
   "lab_results",
   "note_templates",
   "order_sets",
+  "note_versions",
+  "note_addenda",
 ] as const;
 
 const policies = loadEffectivePolicies();

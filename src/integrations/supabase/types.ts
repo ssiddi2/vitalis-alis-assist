@@ -467,39 +467,57 @@ export type Database = {
         Row: {
           author_id: string | null
           content: Json
+          content_hash: string | null
           conversation_id: string | null
+          cosign_required: boolean
+          cosigned_at: string | null
+          cosigned_by: string | null
           created_at: string
           encounter_id: string | null
           id: string
+          lock_version: number
           note_type: Database["public"]["Enums"]["note_type"]
           patient_id: string
           signed_at: string | null
+          signed_by: string | null
           status: Database["public"]["Enums"]["note_status"]
           updated_at: string
         }
         Insert: {
           author_id?: string | null
           content?: Json
+          content_hash?: string | null
           conversation_id?: string | null
+          cosign_required?: boolean
+          cosigned_at?: string | null
+          cosigned_by?: string | null
           created_at?: string
           encounter_id?: string | null
           id?: string
+          lock_version?: number
           note_type?: Database["public"]["Enums"]["note_type"]
           patient_id: string
           signed_at?: string | null
+          signed_by?: string | null
           status?: Database["public"]["Enums"]["note_status"]
           updated_at?: string
         }
         Update: {
           author_id?: string | null
           content?: Json
+          content_hash?: string | null
           conversation_id?: string | null
+          cosign_required?: boolean
+          cosigned_at?: string | null
+          cosigned_by?: string | null
           created_at?: string
           encounter_id?: string | null
           id?: string
+          lock_version?: number
           note_type?: Database["public"]["Enums"]["note_type"]
           patient_id?: string
           signed_at?: string | null
+          signed_by?: string | null
           status?: Database["public"]["Enums"]["note_status"]
           updated_at?: string
         }
@@ -1385,6 +1403,47 @@ export type Database = {
           },
         ]
       }
+      note_addenda: {
+        Row: {
+          author_id: string
+          content: Json
+          content_hash: string
+          created_at: string
+          id: string
+          note_id: string
+          reason: string
+          sequence: number
+        }
+        Insert: {
+          author_id: string
+          content: Json
+          content_hash: string
+          created_at?: string
+          id?: string
+          note_id: string
+          reason: string
+          sequence: number
+        }
+        Update: {
+          author_id?: string
+          content?: Json
+          content_hash?: string
+          created_at?: string
+          id?: string
+          note_id?: string
+          reason?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_addenda_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       note_templates: {
         Row: {
           created_at: string
@@ -1425,6 +1484,47 @@ export type Database = {
             columns: ["hospital_id"]
             isOneToOne: false
             referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      note_versions: {
+        Row: {
+          author_id: string | null
+          content: Json
+          content_hash: string
+          created_at: string
+          id: string
+          note_id: string
+          signed_at: string
+          version: number
+        }
+        Insert: {
+          author_id?: string | null
+          content: Json
+          content_hash: string
+          created_at?: string
+          id?: string
+          note_id: string
+          signed_at?: string
+          version: number
+        }
+        Update: {
+          author_id?: string | null
+          content?: Json
+          content_hash?: string
+          created_at?: string
+          id?: string
+          note_id?: string
+          signed_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_versions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_notes"
             referencedColumns: ["id"]
           },
         ]

@@ -72,6 +72,12 @@ export interface ClinicalNote {
   status: NoteStatus;
   author_id: string | null;
   signed_at: string | null;
+  signed_by?: string | null;
+  content_hash?: string | null;
+  cosign_required?: boolean | null;
+  cosigned_by?: string | null;
+  cosigned_at?: string | null;
+  lock_version?: number | null;
   created_at: string;
   updated_at: string;
 }

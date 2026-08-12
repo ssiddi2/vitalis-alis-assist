@@ -33,3 +33,6 @@ verify_jwt = false
 verify_jwt = false
 
 
+
+[functions.note-integrity]
+verify_jwt = false
