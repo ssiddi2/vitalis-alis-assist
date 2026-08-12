@@ -10,6 +10,8 @@
  *   stored in `capabilities.endpoints`; until then the transport is unavailable.
  */
 
+import { env } from "./env.ts";
+
 export type VendorKey = "dosespot" | "stedi" | "health_gorilla" | "docupdate";
 
 export type VendorState =
@@ -99,7 +101,7 @@ export function vendorGate(
   capability: string,
   env: "sandbox" | "production",
 ): string | null {
-  if (Deno.env.get("INTEGRATION_KILL_SWITCH") === "true") return "kill_switch_active";
+  if (env("INTEGRATION_KILL_SWITCH") === "true") return "kill_switch_active";
   if (!row) return "no_vendor_profile";
   const def = VENDORS[row.vendor_key];
   if (!def) return "unknown_vendor";
@@ -123,5 +125,5 @@ export function vendorGate(
 /** Resolve a secret REFERENCE name to its server-side value. Never logged or returned. */
 export function resolveSecret(refName: string): string | null {
   if (!/^[A-Z][A-Z0-9_]{2,80}$/.test(refName)) return null;
-  return Deno.env.get(refName.replace(/_REF$/, "")) || Deno.env.get(refName) || null;
+  return env(refName.replace(/_REF$/, "")) || env(refName) || null;
 }

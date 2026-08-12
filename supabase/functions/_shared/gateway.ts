@@ -8,6 +8,7 @@
  */
 
 import { VENDORS, type VendorKey } from "./vendors.ts";
+import { env } from "./env.ts";
 
 const TIMEOUT_MS = 15_000;
 const MAX_ATTEMPTS = 3;
@@ -71,7 +72,7 @@ export interface GatewayResult {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function gatewayFetch(call: GatewayCall): Promise<GatewayResult> {
-  if (Deno.env.get("INTEGRATION_KILL_SWITCH") === "true") throw new GatewayError("kill_switch_active", 503);
+  if (env("INTEGRATION_KILL_SWITCH") === "true") throw new GatewayError("kill_switch_active", 503);
 
   const url = assertAllowedUrl(call.vendor, call.env, call.url);
   const key = `${call.vendor}:${call.env}`;

@@ -9,6 +9,7 @@
 
 import { sha256Hex } from "./gateway.ts";
 import type { VendorKey } from "./vendors.ts";
+import { env } from "./env.ts";
 
 export const TIMESTAMP_TOLERANCE_SEC = 300;
 
@@ -76,7 +77,7 @@ export async function verifyCallback(
 
   // The signing scheme must come from the vendor's official documentation. Until
   // the tenant's vendor signing secret is provisioned server-side we fail closed.
-  const secret = Deno.env.get(`${vendor.toUpperCase()}_WEBHOOK_SECRET`);
+  const secret = env(`${vendor.toUpperCase()}_WEBHOOK_SECRET`);
   const signature = headers.get("x-vendor-signature");
   if (!secret || !signature) return { ...base, verified: false, reason: "vendor_signature_scheme_not_provisioned" };
 
