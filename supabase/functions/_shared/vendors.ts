@@ -79,7 +79,7 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     label: "DocUpdate (STANDALONE · NOT INTEGRATED · NON-CONTROLLED ONLY)",
     domain: "standalone",
     hosts: { sandbox: [], production: [] },
-    secretRefs: [],
+    secretRefs: { sandbox: [], production: [] },
     capabilities: [],
     requiresPartnerPackage: true,
     standaloneOnly: true,
@@ -104,6 +104,14 @@ export interface OnboardingRow {
   evidence_expires_at: string | null;
 }
 
+/** Result string a passed end-to-end production-readiness test must record. */
+export const PRODUCTION_READINESS_PASS = "production_readiness_passed";
+
+/** Secret reference names for one environment. Test and production never overlap. */
+export function secretRefsFor(def: VendorDef, env: "sandbox" | "production"): string[] {
+  return def.secretRefs[env];
+}
+
 /**
  * Single fail-closed gate for any vendor traffic.
  * Returns a blocking reason, or null when the call may proceed.
@@ -125,11 +133,16 @@ export function vendorGate(
   if (expectedEnv === "production") {
     if (row.state !== "production_verified") return "production_not_verified";
     if (!row.evidence_expires_at || new Date(row.evidence_expires_at) <= new Date()) return "evidence_expired";
+    if (row.capabilities?.baa_verified !== true) return "baa_evidence_missing";
+    if (row.capabilities?.mfa_enforced !== true) return "vendor_portal_mfa_not_enforced";
+    if (row.last_test_result !== PRODUCTION_READINESS_PASS) return "production_readiness_test_missing";
   } else if (row.state === "not_contracted" || row.state === "baa_pending" || row.state === "sandbox_pending") {
     return "sandbox_not_configured";
   }
-  const missing = def.secretRefs.filter((r) => !row.secret_ref_names.includes(r));
-  if (missing.length) return "secret_references_missing";
+  const expected = secretRefsFor(def, expectedEnv);
+  const otherEnv = expectedEnv === "production" ? "sandbox" : "production";
+  if (secretRefsFor(def, otherEnv).some((r) => row.secret_ref_names.includes(r))) return "cross_environment_secret_reference";
+  if (expected.some((r) => !row.secret_ref_names.includes(r))) return "secret_references_missing";
   if (def.requiresPartnerPackage) return "vendor_partner_package_required";
   return null;
 }
