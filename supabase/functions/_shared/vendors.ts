@@ -99,18 +99,18 @@ export interface OnboardingRow {
 export function vendorGate(
   row: OnboardingRow | null,
   capability: string,
-  env: "sandbox" | "production",
+  expectedEnv: "sandbox" | "production",
 ): string | null {
   if (env("INTEGRATION_KILL_SWITCH") === "true") return "kill_switch_active";
   if (!row) return "no_vendor_profile";
   const def = VENDORS[row.vendor_key];
   if (!def) return "unknown_vendor";
   if (def.standaloneOnly) return "vendor_not_integrated";
-  if (row.environment !== env) return "environment_mismatch";
+  if (row.environment !== expectedEnv) return "environment_mismatch";
   if (row.state === "suspended") return "suspended";
   if (!def.capabilities.includes(capability)) return "capability_not_supported";
   if (row.capabilities?.[capability] !== true) return "capability_not_enabled";
-  if (env === "production") {
+  if (expectedEnv === "production") {
     if (row.state !== "production_verified") return "production_not_verified";
     if (!row.evidence_expires_at || new Date(row.evidence_expires_at) <= new Date()) return "evidence_expired";
   } else if (row.state === "not_contracted" || row.state === "baa_pending" || row.state === "sandbox_pending") {
