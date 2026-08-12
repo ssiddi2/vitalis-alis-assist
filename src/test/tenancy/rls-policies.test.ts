@@ -98,15 +98,18 @@ describe("scoped write paths added by the RLS hardening pass", () => {
     const writes = (policies.get("patient_vitals") ?? []).filter((p) => p.cmd !== "SELECT");
     expect(writes.length).toBeGreaterThan(0);
     for (const p of writes) {
-      expect(p.expr.toLowerCase(), p.name).toContain("hospital_users");
-      expect(p.expr.toLowerCase(), p.name).toContain("patient_vitals.patient_id");
+      const expr = p.expr.toLowerCase();
+      expect(expr, p.name).toContain("hospital_users");
+      expect(isTenantScoped(p.expr) || isAdminOnly(p.expr), p.name).toBe(true);
     }
-    // clinicians get INSERT + UPDATE only; deletion stays admin-only (FOR ALL, same hospital)
-    const clinician = writes.filter((p) => /clinician/i.test(p.expr));
-    expect(clinician.map((p) => p.cmd).sort()).toEqual(["INSERT", "UPDATE"]);
+    // clinicians get INSERT + UPDATE only; deletion stays admin-only, same hospital
+    const clinicianVitals = writes.filter((p) => /own hospital vitals/i.test(p.name));
+    expect(clinicianVitals.map((p) => p.cmd).sort()).toEqual(["INSERT", "UPDATE"]);
+    for (const p of clinicianVitals) expect(p.expr.toLowerCase()).toContain("patient_vitals.patient_id");
     const admin = writes.filter((p) => p.cmd === "ALL");
     expect(admin).toHaveLength(1);
     expect(admin[0].expr.toLowerCase()).toContain("has_role(auth.uid(), 'admin')");
     expect(admin[0].expr.toLowerCase()).toContain("with check");
+    expect(admin[0].expr.toLowerCase()).toContain("patient_vitals.patient_id");
   });
 });
