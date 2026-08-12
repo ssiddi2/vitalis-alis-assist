@@ -315,7 +315,104 @@ export function NoteEditorModal({
             </div>
           ))}
 
-          {mode === 'sign' && (
+          {isSigned && (
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-emerald-700">
+                    Signed &amp; locked{note.cosigned_at ? ' · Cosigned' : ''}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  {note.signed_at ? new Date(note.signed_at).toLocaleString() : '—'}
+                  {note.cosigned_at ? ` · cosigned ${new Date(note.cosigned_at).toLocaleString()}` : ''}
+                </p>
+                {note.content_hash && (
+                  <p className="font-mono text-[10px] text-slate-500 break-all">
+                    SHA-256 {note.content_hash.slice(0, 32)}…
+                  </p>
+                )}
+                {versions.map((v) => (
+                  <p key={v.id} className="font-mono text-[10px] text-slate-500">
+                    v{v.version} · {new Date(v.signed_at).toLocaleString()} · {v.content_hash.slice(0, 12)}…
+                  </p>
+                ))}
+                {!note.cosigned_at && user?.id !== note.signed_by && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    className="mt-1 h-8 rounded-xl text-[11px]"
+                    onClick={async () => {
+                      if (!selectedHospital?.id) return;
+                      setBusy(true);
+                      const { error } = await cosignNote({ note_id: note.id, hospital_id: selectedHospital.id });
+                      setBusy(false);
+                      if (error) return toast.error(error);
+                      toast.success('Note cosigned');
+                      onOpenChange(false);
+                    }}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                    Cosign as supervising clinician
+                  </Button>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white/70 p-3 space-y-2">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500 flex items-center gap-1.5">
+                  <History className="h-3 w-3" /> Addendum history ({addenda.length})
+                </span>
+                {addenda.map((a) => (
+                  <div key={a.id} className="rounded-xl border border-slate-200 bg-white p-2">
+                    <p className="text-[10px] font-mono text-slate-500">
+                      #{a.sequence} · {new Date(a.created_at).toLocaleString()} · {a.content_hash.slice(0, 12)}…
+                    </p>
+                    <p className="text-[11px] font-semibold text-slate-700">Reason: {a.reason}</p>
+                    <p className="text-xs text-slate-600 whitespace-pre-wrap">{a.content?.text}</p>
+                  </div>
+                ))}
+                <Input
+                  value={addReason}
+                  onChange={(e) => setAddReason(e.target.value)}
+                  placeholder="Reason for correction (required)"
+                  maxLength={500}
+                  className="h-8 text-xs"
+                />
+                <Textarea
+                  value={addText}
+                  onChange={(e) => setAddText(e.target.value)}
+                  placeholder="Addendum text…"
+                  rows={3}
+                  maxLength={8000}
+                  className="text-xs resize-none"
+                />
+                <Button
+                  size="sm"
+                  disabled={busy || !addReason.trim() || !addText.trim()}
+                  className="w-full h-8 rounded-xl text-[11px] btn-primary-gradient"
+                  onClick={async () => {
+                    if (!selectedHospital?.id) return;
+                    setBusy(true);
+                    const { error } = await addAddendum({
+                      note_id: note.id, hospital_id: selectedHospital.id,
+                      reason: addReason.trim(), text: addText.trim(),
+                    });
+                    setBusy(false);
+                    if (error) return toast.error(error);
+                    setAddReason(''); setAddText('');
+                    await refresh();
+                    toast.success('Addendum recorded');
+                  }}
+                >
+                  Add addendum
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {mode === 'sign' && !isSigned && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
               <div className="flex items-center gap-2 mb-1">
                 <Shield className="h-3.5 w-3.5 text-primary" />
