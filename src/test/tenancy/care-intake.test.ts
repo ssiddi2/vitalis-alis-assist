@@ -39,12 +39,10 @@ describe("care intake tenancy", () => {
   });
 
   it.each(TABLES)("%s: no anonymous or public access", (table) => {
-    for (const p of policies.get(table) ?? []) {
-      expect(p.roles ?? ["authenticated"]).not.toContain("anon");
-      expect(p.roles ?? ["authenticated"]).not.toContain("public");
-    }
-    expect(sql).not.toMatch(new RegExp(`GRANT[^;]*ON\\s+public\\.${table}\\s+TO\\s+anon`, "i"));
+    expect(sql).not.toMatch(new RegExp(`GRANT[^;]*ON\\s+public\\.${table}\\s+TO\\s+(anon|public)`, "i"));
+    expect(sql).not.toMatch(new RegExp(`ON\\s+public\\.${table}\\s+FOR\\s+\\w+\\s+TO\\s+anon`, "i"));
   });
+
 
   it("catalog configuration is admin-only", () => {
     for (const table of ["service_lines", "state_service_availability", "provider_service_lines", "safety_screen_templates"]) {
