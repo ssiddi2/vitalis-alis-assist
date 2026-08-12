@@ -4,7 +4,6 @@ import { BadgeCheck, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useProviderLicenses, type ProviderLicense } from '@/hooks/useEncounterSafety';
 
 interface Props {
@@ -106,7 +105,6 @@ export function ProviderLicensesPanel({ hospitalId, canEdit, providerUserId }: P
           Authorizations are maintained by your administrator.
         </p>
       )}
-      {canEdit && <Checkbox className="hidden" />}
     </section>
   );
 }
