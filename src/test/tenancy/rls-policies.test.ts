@@ -1,5 +1,8 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { isAdminOnly, isTenantScoped, loadEffectivePolicies, type Policy } from "./policyParser";
+
 
 /**
  * Multi-tenant RLS regression gate.
