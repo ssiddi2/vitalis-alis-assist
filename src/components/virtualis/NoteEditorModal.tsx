@@ -315,6 +315,10 @@ export function NoteEditorModal({
             </div>
           ))}
 
+          <CoverageClaimPanel hospitalId={selectedHospital?.id} patientId={patientId} noteId={note.id} />
+
+
+
           {isSigned && (
             <div className="space-y-3">
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
