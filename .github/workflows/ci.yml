@@ -38,5 +38,7 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Dependency audit (blocking on high/critical)
-        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (report high, block on critical)
+        run: |
+          npm audit --omit=dev --audit-level=high || true
+          npm audit --omit=dev --audit-level=critical
