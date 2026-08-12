@@ -443,6 +443,7 @@ export function NoteEditorModal({
             </span>
           </div>
 
+          {!isSigned && (
           <div className="flex gap-2 pt-1">
             {mode === 'edit' ? (
               <>
@@ -486,6 +487,7 @@ export function NoteEditorModal({
               </Button>
             )}
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

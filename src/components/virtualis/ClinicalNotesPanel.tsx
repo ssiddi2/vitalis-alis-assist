@@ -135,6 +135,20 @@ export function ClinicalNotesPanel({ notes, patientId, clinicianName = 'Clinicia
                   )}
                 </div>
 
+                {!canEdit && (
+                  <div className="flex gap-2 mt-2 pt-2 border-t border-border/50">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-7 text-[10px] rounded-lg"
+                      onClick={() => { setEditorMode('sign'); setEditingNote(note); }}
+                    >
+                      <FileText className="h-3 w-3 mr-1" />
+                      View &amp; addenda{note.cosigned_at ? ' · cosigned' : ''}
+                    </Button>
+                  </div>
+                )}
+
                 {canEdit && (
                   <div className="flex gap-2 mt-2 pt-2 border-t border-border/50">
                     <Button
