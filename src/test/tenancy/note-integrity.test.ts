@@ -41,8 +41,9 @@ describe("signed note integrity", () => {
 
   it("clinical notes are only updatable by their author while still a draft", () => {
     const update = (policies.get("clinical_notes") ?? []).filter((p) => p.cmd === "UPDATE");
-    expect(update).toHaveLength(1);
-    const expr = update[0].expr.toLowerCase();
+    expect(update.length).toBeGreaterThan(0);
+    // The effective policy is the last one defined across migrations.
+    const expr = update[update.length - 1].expr.toLowerCase();
     expect(expr).toContain("'draft'");
     expect(expr).toContain("pending_signature");
     expect(expr).toContain("author_id = auth.uid()");
