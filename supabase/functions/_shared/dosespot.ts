@@ -114,18 +114,21 @@ export async function buildLaunch(
 ): Promise<LaunchResult> {
   const blocked = doseSpotPrescribingGate(row, opts.controlled, opts.prescriberEpcsVerified === true);
   if (blocked) return { status: "blocked", reason: blocked };
-  if (!secretsProvisioned(row!)) return { status: "unavailable", reason: "secret_references_missing" };
 
   const resolved = partnerConfig(row);
   if ("reason" in resolved) return { status: "unavailable", reason: resolved.reason };
   const cfg = resolved.config;
 
+  // Policy before provisioning: a controlled-enabled account is an EPCS surface
+  // even for a non-controlled launch.
   if (cfg.controlled_substance_mode === "enabled" && opts.prescriberEpcsVerified !== true) {
     return { status: "blocked", reason: "individual_epcs_evidence_required" };
   }
 
+  if (!secretsProvisioned(row!)) return { status: "unavailable", reason: "secret_references_missing" };
   const secret = resolveSecret(cfg.signing!.secretRef);
   if (!secret) return { status: "unavailable", reason: "launch_signing_secret_not_provisioned" };
+
 
   const path = cfg.launchPath
     .replace("{clinicId}", encodeURIComponent(ctx.clinicId))
