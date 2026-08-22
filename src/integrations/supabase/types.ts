@@ -3085,6 +3085,104 @@ export type Database = {
           },
         ]
       }
+      encounter_cash_pay: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          encounter_id: string
+          fee_reference: string
+          hospital_id: string
+          id: string
+          patient_id: string
+          payment_reference: string | null
+          payment_status: string
+          processor: string
+          receipt_status: string
+          recorded_by: string | null
+          refund_status: string
+          service_line_id: string | null
+          settled_at: string | null
+          updated_at: string
+          waived_at: string | null
+          waived_by: string | null
+          waiver_reason: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          encounter_id: string
+          fee_reference: string
+          hospital_id: string
+          id?: string
+          patient_id: string
+          payment_reference?: string | null
+          payment_status?: string
+          processor?: string
+          receipt_status?: string
+          recorded_by?: string | null
+          refund_status?: string
+          service_line_id?: string | null
+          settled_at?: string | null
+          updated_at?: string
+          waived_at?: string | null
+          waived_by?: string | null
+          waiver_reason?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          encounter_id?: string
+          fee_reference?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          payment_reference?: string | null
+          payment_status?: string
+          processor?: string
+          receipt_status?: string
+          recorded_by?: string | null
+          refund_status?: string
+          service_line_id?: string | null
+          settled_at?: string | null
+          updated_at?: string
+          waived_at?: string | null
+          waived_by?: string | null
+          waiver_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encounter_cash_pay_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: true
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounter_cash_pay_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounter_cash_pay_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encounter_cash_pay_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       encounter_diagnoses: {
         Row: {
           code_set: string
@@ -4810,6 +4908,83 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obesity_intake_screens: {
+        Row: {
+          answers: Json
+          completed_at: string
+          completed_by: string | null
+          created_at: string
+          encounter_id: string
+          hospital_id: string
+          id: string
+          patient_id: string
+          pregnancy_applicable: boolean
+          provenance: Json
+          red_flags: string[]
+          template_protocol_id: string
+          template_version: number
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string
+          completed_by?: string | null
+          created_at?: string
+          encounter_id: string
+          hospital_id: string
+          id?: string
+          patient_id: string
+          pregnancy_applicable?: boolean
+          provenance?: Json
+          red_flags?: string[]
+          template_protocol_id: string
+          template_version: number
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string
+          completed_by?: string | null
+          created_at?: string
+          encounter_id?: string
+          hospital_id?: string
+          id?: string
+          patient_id?: string
+          pregnancy_applicable?: boolean
+          provenance?: Json
+          red_flags?: string[]
+          template_protocol_id?: string
+          template_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obesity_intake_screens_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obesity_intake_screens_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obesity_intake_screens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obesity_intake_screens_template_protocol_id_fkey"
+            columns: ["template_protocol_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_protocols"
             referencedColumns: ["id"]
           },
         ]
@@ -6797,6 +6972,53 @@ export type Database = {
           },
         ]
       }
+      vendor_identity_mappings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          environment: string
+          evidence_ref: string | null
+          hospital_id: string
+          id: string
+          subject_id: string
+          subject_type: string
+          vendor_identifier: string
+          vendor_key: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          environment: string
+          evidence_ref?: string | null
+          hospital_id: string
+          id?: string
+          subject_id: string
+          subject_type: string
+          vendor_identifier: string
+          vendor_key: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          evidence_ref?: string | null
+          hospital_id?: string
+          id?: string
+          subject_id?: string
+          subject_type?: string
+          vendor_identifier?: string
+          vendor_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_identity_mappings_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_onboarding: {
         Row: {
           approval_evidence_hash: string | null
@@ -7134,6 +7356,16 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      obesity_launch_readiness: {
+        Args: {
+          p_controlled?: boolean
+          p_hospital_id: string
+          p_prescribing?: boolean
+          p_service_line_id: string
+          p_state_code: string
+        }
+        Returns: Json
       }
       patient_in_my_hospital: {
         Args: { _patient_id: string }

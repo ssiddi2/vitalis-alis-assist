@@ -87,15 +87,24 @@ export const doseSpotAdapter: VendorAdapter = {
   execute: (row, op) => {
     const blocked = vendorGate(row, op.capability, row?.environment ?? "sandbox");
     if (blocked) return Promise.resolve({ status: "blocked", reason: blocked });
-    return Promise.resolve({ status: "unavailable", reason: "vendor_partner_package_required" });
+    // Transport paths come from the uploaded partner package only.
+    const resolved = resolveUrl(row!, op);
+    if ("reason" in resolved) return Promise.resolve({ status: "unavailable", reason: resolved.reason });
+    return Promise.resolve({ status: "unavailable", reason: "vendor_transport_not_enabled" });
   },
 };
 
 /** Controlled vs non-controlled prescribing are distinct capability gates. */
 export function doseSpotPrescribingGate(row: OnboardingRow | null, controlled: boolean): string | null {
-  return controlled
-    ? vendorGate(row, "epcs", row?.environment ?? "sandbox") ?? "epcs_not_certified"
-    : vendorGate(row, "new_rx", row?.environment ?? "sandbox");
+  if (!controlled) return vendorGate(row, "new_rx", row?.environment ?? "sandbox");
+  const blocked = vendorGate(row, "epcs", row?.environment ?? "sandbox");
+  if (blocked) return blocked;
+  // EPCS additionally requires production-verified evidence; the legal signing
+  // factor is always collected by the vendor UI, never by VirtualisONE.
+  if (row!.environment !== "production" || row!.state !== "production_verified") return "epcs_not_production_verified";
+  if (row!.capabilities?.epcs_identity_proofing_verified !== true) return "epcs_identity_proofing_missing";
+  if (row!.capabilities?.epcs_two_factor_verified !== true) return "epcs_two_factor_missing";
+  return null;
 }
 
 /** DoseSpot / NCPDP SCRIPT event → existing prescription lifecycle status. */

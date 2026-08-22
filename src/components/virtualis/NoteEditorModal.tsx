@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNoteIntegrity } from '@/hooks/useNoteIntegrity';
 import { addAddendum, cosignNote, signNote } from '@/lib/noteIntegrity';
 import { CoverageClaimPanel } from '@/components/virtualis/CoverageClaimPanel';
+import { ObesityCarePanel } from '@/components/virtualis/ObesityCarePanel';
 
 
 const NOTE_TYPE_LABELS: Record<NoteType, string> = {
@@ -316,6 +317,8 @@ export function NoteEditorModal({
               />
             </div>
           ))}
+
+          <ObesityCarePanel noteId={note.id} patientId={patientId} />
 
           <CoverageClaimPanel hospitalId={selectedHospital?.id} patientId={patientId} noteId={note.id} />
 

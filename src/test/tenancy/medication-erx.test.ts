@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { isTenantScoped, loadEffectivePolicies } from "./policyParser";
 import { signingBlockers } from "@/lib/erx";
 import { evaluateSafety } from "../../../supabase/functions/_shared/medSafety";
-import { gate, adapterFor, type ErxProfile } from "../../../supabase/functions/_shared/erx";
+import { gate, type ErxProfile } from "../../../supabase/functions/_shared/erx";
 
 /**
  * Medication / e-prescribing regression gate.
@@ -154,32 +154,37 @@ describe("safety rules", () => {
 
 describe("transmission gate fails closed", () => {
   const verifiedProd: ErxProfile = {
-    id: "p", vendor: "acme", environment: "production", epcs_enabled: false,
+    id: "p", vendor: "dosespot", environment: "production", epcs_enabled: false,
     verification_status: "verified", capabilities: { new_rx: true },
   };
+  const row = {
+    id: "r", hospital_id: "h", vendor_key: "dosespot" as const, environment: "production" as const,
+    state: "production_verified" as const, secret_ref_names: [], last_test_result: null,
+    evidence_expires_at: null, capabilities: { new_rx: true },
+  };
 
-  it("blocks controlled substances regardless of configuration", () => {
-    expect(gate(verifiedProd, "new_rx", true)).toBe("controlled_substance_epcs_required");
-    expect(gate(verifiedProd, "epcs", false)).toBe("epcs_disabled");
+  it("blocks controlled substances without EPCS evidence", () => {
+    expect(gate(verifiedProd, "epcs", true, row)).toBe("epcs_not_enabled_on_profile");
+    expect(gate({ ...verifiedProd, epcs_enabled: true }, "epcs", true, row)).toBeTruthy();
+    expect(gate(verifiedProd, "epcs", false, row)).toBe("epcs_requires_controlled_context");
   });
 
-  it("blocks missing, unverified, sandbox and capability-less profiles", () => {
+  it("blocks missing, unverified and capability-less profiles", () => {
     expect(gate(null, "new_rx", false)).toBe("no_integration_profile");
-    expect(gate({ ...verifiedProd, verification_status: "testing" }, "new_rx", false)).toBe("profile_unverified");
-    expect(gate({ ...verifiedProd, capabilities: {} }, "new_rx", false)).toBe("capability_not_enabled");
-    expect(gate({ ...verifiedProd, environment: "sandbox" }, "new_rx", false)).toBe("sandbox_test_mode");
+    expect(gate({ ...verifiedProd, verification_status: "testing" }, "new_rx", false, row)).toBe("profile_unverified");
+    expect(gate({ ...verifiedProd, capabilities: {} }, "new_rx", false, row)).toBe("capability_not_enabled");
   });
 
-  it("has no production adapter implementation", () => {
-    expect(adapterFor(verifiedProd)).toBeNull();
-    expect(adapterFor({ ...verifiedProd, environment: "sandbox" })?.vendor).toBe("mock");
+  it("refuses a profile that claims verified without vendor onboarding evidence", () => {
+    expect(gate(verifiedProd, "new_rx", false, null)).toBe("vendor_onboarding_evidence_missing");
+    expect(gate(verifiedProd, "new_rx", false, { ...row, environment: "sandbox" })).toBe("environment_mismatch");
   });
 
-  it("never verifies a vendor webhook without a contracted vendor", async () => {
-    const mock = adapterFor({ ...verifiedProd, environment: "sandbox" })!;
-    await expect(mock.verifyWebhook("sig", "{}")).resolves.toBe(false);
+  it("still fails closed on the authoritative vendor gate", () => {
+    expect(gate(verifiedProd, "new_rx", false, row)).toBeTruthy();
   });
 });
+
 
 describe("clinician readiness blockers", () => {
   it("lists every missing prerequisite", () => {
