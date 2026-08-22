@@ -163,7 +163,8 @@ serve(async (req) => {
 
     const { controlled, schedule } = classifyControlled(rx.medication_name);
     const profile = await loadProfile(admin, hospital_id);
-    const blocked = gate(profile, "new_rx", controlled);
+    const vendorRow = profile ? await loadVendorRow(admin, hospital_id, profile.environment) : null;
+    const blocked = gate(profile, controlled ? "epcs" : "new_rx", controlled, vendorRow);
 
     const correlationId = `${prescription_id}:${rx.signed_hash?.slice(0, 16) ?? "unsigned"}`;
     const eventId = await sha256Hex(`new_rx:${correlationId}`);
@@ -187,16 +188,18 @@ serve(async (req) => {
       return json({ status: "blocked", reason: blocked, schedule });
     }
 
-    const adapter = adapterFor(profile);
-    if (!adapter) return json({ status: "not_connected", reason: "no_adapter_implemented" });
-
-    const result = await adapter.send("NewRx", correlationId, payloadHash);
+    // Single authoritative vendor path — the same gate the readiness surface reports.
+    const result = await doseSpotAdapter.execute(vendorRow, {
+      capability: controlled ? "epcs" : "new_rx",
+      correlationId, idempotencyKey: eventId, payload: { payloadHash },
+    });
     await admin.from("erx_outbox").update({
-      status: result.status, vendor_reference: result.vendorReference ?? null,
+      status: result.status === "ok" ? "sent" : result.status, vendor_reference: result.vendorReference ?? null,
       error_code: result.reason ?? null, updated_at: new Date().toISOString(),
     }).eq("event_id", eventId);
 
     return json({ status: result.status, reason: result.reason });
+
   } catch (e) {
     console.error("[erx-adapter]", e instanceof Error ? e.message : e);
     return json({ error: "Request failed" }, 500);
