@@ -17,7 +17,7 @@ interface ServiceLine { id: string; name: string }
  */
 export function ObesityLaunchWorkspace({ hospitalId }: { hospitalId: string }) {
   const [services, setServices] = useState<ServiceLine[]>([]);
-  const [states, setStates] = useState<string[]>([]);
+  const [coverage, setCoverage] = useState<Coverage[]>([]);
   const [serviceLineId, setServiceLineId] = useState<string | null>(null);
   const [stateCode, setStateCode] = useState<string | null>(null);
   const [prescribing, setPrescribing] = useState(true);
@@ -34,15 +34,25 @@ export function ObesityLaunchWorkspace({ hospitalId }: { hospitalId: string }) {
       ]);
       if (cancelled) return;
       const lines = (sl ?? []) as ServiceLine[];
-      const rows = (cov ?? []) as Coverage[];
       setServices(lines);
-      setStates([...new Set(rows.map((r) => r.state_code))].sort());
+      setCoverage((cov ?? []) as Coverage[]);
       setServiceLineId((prev) => prev ?? lines[0]?.id ?? null);
-      setStateCode((prev) => prev ?? rows[0]?.state_code ?? null);
-
     })();
     return () => { cancelled = true; };
   }, [hospitalId]);
+
+  // Only states applicable to the selected obesity service line (generic rows
+  // count only because the server treats a null service line as applicable).
+  const states = [...new Set(
+    coverage
+      .filter((r) => !serviceLineId || r.service_line_id === serviceLineId || r.service_line_id === null)
+      .map((r) => r.state_code),
+  )].sort();
+
+  useEffect(() => {
+    setStateCode((prev) => (prev && states.includes(prev) ? prev : states[0] ?? null));
+  }, [states.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const { result, loading, refresh } = useObesityLaunchReadiness(hospitalId, serviceLineId, stateCode, { prescribing, controlled });
   const gates = result?.gates ?? [];
@@ -79,8 +89,15 @@ export function ObesityLaunchWorkspace({ hospitalId }: { hospitalId: string }) {
       </div>
 
       {!result?.authorized && !loading && (
-        <p className="text-xs text-muted-foreground">Select a facility state and service to evaluate the gate.</p>
+        <p role="status" className="text-xs text-red-600">
+          {result?.blockers?.includes('readiness_unavailable')
+            ? 'Blocked — the readiness gate could not be evaluated. Nothing may launch until it returns a verdict.'
+            : result
+              ? 'Blocked — you are not authorized to evaluate this facility’s obesity launch gate.'
+              : 'Select a facility state and service to evaluate the gate.'}
+        </p>
       )}
+
 
       <div className="space-y-1.5">
         {gates.map((g) => (

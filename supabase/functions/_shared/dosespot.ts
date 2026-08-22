@@ -51,33 +51,53 @@ export type LaunchResult =
   | { status: "ok"; url: string; expiresAt: string }
   | { status: "blocked" | "unavailable"; reason: string };
 
-const isConfig = (v: unknown): v is DoseSpotPartnerConfig => {
-  const c = v as DoseSpotPartnerConfig | null;
-  return !!c && typeof c.host === "string" && /^[a-z0-9.-]+$/i.test(c.host) &&
-    typeof c.launchPath === "string" && c.launchPath.startsWith("/") &&
-    !!c.paramNames && typeof c.paramNames.clinicId === "string" && typeof c.paramNames.clinicianId === "string" &&
-    Number.isFinite(c.launchTtlSeconds) && c.launchTtlSeconds > 0 && c.launchTtlSeconds <= 900;
-};
+const HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+const nonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
 
-/** Returns the validated partner config, or the reason it cannot be used yet. */
+/**
+ * Returns the validated partner config, or the reason it cannot be used yet.
+ * The blocker codes here are mirrored 1:1 by the SQL readiness gate
+ * (`public.dosespot_partner_config_blocker`) so the UI can never be greener
+ * than runtime. No secret value is ever read or reported here.
+ */
 export function partnerConfig(row: OnboardingRow | null): { config: DoseSpotPartnerConfig } | { reason: string } {
   if (!row) return { reason: "no_vendor_profile" };
-  const raw = (row.capabilities ?? {})["partner_config"];
-  if (!raw) return { reason: "vendor_partner_package_required" };
-  if (!isConfig(raw)) return { reason: "partner_config_invalid" };
+  const raw = (row.capabilities ?? {})["partner_config"] as DoseSpotPartnerConfig | undefined;
+  if (!raw || typeof raw !== "object") return { reason: "vendor_partner_package_required" };
+
+  if (!nonEmpty(raw.host) || !HOST_RE.test(raw.host)) return { reason: "partner_config_host_invalid" };
   const allowed = VENDORS.dosespot.hosts[row.environment];
   if (allowed.length && !allowed.includes(raw.host)) return { reason: "host_not_allowlisted" };
-  if (!raw.signing) return { reason: "launch_signing_rule_not_configured" };
-  // Only the implemented HMAC-query signing mode is supported; no scheme is invented.
-  if (typeof raw.paramNames.signature !== "string" || !raw.paramNames.signature) {
-    return { reason: "launch_signature_parameter_not_configured" };
+  if (!nonEmpty(raw.launchPath) || !raw.launchPath.startsWith("/")) {
+    return { reason: "partner_config_launch_path_invalid" };
   }
-  if (!raw.evidence_ref || raw.evidence_approved !== true) return { reason: "partner_package_not_approved" };
+  const pn = raw.paramNames;
+  if (!pn || typeof pn !== "object" || !nonEmpty(pn.clinicId) || !nonEmpty(pn.clinicianId) || !nonEmpty(pn.signature)) {
+    return { reason: "partner_config_param_names_invalid" };
+  }
+  const ttl = raw.launchTtlSeconds;
+  if (typeof ttl !== "number" || !Number.isInteger(ttl) || ttl < 1 || ttl > 900) {
+    return { reason: "partner_config_launch_ttl_invalid" };
+  }
+
+  const sg = raw.signing;
+  if (!sg || typeof sg !== "object") return { reason: "launch_signing_rule_not_configured" };
+  if (!nonEmpty(sg.algorithm) || !["hmac-sha256", "hmac-sha512"].includes(sg.algorithm.toLowerCase())) {
+    return { reason: "launch_signing_algorithm_unsupported" };
+  }
+  if (sg.encoding !== "hex" && sg.encoding !== "base64") return { reason: "launch_signing_encoding_unsupported" };
+  if (!nonEmpty(sg.secretRef)) return { reason: "launch_signing_secret_ref_missing" };
+  if (!row.secret_ref_names.includes(sg.secretRef.trim())) {
+    return { reason: "launch_signing_secret_ref_not_provisioned" };
+  }
+
+  if (!nonEmpty(raw.evidence_ref) || raw.evidence_approved !== true) return { reason: "partner_package_not_approved" };
   if (raw.controlled_substance_mode !== "vendor_disabled" && raw.controlled_substance_mode !== "enabled") {
     return { reason: "controlled_substance_mode_unspecified" };
   }
   return { config: raw };
 }
+
 
 
 /** Every secret reference the environment requires must resolve server-side. */

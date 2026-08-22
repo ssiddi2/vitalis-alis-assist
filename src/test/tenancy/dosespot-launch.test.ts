@@ -20,10 +20,10 @@ describe("DoseSpot partner configuration", () => {
 
   it("rejects a malformed or unsigned partner config", () => {
     expect(partnerConfig(row({ capabilities: { partner_config: { host: "x" } } })))
-      .toEqual({ reason: "partner_config_invalid" });
+      .toEqual({ reason: "partner_config_host_invalid" });
     const valid = {
       host: "partner.example.com", launchPath: "/launch/{clinicId}", launchTtlSeconds: 120,
-      paramNames: { clinicId: "c", clinicianId: "u" }, signing: null,
+      paramNames: { clinicId: "c", clinicianId: "u", signature: "sig" }, signing: null,
     };
     expect(partnerConfig(row({ capabilities: { partner_config: valid } })))
       .toEqual({ reason: "launch_signing_rule_not_configured" });

@@ -7381,6 +7381,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      dosespot_partner_config_blocker: {
+        Args: { pc: Json; secret_refs: string[] }
+        Returns: string
+      }
       dosespot_prescriber_epcs_ok: {
         Args: { p_hospital_id: string; p_state_code: string; p_user_id: string }
         Returns: boolean
@@ -7402,6 +7406,8 @@ export type Database = {
         Returns: boolean
       }
       is_my_hospital: { Args: { _hospital_id: string }; Returns: boolean }
+      jsonb_is_true: { Args: { v: Json }; Returns: boolean }
+      jsonb_nonempty_text: { Args: { v: Json }; Returns: boolean }
       launch_readiness: {
         Args: {
           p_hospital_id: string
@@ -7423,6 +7429,50 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      obesity_intake_schema_blocker: {
+        Args: { content: Json }
+        Returns: string
+      }
+      obesity_intake_template: {
+        Args: { p_encounter_id: string }
+        Returns: Json
+      }
+      obesity_intake_template_for: {
+        Args: { p_encounter_id: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          change_summary: string | null
+          content: Json
+          created_at: string
+          created_by: string | null
+          effective_end: string | null
+          effective_start: string | null
+          generated_by_ai: boolean
+          hospital_id: string
+          id: string
+          kind: string
+          lock_version: number
+          next_review_date: string | null
+          owner_user_id: string | null
+          review_cadence_months: number
+          scope: string | null
+          service_line_id: string | null
+          source_evidence: string | null
+          state_code: string | null
+          status: string
+          supersedes_id: string | null
+          title: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clinical_protocols"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       obesity_launch_readiness: {
         Args: {

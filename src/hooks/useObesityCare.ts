@@ -70,15 +70,19 @@ export function useObesityLaunchReadiness(
   const refresh = useCallback(async () => {
     if (!hospitalId || !stateCode) { setResult(null); return; }
     setLoading(true);
-    const { data } = await supabase.rpc('obesity_launch_readiness', {
+    const { data, error } = await supabase.rpc('obesity_launch_readiness', {
       p_hospital_id: hospitalId,
       p_service_line_id: serviceLineId ?? null,
       p_state_code: stateCode,
       p_prescribing: prescribing,
       p_controlled: controlled,
     });
-    setResult((data as unknown as ObesityReadiness) ?? { authorized: false });
+    // An RPC failure is a blocked verdict, never a blank or optimistic screen.
+    setResult(error || !data
+      ? { authorized: false, can_launch: false, gates: [], blockers: [error ? 'readiness_unavailable' : 'not_authorized'] }
+      : (data as unknown as ObesityReadiness));
     setLoading(false);
+
   }, [hospitalId, serviceLineId, stateCode, prescribing, controlled]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -142,23 +146,22 @@ export function useObesityCare(
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  // The approved, current medical-director intake template drives the form.
+  // The server selects the approved template for this exact encounter, so the
+  // form and the submission validator can never diverge.
   useEffect(() => {
     let live = true;
-    if (!hospitalId) { setTemplate(null); return; }
+    if (!encounterId) { setTemplate(null); return; }
     void (async () => {
-      const { data } = await supabase.from('clinical_protocols')
-        .select('id, version, title, content')
-        .eq('hospital_id', hospitalId).eq('kind', 'obesity_intake').eq('status', 'approved')
-        .order('version', { ascending: false }).limit(1).maybeSingle();
+      const { data } = await supabase.rpc('obesity_intake_template', { p_encounter_id: encounterId });
       if (!live) return;
-      const questions = (data?.content as { questions?: IntakeQuestion[] } | null)?.questions;
-      setTemplate(data && Array.isArray(questions)
-        ? { id: data.id, version: data.version, title: data.title, questions }
+      const res = data as { status?: string; id?: string; version?: number; title?: string; questions?: IntakeQuestion[] } | null;
+      setTemplate(res?.status === 'ok' && Array.isArray(res.questions)
+        ? { id: res.id!, version: res.version!, title: res.title ?? 'Obesity intake', questions: res.questions }
         : null);
     })();
     return () => { live = false; };
-  }, [hospitalId]);
+  }, [encounterId]);
+
 
   /**
    * Records a PHI-minimized external payment outcome. The client supplies only
