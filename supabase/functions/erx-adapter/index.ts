@@ -162,8 +162,9 @@ serve(async (req) => {
     if (!(await ownedByHospital(admin, "prescriptions", prescription_id, hospital_id))) return json({ error: "Not found" }, 404);
 
     const { data: rx } = await admin.from("prescriptions")
-      .select("id, patient_id, medication_name, quantity, days_supply, refills, status, dea_schedule, signed_hash")
+      .select("id, patient_id, medication_name, quantity, days_supply, refills, status, dea_schedule, signed_hash, prescriber_id, prescriber_state_code, encounter_id")
       .eq("id", prescription_id).maybeSingle();
+
     if (!rx) return json({ error: "Not found" }, 404);
 
     if (action === "safety_check") {
@@ -192,18 +193,63 @@ serve(async (req) => {
     }
 
     // ---- transmit ----
-    if (rx.status !== "signed") return json({ status: "blocked", reason: "prescription_not_signed" });
+    /** PHI-minimized transmission audit on the existing prescription event model. */
+    const auditRx = async (code: string, blockers: string[], schedule?: string | null) =>
+      void await admin.from("prescription_events").insert({
+        prescription_id, patient_id: rx.patient_id, actor_id: user.id, event_code: code,
+        metadata: { vendor: "dosespot", schedule: schedule ?? null, blockers: blockers.slice(0, 12) },
+      });
+
+    if (rx.status !== "signed") {
+      await auditRx("rx.transmission_blocked", ["prescription_not_signed"]);
+      return json({ status: "blocked", reason: "prescription_not_signed", blockers: ["prescription_not_signed"] });
+    }
+    if (rx.prescriber_id !== user.id) {
+      await auditRx("rx.transmission_blocked", ["not_the_assigned_prescriber"]);
+      return json({ status: "blocked", reason: "not_the_assigned_prescriber", blockers: ["not_the_assigned_prescriber"] });
+    }
 
     const { controlled, schedule } = classifyControlled(rx.medication_name);
+
+    // Authoritative prescribing state: the prescription's own state, with the
+    // linked encounter's patient state only as an explicit fallback.
+    const { data: rxEnc } = rx.encounter_id
+      ? await admin.from("encounters").select("id, patient_state_code").eq("id", rx.encounter_id).maybeSingle()
+      : { data: null };
+    const stateCode = (rx.prescriber_state_code ?? rxEnc?.patient_state_code ?? "").toUpperCase();
+    if (controlled && !/^[A-Z]{2}$/.test(stateCode)) {
+      await auditRx("rx.transmission_blocked", ["controlled_state_authority_unknown"], schedule);
+      return json({ status: "blocked", reason: "controlled_state_authority_unknown", blockers: ["controlled_state_authority_unknown"], schedule });
+    }
+
+    // An obesity-medicine encounter must satisfy the same server-authoritative
+    // encounter gate the embedded Jumpstart launch uses.
+    if (rx.encounter_id) {
+      const { data: svc } = await admin.from("care_requests")
+        .select("service_lines(code)").eq("encounter_id", rx.encounter_id)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if ((svc as { service_lines?: { code?: string } } | null)?.service_lines?.code === "obesity_medicine") {
+        const { data: readiness } = await admin.rpc("obesity_prescribing_readiness", {
+          p_encounter_id: rx.encounter_id, p_controlled: controlled,
+        });
+        const encBlockers = (readiness?.blockers ?? ["prescribing_readiness_unavailable"]) as string[];
+        if (!readiness?.allowed) {
+          await auditRx("rx.transmission_blocked", encBlockers, schedule);
+          return json({ status: "blocked", reason: encBlockers[0], blockers: encBlockers, schedule });
+        }
+      }
+    }
+
     const profile = await loadProfile(admin, hospital_id);
     const vendorRow = profile ? await loadVendorRow(admin, hospital_id, profile.environment) : null;
     // Individual prescriber EPCS evidence — facility booleans are never sufficient.
     const { data: rxEpcsOk } = controlled
       ? await admin.rpc("dosespot_prescriber_epcs_ok", {
-        p_hospital_id: hospital_id, p_user_id: user.id, p_state_code: null,
+        p_hospital_id: hospital_id, p_user_id: rx.prescriber_id, p_state_code: stateCode,
       })
       : { data: false };
     const blocked = gate(profile, controlled ? "epcs" : "new_rx", controlled, vendorRow, rxEpcsOk === true);
+
 
 
     const correlationId = `${prescription_id}:${rx.signed_hash?.slice(0, 16) ?? "unsigned"}`;
@@ -221,12 +267,10 @@ serve(async (req) => {
     });
 
     if (blocked) {
-      await admin.from("prescription_events").insert({
-        prescription_id, patient_id: rx.patient_id, actor_id: user.id,
-        event_code: "rx.transmission_blocked", metadata: { reason: blocked, schedule: schedule ?? null },
-      });
-      return json({ status: "blocked", reason: blocked, schedule });
+      await auditRx("rx.transmission_blocked", [blocked], schedule);
+      return json({ status: "blocked", reason: blocked, blockers: [blocked], schedule });
     }
+
 
     // Single authoritative vendor path — the same gate the readiness surface reports.
     const result = await doseSpotAdapter.execute(vendorRow, {

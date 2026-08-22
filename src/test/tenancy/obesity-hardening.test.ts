@@ -143,7 +143,7 @@ describe("4. per-prescriber EPCS is enforced", () => {
   it("requires an approved partner package evidence reference and the signature parameter", () => {
     expect(partnerConfig(withCfg({ evidence_approved: false }))).toEqual({ reason: "partner_package_not_approved" });
     expect(partnerConfig(withCfg({ paramNames: { clinicId: "c", clinicianId: "u" } })))
-      .toEqual({ reason: "launch_signature_parameter_not_configured" });
+      .toEqual({ reason: "partner_config_param_names_invalid" });
   });
 
   it("treats a controlled-enabled account as an EPCS surface on every launch", async () => {
@@ -169,8 +169,12 @@ describe("5. readiness gate mirrors runtime", () => {
     expect(f).toMatch(/mfa_enforced/);
     expect(f).toMatch(/secret_ref_names @> REQUIRED_REFS/);
     expect(f).toMatch(/last_test_result = 'production_readiness_passed'/);
-    expect(f).toMatch(/controlled_substance_mode'\) IN \('vendor_disabled','enabled'\)/);
-    expect(f).toMatch(/evidence_approved/);
+    // Partner-config validation is delegated to the shared blocker so SQL and
+    // runtime can never disagree; assert the delegation and the codes it owns.
+    expect(f).toMatch(/public\.dosespot_partner_config_blocker/);
+    const blk = fn("dosespot_partner_config_blocker");
+    expect(blk).toContain("controlled_substance_mode_unspecified");
+    expect(blk).toContain("partner_package_not_approved");
     expect(f).toMatch(/evidence_ref/);
   });
 

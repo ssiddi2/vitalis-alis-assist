@@ -127,9 +127,14 @@ export function ObesityCarePanel({ encounterId, patientId, noteId }: Props) {
                   <Input id={`iq-${q.id}`} type={q.type === 'number' ? 'number' : 'text'}
                     className="h-8 rounded-xl text-xs"
                     value={String(answers[q.id] ?? '')}
-                    onChange={(e) => setAnswers((a) => ({
-                      ...a, [q.id]: q.type === 'number' ? Number(e.target.value) : e.target.value,
-                    }))} />
+                    onChange={(e) => setAnswers((a) => {
+                      const next = { ...a };
+                      // An empty optional field is left unanswered, never coerced to 0 or ''.
+                      if (e.target.value === '') { delete next[q.id]; return next; }
+                      next[q.id] = q.type === 'number' ? Number(e.target.value) : e.target.value;
+                      return next;
+                    })} />
+
                 )}
               </div>
             ))}
