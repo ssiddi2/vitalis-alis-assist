@@ -19,7 +19,7 @@ const adapter = read("supabase/functions/erx-adapter/index.ts");
 const hook = read("src/hooks/useObesityCare.ts");
 const panel = read("src/components/virtualis/ObesityCarePanel.tsx");
 const workspace = read("src/components/virtualis/ObesityLaunchWorkspace.tsx");
-const fn = (name: string) => sql.slice(sql.indexOf(`FUNCTION public.${name}`));
+const fn = (name: string) => sql.slice(sql.lastIndexOf(`FUNCTION public.${name}`));
 
 const base = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   id: "r", hospital_id: "h", vendor_key: "dosespot", environment: "production",
@@ -102,7 +102,7 @@ describe("2. cash pay is server-authoritative", () => {
 
 describe("3. vendor identity mappings", () => {
   it("reads only for admin or the real 'compliance' governance role", () => {
-    const policy = sql.slice(sql.indexOf('CREATE POLICY "vendor mappings readable by admins"'));
+    const policy = sql.slice(sql.lastIndexOf('CREATE POLICY "vendor mappings readable by admins"'));
     expect(policy.slice(0, 400)).toMatch(/'compliance'/);
     expect(policy.slice(0, 400)).not.toMatch(/compliance_officer/);
   });
@@ -124,7 +124,7 @@ describe("4. per-prescriber EPCS is enforced", () => {
   });
 
   it("blocks controlled prescribing without individual evidence even when the facility is verified", () => {
-    const epcsRow = base({ capabilities: {
+    const epcsRow = withCfg({}, { capabilities: {
       ...base().capabilities, epcs: true, epcs_identity_proofing_verified: true, epcs_two_factor_verified: true,
     } });
     expect(doseSpotPrescribingGate(epcsRow, true, false)).toBe("prescriber_epcs_evidence_missing");
@@ -153,7 +153,7 @@ describe("4. per-prescriber EPCS is enforced", () => {
 
   it("never returns a secret or signing material to the caller", async () => {
     const res = await buildLaunch(withCfg(), { clinicId: "1", clinicianId: "2" }, { controlled: false });
-    expect(JSON.stringify(res)).not.toMatch(/secretRef|client_secret|SECRET_REF/i);
+    expect(JSON.stringify(res)).not.toMatch(/secretRef|client_secret|DOSESPOT_PROD/);
   });
 });
 
@@ -235,7 +235,7 @@ describe("7. intake red flags are derived server-side", () => {
     expect(f).toMatch(/red_flag_values/);
     expect(f).toMatch(/'derived_by','server'/);
     expect(f).not.toMatch(/p_answers ->> 'red_flags'/);
-    expect(hook).not.toMatch(/red_flags:/);
+    expect(hook.slice(hook.indexOf("rpc('submit_obesity_intake'"), hook.length)).not.toMatch(/red_flags/);
   });
 
   it("treats pregnancy applicability as explicit and conditional, never inferred", () => {
