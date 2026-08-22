@@ -129,14 +129,14 @@ describe("2. DoseSpot partner-config parity between SQL and runtime", () => {
 });
 
 describe("3. intake template selection is authoritative and shared", () => {
-  const sel = fn("obesity_intake_template_for");
+  const sel = fn("obesity_intake_template_for") + fn("obesity_intake_template_scoped");
   const rpc = fn("obesity_intake_template");
   const submit = fn("submit_obesity_intake");
 
   it("only selects a template for the encounter's obesity_medicine service line", () => {
     expect(sel).toContain("'obesity_medicine'");
-    expect(sel).toContain("c.service_line_id IS NULL OR c.service_line_id = sl");
-    expect(sel).toContain("c.state_code IS NULL OR c.state_code = e.patient_state_code");
+    expect(sel).toContain("c.service_line_id IS NULL OR c.service_line_id = p_service_line_id");
+    expect(sel).toContain("c.state_code IS NULL OR c.state_code = p_state_code");
   });
 
   it("prefers exact service and state matches over generic ones", () => {
