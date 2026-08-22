@@ -9,6 +9,7 @@ import { CredentialingPanel } from '@/components/virtualis/CredentialingPanel';
 import { OperationsReadiness } from '@/components/virtualis/OperationsReadiness';
 import { LaunchReadinessDashboard } from '@/components/virtualis/LaunchReadinessDashboard';
 import { ComplianceMatrix } from '@/components/virtualis/ComplianceMatrix';
+import { ObesityLaunchWorkspace } from '@/components/virtualis/ObesityLaunchWorkspace';
 
 export default function LaunchReadiness() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export default function LaunchReadiness() {
           <Tabs defaultValue="readiness" className="space-y-4">
             <TabsList className="rounded-full">
               <TabsTrigger value="readiness" className="rounded-full text-xs">Readiness</TabsTrigger>
+              <TabsTrigger value="obesity" className="rounded-full text-xs">Obesity</TabsTrigger>
               <TabsTrigger value="compliance" className="rounded-full text-xs">Compliance</TabsTrigger>
               <TabsTrigger value="governance" className="rounded-full text-xs">Governance</TabsTrigger>
               <TabsTrigger value="credentialing" className="rounded-full text-xs">Credentialing</TabsTrigger>
@@ -49,6 +51,9 @@ export default function LaunchReadiness() {
             </TabsList>
             <TabsContent value="readiness">
               <LaunchReadinessDashboard hospitalId={selectedHospitalId} />
+            </TabsContent>
+            <TabsContent value="obesity">
+              <ObesityLaunchWorkspace hospitalId={selectedHospitalId} />
             </TabsContent>
             <TabsContent value="compliance">
               <ComplianceMatrix hospitalId={selectedHospitalId} />
