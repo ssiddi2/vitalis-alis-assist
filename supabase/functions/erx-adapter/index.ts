@@ -6,13 +6,17 @@ import { userHasHospitalAccess } from "../_shared/auth.ts";
 import { ownedByHospital, patientInHospital } from "../_shared/tenancy.ts";
 import { classifyControlled } from "../_shared/controlledSubstances.ts";
 import { evaluateSafety } from "../_shared/medSafety.ts";
-import { SCRIPT_VERSION, adapterFor, gate, loadProfile, sha256Hex } from "../_shared/erx.ts";
+import { SCRIPT_VERSION, gate, loadProfile, loadVendorRow, sha256Hex } from "../_shared/erx.ts";
+import { doseSpotAdapter } from "../_shared/vendorAdapters.ts";
+import { buildLaunch, launchReadiness } from "../_shared/dosespot.ts";
 
 /**
- * Server-only medication safety, e-Rx transmission and PDMP metadata path.
- * Fails closed: no vendor is contracted, so nothing is ever marked delivered.
+ * Server-only medication safety, e-Rx transmission, DoseSpot launch and PDMP
+ * metadata path. Every branch fails closed on the hospital's authoritative
+ * vendor onboarding evidence; no secret ever reaches the browser.
  */
-const ACTIONS = ["safety_check", "transmit", "pdmp_query"] as const;
+const ACTIONS = ["safety_check", "transmit", "pdmp_query", "dosespot_launch"] as const;
+
 
 serve(async (req) => {
   const g = await guard(req, { bucket: "erx-adapter", limit: envLimit("RL_ERX", 60) });
