@@ -129,14 +129,14 @@ describe("2. DoseSpot partner-config parity between SQL and runtime", () => {
 });
 
 describe("3. intake template selection is authoritative and shared", () => {
-  const sel = fn("obesity_intake_template_for");
+  const sel = fn("obesity_intake_template_for") + fn("obesity_intake_template_scoped");
   const rpc = fn("obesity_intake_template");
   const submit = fn("submit_obesity_intake");
 
   it("only selects a template for the encounter's obesity_medicine service line", () => {
     expect(sel).toContain("'obesity_medicine'");
-    expect(sel).toContain("c.service_line_id IS NULL OR c.service_line_id = sl");
-    expect(sel).toContain("c.state_code IS NULL OR c.state_code = e.patient_state_code");
+    expect(sel).toContain("c.service_line_id IS NULL OR c.service_line_id = p_service_line_id");
+    expect(sel).toContain("c.state_code IS NULL OR c.state_code = p_state_code");
   });
 
   it("prefers exact service and state matches over generic ones", () => {
@@ -260,5 +260,88 @@ describe("6. launch workspace scope and safety", () => {
   it("sends no authoritative facility, patient or amount from the browser", () => {
     const payCall = hook.slice(hook.indexOf("supabase.rpc('record_cash_pay'"), hook.indexOf("supabase.rpc('record_cash_pay'") + 260);
     expect(payCall).not.toMatch(/p_amount|p_hospital_id|p_patient_id|amount_cents|p_service_code/);
+  });
+});
+
+describe("7. explicit question types, element type compatibility, effective windows", () => {
+  const schema = fn("obesity_intake_schema_blocker");
+  const submit = fn("submit_obesity_intake");
+  const scoped = fn("obesity_intake_template_scoped");
+  const forEnc = fn("obesity_intake_template_for");
+  const gate = fn("obesity_launch_readiness_internal");
+
+  it("requires an explicitly declared question type with no boolean default", () => {
+    expect(schema).toContain("public.jsonb_nonempty_text(q -> 'type')");
+    expect(schema).toContain("(q ->> 'type') NOT IN ('boolean', 'choice', 'number', 'text')");
+    expect(schema).toContain("template_question_type_invalid");
+    expect(schema).not.toContain("coalesce(q ->> 'type', 'boolean')");
+    expect(schema).not.toContain("coalesce(ref ->> 'type', 'boolean')");
+  });
+
+  it("keeps submission on the same declared type, without an implicit default", () => {
+    expect(submit).toContain("qtype := q ->> 'type';");
+    expect(submit).not.toContain("coalesce(q ->> 'type', 'boolean')");
+  });
+
+  it("type-checks every options and red_flag_values element", () => {
+    expect(schema).toMatch(/red_flag_values'\) e WHERE jsonb_typeof\(e\) <> want/);
+    expect(schema).toMatch(/options'\) o WHERE jsonb_typeof\(o\) <> want/);
+  });
+
+  it("rejects duplicate choice options", () => {
+    expect(schema).toContain("count(DISTINCT o)");
+    expect(schema).toContain("template_options_duplicated");
+  });
+
+  it("requires an applies_when choice value to be one of the referenced options", () => {
+    expect(schema).toContain("template_applies_when_value_not_an_option");
+    expect(schema).toMatch(/reftype = 'choice'[\s\S]{0,200}ref -> 'options'/);
+  });
+
+  it("never counts a future-effective approved version as current", () => {
+    const windows = (sql: string) => sql.match(/effective_end IS NULL/g)?.length ?? 0;
+    for (const body of [scoped, gate]) {
+      const starts = body.match(/effective_start IS NULL OR \w+\.effective_start <= current_date/g)?.length ?? 0;
+      expect(starts).toBeGreaterThan(0);
+      // every versioned-artifact window that checks an end also checks a start
+      expect(starts + (body.match(/f\.effective_start <= current_date/g)?.length ?? 0)).toBe(windows(body));
+    }
+  });
+
+  it("applies the start-date rule to protocols, note templates and consents", () => {
+    expect(gate).toMatch(/kind = k[\s\S]{0,400}c\.effective_start IS NULL OR c\.effective_start <= current_date/);
+    expect(gate).toMatch(/kind = 'note_template'[\s\S]{0,300}c\.effective_start IS NULL OR c\.effective_start <= current_date/);
+    expect(gate).toMatch(/consent_documents[\s\S]{0,400}d\.effective_start IS NULL OR d\.effective_start <= current_date/);
+  });
+});
+
+describe("8. one authoritative scope selector for encounter and readiness", () => {
+  const scoped = fn("obesity_intake_template_scoped");
+  const forEnc = fn("obesity_intake_template_for");
+  const gate = fn("obesity_launch_readiness_internal");
+
+  it("orders exact service, then exact state, then version", () => {
+    expect(scoped).toContain("ORDER BY (c.service_line_id IS NOT NULL) DESC, (c.state_code IS NOT NULL) DESC, c.version DESC");
+    expect(scoped).toContain("LIMIT 1");
+  });
+
+  it("encounter selection delegates to the shared selector", () => {
+    expect(forEnc).toContain("public.obesity_intake_template_scoped(e.hospital_id, sl, e.patient_state_code)");
+    expect(forEnc).toContain("'obesity_medicine'");
+    expect(forEnc).not.toContain("FROM public.clinical_protocols");
+  });
+
+  it("readiness validates the exact template that scope selects, not any well-formed one", () => {
+    expect(gate).toContain("it := public.obesity_intake_template_scoped(p_hospital_id, p_service_line_id, p_state_code);");
+    expect(gate).toContain("ok := it.id IS NOT NULL AND public.obesity_intake_schema_blocker(it.content) IS NULL;");
+    expect(gate).toContain("The intake template this scope selects is malformed");
+  });
+
+  it("keeps the selector owner-only and the wrappers tenant-authorized", () => {
+    expect(scoped).toMatch(/REVOKE ALL ON FUNCTION public\.obesity_intake_template_scoped\(uuid, uuid, text\) FROM public, anon, authenticated;/);
+    expect(scoped).toMatch(/GRANT EXECUTE ON FUNCTION public\.obesity_intake_template_scoped\(uuid, uuid, text\) TO service_role;/);
+    expect(scoped).toContain("SECURITY DEFINER");
+    expect(scoped).toMatch(/SET search_path = ''/);
+    expect(fn("obesity_intake_template")).toContain("public.is_my_hospital(e.hospital_id)");
   });
 });
