@@ -141,7 +141,8 @@ export function vendorGate(
   const otherEnv = expectedEnv === "production" ? "sandbox" : "production";
   if (secretRefsFor(def, otherEnv).some((r) => row.secret_ref_names.includes(r))) return "cross_environment_secret_reference";
   if (expected.some((r) => !row.secret_ref_names.includes(r))) return "secret_references_missing";
-  if (def.requiresPartnerPackage) return "vendor_partner_package_required";
+  // Partner-supplied host/path/auth/signature mapping must be uploaded before any traffic.
+  if (def.requiresPartnerPackage && !row.capabilities?.partner_config) return "vendor_partner_package_required";
   return null;
 }
 
