@@ -70,6 +70,7 @@ export function gate(
   capability: Capability,
   controlled: boolean,
   row: OnboardingRow | null = null,
+  prescriberEpcsVerified = false,
 ): string | null {
   if (capability === "epcs" && !controlled) return "epcs_requires_controlled_context";
   if (!profile) return "no_integration_profile";
@@ -78,8 +79,9 @@ export function gate(
   if (controlled && !profile.epcs_enabled) return "epcs_not_enabled_on_profile";
   if (!row) return "vendor_onboarding_evidence_missing";
   if (row.environment !== profile.environment) return "environment_mismatch";
-  return doseSpotPrescribingGate(row, controlled);
+  return doseSpotPrescribingGate(row, controlled, prescriberEpcsVerified);
 }
+
 
 export async function sha256Hex(input: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));

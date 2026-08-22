@@ -27,7 +27,9 @@ export function ObesityLaunchWorkspace({ hospitalId }: { hospitalId: string }) {
     let cancelled = false;
     void (async () => {
       const [{ data: sl }, { data: cov }] = await Promise.all([
-        supabase.from('service_lines').select('id,name').eq('hospital_id', hospitalId).order('name'),
+        // Only the cash-pay obesity medicine service is in scope for this launch.
+        supabase.from('service_lines').select('id,name').eq('hospital_id', hospitalId)
+          .eq('code', 'obesity_medicine').order('name'),
         supabase.from('state_service_availability').select('state_code,service_line_id').eq('hospital_id', hospitalId),
       ]);
       if (cancelled) return;
@@ -35,8 +37,9 @@ export function ObesityLaunchWorkspace({ hospitalId }: { hospitalId: string }) {
       const rows = (cov ?? []) as Coverage[];
       setServices(lines);
       setStates([...new Set(rows.map((r) => r.state_code))].sort());
-      setServiceLineId((prev) => prev ?? lines.find((l) => /obesity|weight/i.test(l.name))?.id ?? lines[0]?.id ?? null);
+      setServiceLineId((prev) => prev ?? lines[0]?.id ?? null);
       setStateCode((prev) => prev ?? rows[0]?.state_code ?? null);
+
     })();
     return () => { cancelled = true; };
   }, [hospitalId]);

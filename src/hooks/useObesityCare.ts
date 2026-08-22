@@ -39,6 +39,21 @@ export interface IntakeScreen {
   completed_at: string;
 }
 
+/** Conservative structured question schema, mirrored from the approved template. */
+export interface IntakeQuestion {
+  id: string;
+  label?: string;
+  type?: 'boolean' | 'choice' | 'number' | 'text';
+  required?: boolean;
+  options?: (string | number | boolean)[];
+  applies_when?: { question_id: string; equals: unknown };
+  pregnancy?: boolean;
+}
+
+export interface IntakeTemplate { id: string; version: number; title: string; questions: IntakeQuestion[] }
+
+export type CashPayAction = 'settle' | 'waive' | 'refund' | 'void' | 'chargeback';
+
 export interface WeightPoint { date: string; weight_kg: number; height_cm: number | null; bmi: number | null }
 
 /** Server-authoritative cash-pay obesity go-live gate for a hospital + state. */
@@ -73,18 +88,30 @@ export function useObesityLaunchReadiness(
 const bmi = (kg: number, cm: number | null) =>
   cm && cm > 0 ? Math.round((kg / ((cm / 100) ** 2)) * 10) / 10 : null;
 
-/** Encounter-scoped obesity workspace: cash-pay boundary, intake screens, weight trend. */
-export function useObesityCare(encounterId?: string | null, patientId?: string | null) {
+/**
+ * Encounter-scoped obesity workspace: cash-pay boundary, intake screens, weight trend.
+ *
+ * The browser never supplies an authoritative amount, facility, patient or fee:
+ * payment actions and intake submissions go through server-side database
+ * functions that derive those values from the encounter itself.
+ */
+export function useObesityCare(
+  encounterId?: string | null,
+  patientId?: string | null,
+  hospitalId?: string | null,
+) {
   const [cashPay, setCashPay] = useState<CashPayRow | null>(null);
   const [screens, setScreens] = useState<IntakeScreen[]>([]);
   const [trend, setTrend] = useState<WeightPoint[]>([]);
+  const [serviceCode, setServiceCode] = useState<string | null>(null);
+  const [template, setTemplate] = useState<IntakeTemplate | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!encounterId) { setCashPay(null); setScreens([]); return; }
+    if (!encounterId) { setCashPay(null); setScreens([]); setServiceCode(null); return; }
     setLoading(true);
-    const [c, s, v] = await Promise.all([
+    const [c, s, v, sl] = await Promise.all([
       supabase.from('encounter_cash_pay').select('*').eq('encounter_id', encounterId).maybeSingle(),
       supabase.from('obesity_intake_screens')
         .select('id, template_protocol_id, template_version, red_flags, pregnancy_applicable, completed_at')
@@ -92,9 +119,13 @@ export function useObesityCare(encounterId?: string | null, patientId?: string |
       patientId
         ? supabase.from('patient_vitals').select('trends').eq('patient_id', patientId).maybeSingle()
         : Promise.resolve({ data: null } as { data: { trends: unknown } | null }),
+      supabase.from('care_requests')
+        .select('service_line_id, service_lines(code)')
+        .eq('encounter_id', encounterId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
     setCashPay((c.data as unknown as CashPayRow) ?? null);
     setScreens((s.data ?? []) as unknown as IntakeScreen[]);
+    setServiceCode(((sl.data as { service_lines?: { code?: string } } | null)?.service_lines?.code) ?? null);
     const rows = Array.isArray(v.data?.trends) ? (v.data!.trends as Record<string, unknown>[]) : [];
     setTrend(
       rows
@@ -111,29 +142,82 @@ export function useObesityCare(encounterId?: string | null, patientId?: string |
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  /** Records a PHI-minimized external payment reference. No card data is ever collected. */
-  const recordPayment = useCallback(async (patch: Partial<CashPayRow>) => {
+  // The approved, current medical-director intake template drives the form.
+  useEffect(() => {
+    let live = true;
+    if (!hospitalId) { setTemplate(null); return; }
+    void (async () => {
+      const { data } = await supabase.from('clinical_protocols')
+        .select('id, version, title, content')
+        .eq('hospital_id', hospitalId).eq('kind', 'obesity_intake').eq('status', 'approved')
+        .order('version', { ascending: false }).limit(1).maybeSingle();
+      if (!live) return;
+      const questions = (data?.content as { questions?: IntakeQuestion[] } | null)?.questions;
+      setTemplate(data && Array.isArray(questions)
+        ? { id: data.id, version: data.version, title: data.title, questions }
+        : null);
+    })();
+    return () => { live = false; };
+  }, [hospitalId]);
+
+  /**
+   * Records a PHI-minimized external payment outcome. The client supplies only
+   * the action plus a non-card reference or waiver reason.
+   */
+  const recordPayment = useCallback(async (
+    action: CashPayAction,
+    opts: { reference?: string; reason?: string } = {},
+  ) => {
     if (!encounterId) return 'no_encounter';
     setBusy(true);
-    const { error } = cashPay
-      ? await supabase.from('encounter_cash_pay').update(patch as never).eq('id', cashPay.id)
-      : await supabase.from('encounter_cash_pay').insert({ encounter_id: encounterId, ...patch } as never);
+    const { data, error } = await supabase.rpc('record_cash_pay', {
+      p_encounter_id: encounterId,
+      p_action: action,
+      p_payment_reference: opts.reference ?? null,
+      p_reason: opts.reason ?? null,
+    });
     setBusy(false);
     await refresh();
-    return error?.message ?? null;
-  }, [cashPay, encounterId, refresh]);
+    const res = data as { status?: string; reason?: string } | null;
+    return error?.message ?? (res?.status === 'ok' ? null : res?.reason ?? 'payment_action_failed');
+  }, [encounterId, refresh]);
+
+  /** Submits template answers; red flags are derived server-side, never sent. */
+  const submitIntake = useCallback(async (answers: Record<string, unknown>) => {
+    if (!encounterId) return 'no_encounter';
+    setBusy(true);
+    const { data, error } = await supabase.rpc('submit_obesity_intake', {
+      p_encounter_id: encounterId, p_answers: answers as never,
+    });
+    setBusy(false);
+    await refresh();
+    const res = data as { status?: string; reason?: string; question_id?: string } | null;
+    if (error) return error.message;
+    return res?.status === 'ok'
+      ? null
+      : [res?.reason ?? 'intake_failed', res?.question_id].filter(Boolean).join(': ');
+  }, [encounterId, refresh]);
 
   /** Short-lived, server-issued embedded prescribing launch. Never returns credentials. */
   const requestPrescribingLaunch = useCallback(async () => {
-    if (!encounterId) return { data: null, error: 'no_encounter' };
+    if (!encounterId || !hospitalId) return { data: null, error: 'no_encounter' };
     setBusy(true);
     const res = await authenticatedFetch<{ status: string; url?: string; reason?: string; blockers?: string[] }>(
       'erx-adapter',
-      { body: { action: 'dosespot_launch', encounter_id: encounterId, environment: 'production' }, silent: true },
+      {
+        body: {
+          action: 'dosespot_launch', hospital_id: hospitalId,
+          encounter_id: encounterId, environment: 'production',
+        },
+        silent: true,
+      },
     );
     setBusy(false);
     return res;
-  }, [encounterId]);
+  }, [encounterId, hospitalId]);
 
-  return { cashPay, screens, trend, loading, busy, refresh, recordPayment, requestPrescribingLaunch };
+  return {
+    cashPay, screens, trend, serviceCode, template, loading, busy,
+    refresh, recordPayment, submitIntake, requestPrescribingLaunch,
+  };
 }

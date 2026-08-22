@@ -23,11 +23,22 @@ export interface DoseSpotPartnerConfig {
   /** Vendor-documented launch path, may contain {clinicId}/{clinicianId}/{patientId}. */
   launchPath: string;
   /** Vendor-documented query parameter names for the mapped identifiers. */
-  paramNames: { clinicId: string; clinicianId: string; patientId?: string; signature?: string; timestamp?: string };
+  paramNames: { clinicId: string; clinicianId: string; patientId?: string; signature: string; timestamp?: string };
   /** Vendor-documented signing rule. Absent = launch stays unavailable. */
   signing: { algorithm: string; secretRef: string; encoding: "hex" | "base64" } | null;
   /** Seconds a launch artifact stays valid, per the vendor contract. */
   launchTtlSeconds: number;
+  /**
+   * Whether the provisioned DoseSpot account/launch can reach controlled
+   * substances at all. A Jumpstart session exposes whatever the vendor user can
+   * do, so an "enabled" account requires individual EPCS evidence on EVERY
+   * launch. If the partner package does not state the mode, the launch blocks.
+   */
+  controlled_substance_mode?: "vendor_disabled" | "enabled";
+  /** Reference to the uploaded partner package evidence. */
+  evidence_ref?: string;
+  /** Independent approval of that partner package. */
+  evidence_approved?: boolean;
 }
 
 export interface LaunchContext {
@@ -57,8 +68,17 @@ export function partnerConfig(row: OnboardingRow | null): { config: DoseSpotPart
   const allowed = VENDORS.dosespot.hosts[row.environment];
   if (allowed.length && !allowed.includes(raw.host)) return { reason: "host_not_allowlisted" };
   if (!raw.signing) return { reason: "launch_signing_rule_not_configured" };
+  // Only the implemented HMAC-query signing mode is supported; no scheme is invented.
+  if (typeof raw.paramNames.signature !== "string" || !raw.paramNames.signature) {
+    return { reason: "launch_signature_parameter_not_configured" };
+  }
+  if (!raw.evidence_ref || raw.evidence_approved !== true) return { reason: "partner_package_not_approved" };
+  if (raw.controlled_substance_mode !== "vendor_disabled" && raw.controlled_substance_mode !== "enabled") {
+    return { reason: "controlled_substance_mode_unspecified" };
+  }
   return { config: raw };
 }
+
 
 /** Every secret reference the environment requires must resolve server-side. */
 export function secretsProvisioned(row: OnboardingRow): boolean {
@@ -80,24 +100,35 @@ async function sign(algorithm: string, secret: string, message: string, encoding
 
 /**
  * Build a short-lived embedded-prescribing launch URL.
- * Non-controlled prescribing only — controlled prescribing is gated separately
- * and the legal EPCS signing factor is always collected by DoseSpot, never here.
+ *
+ * A Jumpstart session exposes whatever the provisioned DoseSpot user can do, so
+ * a non-controlled launch is NOT an EPCS bypass: when the partner package says
+ * controlled substances are enabled on the account, individual prescriber EPCS
+ * evidence is required on every launch. VirtualisONE never collects the legal
+ * signing factor — DoseSpot always does.
  */
 export async function buildLaunch(
   row: OnboardingRow | null,
   ctx: LaunchContext,
-  opts: { controlled: boolean },
+  opts: { controlled: boolean; prescriberEpcsVerified?: boolean },
 ): Promise<LaunchResult> {
-  const blocked = doseSpotPrescribingGate(row, opts.controlled);
+  const blocked = doseSpotPrescribingGate(row, opts.controlled, opts.prescriberEpcsVerified === true);
   if (blocked) return { status: "blocked", reason: blocked };
-  if (!secretsProvisioned(row!)) return { status: "unavailable", reason: "secret_references_missing" };
 
   const resolved = partnerConfig(row);
   if ("reason" in resolved) return { status: "unavailable", reason: resolved.reason };
   const cfg = resolved.config;
 
+  // Policy before provisioning: a controlled-enabled account is an EPCS surface
+  // even for a non-controlled launch.
+  if (cfg.controlled_substance_mode === "enabled" && opts.prescriberEpcsVerified !== true) {
+    return { status: "blocked", reason: "individual_epcs_evidence_required" };
+  }
+
+  if (!secretsProvisioned(row!)) return { status: "unavailable", reason: "secret_references_missing" };
   const secret = resolveSecret(cfg.signing!.secretRef);
   if (!secret) return { status: "unavailable", reason: "launch_signing_secret_not_provisioned" };
+
 
   const path = cfg.launchPath
     .replace("{clinicId}", encodeURIComponent(ctx.clinicId))
@@ -112,7 +143,8 @@ export async function buildLaunch(
   if (cfg.paramNames.timestamp) url.searchParams.set(cfg.paramNames.timestamp, ts);
   const signature = await sign(cfg.signing!.algorithm, secret, `${ts}.${url.pathname}${url.search}`, cfg.signing!.encoding);
   if (!signature) return { status: "unavailable", reason: "launch_signing_algorithm_unsupported" };
-  if (cfg.paramNames.signature) url.searchParams.set(cfg.paramNames.signature, signature);
+  url.searchParams.set(cfg.paramNames.signature, signature);
+
 
   return {
     status: "ok",
