@@ -7474,6 +7474,46 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      obesity_intake_template_scoped: {
+        Args: {
+          p_hospital_id: string
+          p_service_line_id: string
+          p_state_code: string
+        }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          change_summary: string | null
+          content: Json
+          created_at: string
+          created_by: string | null
+          effective_end: string | null
+          effective_start: string | null
+          generated_by_ai: boolean
+          hospital_id: string
+          id: string
+          kind: string
+          lock_version: number
+          next_review_date: string | null
+          owner_user_id: string | null
+          review_cadence_months: number
+          scope: string | null
+          service_line_id: string | null
+          source_evidence: string | null
+          state_code: string | null
+          status: string
+          supersedes_id: string | null
+          title: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clinical_protocols"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       obesity_launch_readiness: {
         Args: {
           p_controlled?: boolean
