@@ -100,21 +100,29 @@ async function sign(algorithm: string, secret: string, message: string, encoding
 
 /**
  * Build a short-lived embedded-prescribing launch URL.
- * Non-controlled prescribing only — controlled prescribing is gated separately
- * and the legal EPCS signing factor is always collected by DoseSpot, never here.
+ *
+ * A Jumpstart session exposes whatever the provisioned DoseSpot user can do, so
+ * a non-controlled launch is NOT an EPCS bypass: when the partner package says
+ * controlled substances are enabled on the account, individual prescriber EPCS
+ * evidence is required on every launch. VirtualisONE never collects the legal
+ * signing factor — DoseSpot always does.
  */
 export async function buildLaunch(
   row: OnboardingRow | null,
   ctx: LaunchContext,
-  opts: { controlled: boolean },
+  opts: { controlled: boolean; prescriberEpcsVerified?: boolean },
 ): Promise<LaunchResult> {
-  const blocked = doseSpotPrescribingGate(row, opts.controlled);
+  const blocked = doseSpotPrescribingGate(row, opts.controlled, opts.prescriberEpcsVerified === true);
   if (blocked) return { status: "blocked", reason: blocked };
   if (!secretsProvisioned(row!)) return { status: "unavailable", reason: "secret_references_missing" };
 
   const resolved = partnerConfig(row);
   if ("reason" in resolved) return { status: "unavailable", reason: resolved.reason };
   const cfg = resolved.config;
+
+  if (cfg.controlled_substance_mode === "enabled" && opts.prescriberEpcsVerified !== true) {
+    return { status: "blocked", reason: "individual_epcs_evidence_required" };
+  }
 
   const secret = resolveSecret(cfg.signing!.secretRef);
   if (!secret) return { status: "unavailable", reason: "launch_signing_secret_not_provisioned" };
@@ -132,7 +140,8 @@ export async function buildLaunch(
   if (cfg.paramNames.timestamp) url.searchParams.set(cfg.paramNames.timestamp, ts);
   const signature = await sign(cfg.signing!.algorithm, secret, `${ts}.${url.pathname}${url.search}`, cfg.signing!.encoding);
   if (!signature) return { status: "unavailable", reason: "launch_signing_algorithm_unsupported" };
-  if (cfg.paramNames.signature) url.searchParams.set(cfg.paramNames.signature, signature);
+  url.searchParams.set(cfg.paramNames.signature, signature);
+
 
   return {
     status: "ok",
