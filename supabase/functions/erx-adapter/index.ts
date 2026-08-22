@@ -57,6 +57,71 @@ serve(async (req) => {
       return json({ status: "unavailable", reason: "no_pdmp_gateway_configured", query_id: row!.id });
     }
 
+    if (action === "dosespot_launch") {
+      let encounter_id: string, environment: "sandbox" | "production";
+      try {
+        encounter_id = vuuid(body?.encounter_id, "encounter_id", { required: true })!;
+        environment = venum(body?.environment ?? "production", ["sandbox", "production"] as const, "environment", { required: true })!;
+      } catch (err) {
+        return badRequest(err, cors);
+      }
+      if (!(await ownedByHospital(admin, "encounters", encounter_id, hospital_id))) return json({ error: "Not found" }, 404);
+
+      const { data: enc } = await admin.from("encounters")
+        .select("id, patient_id, provider_id, status, patient_state_code, med_rec_completed_at, allergy_review_at")
+        .eq("id", encounter_id).maybeSingle();
+      if (!enc) return json({ error: "Not found" }, 404);
+      if (enc.provider_id !== user.id) return json({ status: "blocked", reason: "not_the_assigned_prescriber" });
+
+      const [{ data: patient }, { data: license }, { data: maps }] = await Promise.all([
+        admin.from("patients").select("id, name, age, sex").eq("id", enc.patient_id).maybeSingle(),
+        admin.from("provider_licenses")
+          .select("npi, state_code, status, telehealth_permitted, expiration_date")
+          .eq("provider_user_id", user.id).eq("hospital_id", hospital_id)
+          .eq("state_code", enc.patient_state_code ?? "").eq("status", "active").maybeSingle(),
+        admin.from("vendor_identity_mappings")
+          .select("subject_type, subject_id, vendor_identifier")
+          .eq("hospital_id", hospital_id).eq("vendor_key", "dosespot").eq("environment", environment),
+      ]);
+      const mapping = (t: string, id?: string) =>
+        (maps || []).find((m: { subject_type: string; subject_id: string }) =>
+          m.subject_type === t && (!id || m.subject_id === id))?.vendor_identifier as string | undefined;
+
+      const clinicId = mapping("facility");
+      const clinicianId = mapping("prescriber", user.id);
+      const patientRef = mapping("patient", enc.patient_id);
+      const licenseCurrent = !!license &&
+        license.telehealth_permitted === true &&
+        (!license.expiration_date || new Date(license.expiration_date) >= new Date());
+
+      const blockers = launchReadiness({
+        demographicsComplete: !!patient?.name && patient?.age != null,
+        allergyReviewed: !!enc.allergy_review_at,
+        medRecCompleted: !!enc.med_rec_completed_at,
+        prescriberNpi: license?.npi ?? null,
+        prescriberStateAuthorized: licenseCurrent,
+        encounterActive: enc.status === "in_progress" || enc.status === "checked_in",
+        patientMapped: !!patientRef,
+        prescriberMapped: !!clinicianId,
+        clinicMapped: !!clinicId,
+      });
+      if (blockers.length) return json({ status: "blocked", reason: blockers[0], blockers });
+
+      const row = await loadVendorRow(admin, hospital_id, environment);
+      // Non-controlled prescribing only. Controlled/EPCS is a separate, hard gate.
+      const launch = await buildLaunch(row, { clinicId: clinicId!, clinicianId: clinicianId!, patientId: patientRef }, { controlled: false });
+      await admin.from("prescription_events").insert({
+        prescription_id: null, patient_id: enc.patient_id, actor_id: user.id,
+        event_code: "erx.launch_" + launch.status,
+        metadata: { vendor: "dosespot", environment, encounter_id, reason: "reason" in launch ? launch.reason : null },
+      });
+      return launch.status === "ok"
+        ? json({ status: "ok", url: launch.url, expires_at: launch.expiresAt, environment })
+        : json(launch);
+    }
+
+
+
     const prescription_id = (() => {
       try { return vuuid(body?.prescription_id, "prescription_id", { required: true })!; } catch { return null; }
     })();
