@@ -2,13 +2,17 @@
  * Launch-vendor registry (DoseSpot, Stedi, Health Gorilla, DocUpdate).
  *
  * TRUTHFULNESS RULES ENCODED HERE
- * - No vendor is contracted, certified or connected. Every gate fails closed.
+ * - Contract/certification status is never asserted in code. It is read from
+ *   the hospital's `vendor_onboarding` evidence, and every gate fails closed
+ *   until that evidence exists, is independently approved and is unexpired.
  * - Only secret REFERENCE NAMES live in the database. Values are read from the
  *   server environment at call time and never returned to a client.
- * - No private/undocumented vendor endpoint is guessed. Concrete request paths
- *   must be supplied from the vendor's own partner package/OpenAPI schema and
- *   stored in `capabilities.endpoints`; until then the transport is unavailable.
+ * - No private/undocumented vendor endpoint is guessed. Concrete hosts, paths,
+ *   launch/signature rules and payload fields must come from the vendor's own
+ *   partner package and be stored in `capabilities.partner_config` /
+ *   `capabilities.endpoints`; until then the transport is unavailable.
  */
+
 
 import { env } from "./env.ts";
 
