@@ -19,7 +19,11 @@ const adapter = read("supabase/functions/erx-adapter/index.ts");
 const hook = read("src/hooks/useObesityCare.ts");
 const panel = read("src/components/virtualis/ObesityCarePanel.tsx");
 const workspace = read("src/components/virtualis/ObesityLaunchWorkspace.tsx");
-const fn = (name: string) => sql.slice(sql.lastIndexOf(`FUNCTION public.${name}`));
+const fn = (name: string) => {
+  const start = sql.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${name}`);
+  const end = sql.indexOf("REVOKE ALL ON FUNCTION", start);
+  return sql.slice(start, end === -1 ? undefined : end);
+};
 
 const base = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   id: "r", hospital_id: "h", vendor_key: "dosespot", environment: "production",
@@ -78,7 +82,7 @@ describe("2. cash pay is server-authoritative", () => {
   });
 
   it("opens a work item for refunds and chargebacks without touching clinical records", () => {
-    const f = fn("record_cash_pay").slice(0, fn("record_cash_pay").indexOf("submit_obesity_intake"));
+    const f = fn("record_cash_pay");
     expect(f).toMatch(/cash_pay\.work_item_opened/);
     expect(f).not.toMatch(/UPDATE public\.clinical_notes|UPDATE public\.encounters/);
   });
