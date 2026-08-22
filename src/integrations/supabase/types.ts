@@ -636,6 +636,69 @@ export type Database = {
           },
         ]
       }
+      cash_pay_service_fees: {
+        Row: {
+          active: boolean
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective_end: string | null
+          effective_start: string
+          fee_reference: string
+          hospital_id: string
+          id: string
+          service_line_id: string
+          state_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_end?: string | null
+          effective_start?: string
+          fee_reference: string
+          hospital_id: string
+          id?: string
+          service_line_id: string
+          state_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_end?: string | null
+          effective_start?: string
+          fee_reference?: string
+          hospital_id?: string
+          id?: string
+          service_line_id?: string
+          state_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_pay_service_fees_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_pay_service_fees_service_line_id_fkey"
+            columns: ["service_line_id"]
+            isOneToOne: false
+            referencedRelation: "service_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_members: {
         Row: {
           channel_id: string
@@ -7318,6 +7381,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      dosespot_prescriber_epcs_ok: {
+        Args: { p_hospital_id: string; p_state_code: string; p_user_id: string }
+        Returns: boolean
+      }
       encounter_readiness: { Args: { p_encounter_id: string }; Returns: Json }
       get_user_role: {
         Args: { _user_id: string }
@@ -7367,9 +7434,32 @@ export type Database = {
         }
         Returns: Json
       }
+      obesity_launch_readiness_internal: {
+        Args: {
+          p_controlled?: boolean
+          p_hospital_id: string
+          p_prescribing?: boolean
+          p_service_line_id: string
+          p_state_code: string
+        }
+        Returns: Json
+      }
+      obesity_prescribing_readiness: {
+        Args: { p_controlled?: boolean; p_encounter_id: string }
+        Returns: Json
+      }
       patient_in_my_hospital: {
         Args: { _patient_id: string }
         Returns: boolean
+      }
+      record_cash_pay: {
+        Args: {
+          p_action: string
+          p_encounter_id: string
+          p_payment_reference?: string
+          p_reason?: string
+        }
+        Returns: Json
       }
       reopen_encounter: {
         Args: { p_encounter_id: string; p_reason: string }
@@ -7422,6 +7512,10 @@ export type Database = {
         }
       }
       reset_demo_data: { Args: never; Returns: string }
+      submit_obesity_intake: {
+        Args: { p_answers: Json; p_encounter_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "clinician" | "viewer"
