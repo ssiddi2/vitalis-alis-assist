@@ -197,7 +197,14 @@ serve(async (req) => {
     const { controlled, schedule } = classifyControlled(rx.medication_name);
     const profile = await loadProfile(admin, hospital_id);
     const vendorRow = profile ? await loadVendorRow(admin, hospital_id, profile.environment) : null;
-    const blocked = gate(profile, controlled ? "epcs" : "new_rx", controlled, vendorRow);
+    // Individual prescriber EPCS evidence — facility booleans are never sufficient.
+    const { data: rxEpcsOk } = controlled
+      ? await admin.rpc("dosespot_prescriber_epcs_ok", {
+        p_hospital_id: hospital_id, p_user_id: user.id, p_state_code: null,
+      })
+      : { data: false };
+    const blocked = gate(profile, controlled ? "epcs" : "new_rx", controlled, vendorRow, rxEpcsOk === true);
+
 
     const correlationId = `${prescription_id}:${rx.signed_hash?.slice(0, 16) ?? "unsigned"}`;
     const eventId = await sha256Hex(`new_rx:${correlationId}`);
