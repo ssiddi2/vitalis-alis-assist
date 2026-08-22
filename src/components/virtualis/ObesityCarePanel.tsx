@@ -2,12 +2,18 @@ import { useMemo, useState } from 'react';
 import { Loader2, Scale, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useObesityCare } from '@/hooks/useObesityCare';
+import { useNoteEncounter } from '@/hooks/useCoverageClaim';
 import { GovCard, StatusChip } from './GovernanceRegistry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-interface Props { encounterId?: string | null; patientId?: string | null }
+interface Props {
+  encounterId?: string | null;
+  patientId?: string | null;
+  /** Resolves the encounter from the note when no explicit encounter is given. */
+  noteId?: string;
+}
 
 const SETTLED = new Set(['settled', 'waived']);
 
@@ -16,9 +22,11 @@ const SETTLED = new Set(['settled', 'waived']);
  * provenance, cash-pay settlement and the server-issued embedded prescribing
  * launch. No card data is collected here and no AI decision is stored.
  */
-export function ObesityCarePanel({ encounterId, patientId }: Props) {
+export function ObesityCarePanel({ encounterId, patientId, noteId }: Props) {
+  const resolved = useNoteEncounter(encounterId ? undefined : noteId);
+  const encounter = encounterId ?? resolved;
   const { cashPay, screens, trend, loading, busy, recordPayment, requestPrescribingLaunch } =
-    useObesityCare(encounterId, patientId);
+    useObesityCare(encounter, patientId);
   const [reference, setReference] = useState('');
   const [waiver, setWaiver] = useState('');
   const [launchBlock, setLaunchBlock] = useState<string | null>(null);
@@ -43,7 +51,7 @@ export function ObesityCarePanel({ encounterId, patientId }: Props) {
     toast.error(`Prescribing unavailable: ${(reason ?? '').replace(/_/g, ' ')}`);
   };
 
-  if (!encounterId) return null;
+  if (!encounter) return null;
 
   return (
     <GovCard title="Obesity care" icon={Scale}

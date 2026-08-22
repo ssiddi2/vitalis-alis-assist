@@ -318,7 +318,7 @@ export function NoteEditorModal({
             </div>
           ))}
 
-          <ObesityCarePanel encounterId={note.encounter_id} patientId={patientId} />
+          <ObesityCarePanel noteId={note.id} patientId={patientId} />
 
           <CoverageClaimPanel hospitalId={selectedHospital?.id} patientId={patientId} noteId={note.id} />
 
