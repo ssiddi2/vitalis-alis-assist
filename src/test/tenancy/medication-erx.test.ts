@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { isTenantScoped, loadEffectivePolicies } from "./policyParser";
 import { signingBlockers } from "@/lib/erx";
 import { evaluateSafety } from "../../../supabase/functions/_shared/medSafety";
-import { gate, adapterFor, type ErxProfile } from "../../../supabase/functions/_shared/erx";
+import { gate, type ErxProfile } from "../../../supabase/functions/_shared/erx";
 
 /**
  * Medication / e-prescribing regression gate.
