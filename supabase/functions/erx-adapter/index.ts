@@ -71,9 +71,32 @@ serve(async (req) => {
         .select("id, patient_id, provider_id, status, patient_state_code, med_rec_completed_at, allergy_review_at")
         .eq("id", encounter_id).maybeSingle();
       if (!enc) return json({ error: "Not found" }, 404);
-      if (enc.provider_id !== user.id) return json({ status: "blocked", reason: "not_the_assigned_prescriber" });
 
-      const [{ data: patient }, { data: license }, { data: maps }] = await Promise.all([
+      /** PHI-minimized launch audit on the existing encounter event model. */
+      const auditLaunch = async (status: string, blockers: string[]) =>
+        void await admin.from("encounter_events").insert({
+          encounter_id, patient_id: enc.patient_id, hospital_id, actor_id: user.id,
+          event_code: "erx.dosespot_launch_" + status,
+          reason: blockers[0] ?? null,
+          metadata: { vendor: "dosespot", environment, blocker_count: blockers.length, blockers: blockers.slice(0, 12) },
+        });
+
+      if (enc.provider_id !== user.id) {
+        await auditLaunch("blocked", ["not_the_assigned_prescriber"]);
+        return json({ status: "blocked", reason: "not_the_assigned_prescriber", blockers: ["not_the_assigned_prescriber"] });
+      }
+
+      // Server-authoritative, service-role-only encounter readiness. No client bypass.
+      const { data: readiness } = await admin.rpc("obesity_prescribing_readiness", {
+        p_encounter_id: encounter_id, p_controlled: false,
+      });
+      const gateBlockers = (readiness?.blockers ?? ["prescribing_readiness_unavailable"]) as string[];
+      if (!readiness?.allowed) {
+        await auditLaunch("blocked", gateBlockers);
+        return json({ status: "blocked", reason: gateBlockers[0], blockers: gateBlockers });
+      }
+
+      const [{ data: patient }, { data: license }, { data: maps }, { data: epcsOk }] = await Promise.all([
         admin.from("patients").select("id, name, age, sex").eq("id", enc.patient_id).maybeSingle(),
         admin.from("provider_licenses")
           .select("npi, state_code, status, telehealth_permitted, expiration_date")
@@ -82,6 +105,9 @@ serve(async (req) => {
         admin.from("vendor_identity_mappings")
           .select("subject_type, subject_id, vendor_identifier")
           .eq("hospital_id", hospital_id).eq("vendor_key", "dosespot").eq("environment", environment),
+        admin.rpc("dosespot_prescriber_epcs_ok", {
+          p_hospital_id: hospital_id, p_user_id: user.id, p_state_code: enc.patient_state_code ?? "",
+        }),
       ]);
       const mapping = (t: string, id?: string) =>
         (maps || []).find((m: { subject_type: string; subject_id: string }) =>
@@ -105,19 +131,26 @@ serve(async (req) => {
         prescriberMapped: !!clinicianId,
         clinicMapped: !!clinicId,
       });
-      if (blockers.length) return json({ status: "blocked", reason: blockers[0], blockers });
+      if (blockers.length) {
+        await auditLaunch("blocked", blockers);
+        return json({ status: "blocked", reason: blockers[0], blockers });
+      }
 
       const row = await loadVendorRow(admin, hospital_id, environment);
-      // Non-controlled prescribing only. Controlled/EPCS is a separate, hard gate.
-      const launch = await buildLaunch(row, { clinicId: clinicId!, clinicianId: clinicianId!, patientId: patientRef }, { controlled: false });
-      await admin.from("prescription_events").insert({
-        prescription_id: null, patient_id: enc.patient_id, actor_id: user.id,
-        event_code: "erx.launch_" + launch.status,
-        metadata: { vendor: "dosespot", environment, encounter_id, reason: "reason" in launch ? launch.reason : null },
-      });
+      // A Jumpstart session inherits the vendor user's rights: when the partner
+      // package says controlled substances are enabled, individual EPCS evidence
+      // is required even for this non-controlled launch.
+      const launch = await buildLaunch(
+        row,
+        { clinicId: clinicId!, clinicianId: clinicianId!, patientId: patientRef },
+        { controlled: false, prescriberEpcsVerified: epcsOk === true },
+      );
+      const launchBlockers = "reason" in launch ? [launch.reason] : [];
+      await auditLaunch(launch.status, launchBlockers);
       return launch.status === "ok"
         ? json({ status: "ok", url: launch.url, expires_at: launch.expiresAt, environment })
-        : json(launch);
+        : json({ ...launch, blockers: launchBlockers });
+
     }
 
 
