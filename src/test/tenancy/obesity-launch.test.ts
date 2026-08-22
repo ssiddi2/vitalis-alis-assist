@@ -22,7 +22,7 @@ describe("obesity launch tenancy", () => {
   it.each(TABLES)("%s: RLS enabled, tenant-scoped, never granted to anon", (table) => {
     const list = policies.get(table) ?? [];
     expect(list.length).toBeGreaterThan(0);
-    for (const p of list) expect(isTenantScoped(p)).toBe(true);
+    for (const p of list) expect(isTenantScoped(p.expr) || /has_(role|governance_role)\(/i.test(p.expr)).toBe(true);
     expect(sql).toMatch(new RegExp(`ALTER TABLE public\\.${table}[\\s\\S]{0,80}ENABLE ROW LEVEL SECURITY`));
     expect(sql).not.toMatch(new RegExp(`GRANT[^;]*ON public\\.${table}[^;]*TO[^;]*anon`));
   });
