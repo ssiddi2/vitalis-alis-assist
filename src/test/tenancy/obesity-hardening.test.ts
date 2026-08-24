@@ -132,24 +132,15 @@ describe("4. per-prescriber EPCS is enforced", () => {
     expect(doseSpotPrescribingGate(epcsRow, true, true)).toBeNull();
   });
 
-  it("blocks the launch when the partner package does not state the controlled-substance mode", () => {
-    expect(partnerConfig(withCfg({ controlled_substance_mode: undefined })))
-      .toEqual({ reason: "controlled_substance_mode_unspecified" });
-  });
-
-  it("requires an approved partner package evidence reference and the signature parameter", () => {
-    expect(partnerConfig(withCfg({ evidence_approved: false }))).toEqual({ reason: "partner_package_not_approved" });
-    expect(partnerConfig(withCfg({ paramNames: { clinicId: "c", clinicianId: "u" } })))
-      .toEqual({ reason: "partner_config_param_names_invalid" });
-  });
-
-  it("treats a controlled-enabled account as an EPCS surface on every launch", async () => {
-    const row = withCfg({ controlled_substance_mode: "enabled" });
+  it("never returns a launch URL while the embedded launch/SSO contract is missing", async () => {
     const ctx = { clinicId: "1", clinicianId: "2" };
-    expect(await buildLaunch(row, ctx, { controlled: false, prescriberEpcsVerified: false }))
-      .toMatchObject({ status: "blocked", reason: "individual_epcs_evidence_required" });
-    const disabled = await buildLaunch(withCfg(), ctx, { controlled: false, prescriberEpcsVerified: false });
-    expect(disabled.status).not.toBe("blocked");
+    const res = await buildLaunch(withCfg(), ctx, { controlled: false, prescriberEpcsVerified: false });
+    expect(res).toEqual({ status: "unavailable", reason: JUMPSTART_LAUNCH_BLOCKER });
+  });
+
+  it("still reports the prescribing blocker ahead of the missing launch contract", async () => {
+    const res = await buildLaunch(base({ capabilities: {} }), { clinicId: "1", clinicianId: "2" }, { controlled: false });
+    expect(res).toEqual({ status: "blocked", reason: "capability_not_enabled" });
   });
 
   it("never returns a secret or signing material to the caller", async () => {
@@ -161,19 +152,20 @@ describe("4. per-prescriber EPCS is enforced", () => {
 describe("5. readiness gate mirrors runtime", () => {
   const f = fn("obesity_launch_readiness_internal");
 
-  it("verifies BAA, MFA, secret reference names, partner package and production test result", () => {
+  it("verifies BAA, MFA, secret references, vendor documents and production test result", () => {
     expect(f).toMatch(/baa_verified/);
     expect(f).toMatch(/mfa_enforced/);
-    expect(f).toMatch(/secret_ref_names @> REQUIRED_REFS/);
     expect(f).toMatch(/last_test_result = 'production_readiness_passed'/);
-    // Partner-config validation is delegated to the shared blocker so SQL and
+    // Vendor-contract validation is delegated to the shared blocker so SQL and
     // runtime can never disagree; assert the delegation and the codes it owns.
-    expect(f).toMatch(/public\.dosespot_partner_config_blocker/);
-    const blk = fn("dosespot_partner_config_blocker");
-    expect(blk).toContain("controlled_substance_mode_unspecified");
-    expect(blk).toContain("partner_package_not_approved");
+    expect(f).toMatch(/public\.dosespot_rest_blocker/);
+    const blk = fn("dosespot_rest_blocker");
+    expect(blk).toContain("jumpstart_launch_contract_required");
+    expect(blk).toContain("auth_contract_required");
+    expect(blk).toContain("environment_secret_refs_not_provisioned");
     expect(f).toMatch(/evidence_ref/);
   });
+
 
   it("requires an evidence reference on verified attestation gates", () => {
     expect(f).toMatch(/g\.status = 'verified'[\s\S]{0,120}btrim\(g\.evidence_ref\)/);
