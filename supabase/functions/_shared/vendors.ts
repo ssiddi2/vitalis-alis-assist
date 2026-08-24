@@ -53,6 +53,7 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     },
     capabilities: ["new_rx", "cancel_rx", "rx_renewal", "rx_change", "rx_fill", "med_history", "epcs"],
     requiresPartnerPackage: true,
+    partnerPackageKey: "dosespot_rest",
   },
   stedi: {
     key: "stedi",
@@ -145,7 +146,9 @@ export function vendorGate(
   if (secretRefsFor(def, otherEnv).some((r) => row.secret_ref_names.includes(r))) return "cross_environment_secret_reference";
   if (expected.some((r) => !row.secret_ref_names.includes(r))) return "secret_references_missing";
   // Partner-supplied host/path/auth/signature mapping must be uploaded before any traffic.
-  if (def.requiresPartnerPackage && !row.capabilities?.partner_config) return "vendor_partner_package_required";
+  if (def.requiresPartnerPackage && !row.capabilities?.[def.partnerPackageKey ?? "partner_config"]) {
+    return "vendor_contract_document_required";
+  }
   return null;
 }
 
