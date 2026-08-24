@@ -69,7 +69,10 @@ export const VENDORS: Record<VendorKey, VendorMeta> = {
     tagline: 'Embedded Surescripts-certified ePrescribing',
     domain: 'Medications / e-Rx',
     capabilities: ['new_rx', 'cancel_rx', 'rx_renewal', 'rx_change', 'rx_fill', 'med_history', 'epcs'],
-    secretRefs: ['DOSESPOT_{TEST|PROD}_CLIENT_ID_REF', 'DOSESPOT_{TEST|PROD}_CLIENT_SECRET_REF', 'DOSESPOT_{TEST|PROD}_CLINIC_ID_REF'],
+    secretRefs: [
+      'DOSESPOT_{TEST|PROD}_CLINIC_ID_REF', 'DOSESPOT_{TEST|PROD}_USER_ID_REF',
+      'DOSESPOT_{TEST|PROD}_CLINIC_KEY_REF', 'DOSESPOT_{TEST|PROD}_SUBSCRIPTION_KEY_REF',
+    ],
     artifacts: [
       { artifact: 'Signed Jumpstart agreement + BAA', unlocks: 'Move sandbox profile out of not_contracted' },
       { artifact: 'Partner package (hosts, SSO/launch rules, endpoint + signing schema)', unlocks: 'Enables the embedded launch boundary and live transport' },
