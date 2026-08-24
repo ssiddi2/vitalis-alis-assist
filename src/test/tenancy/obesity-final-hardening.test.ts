@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { partnerConfig } from "../../../supabase/functions/_shared/dosespot";
+import { REST_V2_GUIDE, restConfig } from "../../../supabase/functions/_shared/dosespotRest";
 import type { OnboardingRow } from "../../../supabase/functions/_shared/vendors";
 
 /**
@@ -26,24 +26,40 @@ const fn = (name: string) => {
   return sql.slice(start, next === -1 ? undefined : next);
 };
 
+const REFS = [
+  "DOSESPOT_PROD_CLINIC_ID_REF", "DOSESPOT_PROD_USER_ID_REF",
+  "DOSESPOT_PROD_CLINIC_KEY_REF", "DOSESPOT_PROD_SUBSCRIPTION_KEY_REF",
+];
 const base = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   id: "r", hospital_id: "h", vendor_key: "dosespot", environment: "production",
   state: "production_verified",
   capabilities: { new_rx: true, baa_verified: true, mfa_enforced: true },
-  secret_ref_names: ["DOSESPOT_PROD_CLIENT_ID_REF", "DOSESPOT_PROD_CLIENT_SECRET_REF", "DOSESPOT_PROD_CLINIC_ID_REF"],
+  secret_ref_names: REFS,
   last_test_result: "production_readiness_passed",
   evidence_expires_at: new Date(Date.now() + 8.64e7).toISOString(),
   ...over,
 });
-const cfg = (over: Record<string, unknown> = {}) => ({
-  host: "partner.example.com", launchPath: "/launch/{clinicId}", launchTtlSeconds: 120,
-  paramNames: { clinicId: "c", clinicianId: "u", signature: "sig", timestamp: "ts" },
-  signing: { algorithm: "hmac-sha256", secretRef: "DOSESPOT_PROD_CLIENT_SECRET_REF", encoding: "hex" },
-  evidence_ref: "pkg-2026-01", evidence_approved: true, controlled_substance_mode: "vendor_disabled",
-  ...over,
+/** A fully evidenced REST contract; overrides express one defect at a time. */
+const restRow = (over: Record<string, unknown> = {}) => base({
+  capabilities: {
+    ...base().capabilities,
+    dosespot_rest: {
+      baseUrl: "https://api.example.com/v2",
+      hostAllowlist: ["api.example.com"],
+      authMode: "jwt_bearer_subscription_key",
+      secretRefNames: {
+        clinicId: REFS[0], userId: REFS[1], clinicKey: REFS[2], subscriptionKey: REFS[3],
+      },
+      restGuide: { evidenceRef: "rest-v2-1.4.0", sha256: REST_V2_GUIDE.sha256, approved: true },
+      authGuide: {
+        evidenceRef: "auth-guide", approved: true,
+        subscriptionHeaderName: "Subscription-Key", tokenMapping: { sub: "userId" },
+      },
+      ...over,
+    },
+  },
 });
-const rowWith = (over: Record<string, unknown> = {}) =>
-  base({ capabilities: { ...base().capabilities, partner_config: cfg(over) } });
+
 
 describe("1. readiness wrapper is a safe definer the UI can actually call", () => {
   const wrapper = fn("obesity_launch_readiness");
@@ -80,53 +96,59 @@ describe("1. readiness wrapper is a safe definer the UI can actually call", () =
   });
 });
 
-describe("2. DoseSpot partner-config parity between SQL and runtime", () => {
-  const blocker = fn("dosespot_partner_config_blocker");
+describe("2. DoseSpot REST contract parity between SQL and runtime", () => {
+  const gate = fn("dosespot_rest_blocker");
 
-  const cases: [string, Record<string, unknown>, string][] = [
-    ["insecure/invalid host", { host: "https://partner.example.com" }, "partner_config_host_invalid"],
-    ["relative launch path", { launchPath: "launch" }, "partner_config_launch_path_invalid"],
-    ["missing signature param", { paramNames: { clinicId: "c", clinicianId: "u" } }, "partner_config_param_names_invalid"],
-    ["empty clinicId param", { paramNames: { clinicId: "", clinicianId: "u", signature: "s" } }, "partner_config_param_names_invalid"],
-    ["nonnumeric ttl", { launchTtlSeconds: "120" }, "partner_config_launch_ttl_invalid"],
-    ["out-of-range ttl", { launchTtlSeconds: 901 }, "partner_config_launch_ttl_invalid"],
-    ["zero ttl", { launchTtlSeconds: 0 }, "partner_config_launch_ttl_invalid"],
-    ["unsupported algorithm", { signing: { algorithm: "md5", secretRef: "DOSESPOT_PROD_CLIENT_SECRET_REF", encoding: "hex" } }, "launch_signing_algorithm_unsupported"],
-    ["unsupported encoding", { signing: { algorithm: "hmac-sha256", secretRef: "DOSESPOT_PROD_CLIENT_SECRET_REF", encoding: "utf8" } }, "launch_signing_encoding_unsupported"],
-    ["missing secretRef", { signing: { algorithm: "hmac-sha256", secretRef: "", encoding: "hex" } }, "launch_signing_secret_ref_missing"],
-    ["unprovisioned secretRef", { signing: { algorithm: "hmac-sha256", secretRef: "SOME_OTHER_REF", encoding: "hex" } }, "launch_signing_secret_ref_not_provisioned"],
-    ["missing signing rule", { signing: null }, "launch_signing_rule_not_configured"],
-    ["unapproved package", { evidence_approved: false }, "partner_package_not_approved"],
-    ["unknown controlled mode", { controlled_substance_mode: "maybe" }, "controlled_substance_mode_unspecified"],
+  const cases: [string, Record<string, unknown>, string, string][] = [
+    ["missing guide reference", { restGuide: undefined }, "rest_v2_reference_required", "rest_v2_reference_received"],
+    ["wrong guide hash", { restGuide: { evidenceRef: "e", sha256: "bad", approved: true } }, "rest_v2_reference_hash_mismatch", "rest_v2_reference_received"],
+    ["unapproved guide", { restGuide: { evidenceRef: "e", sha256: REST_V2_GUIDE.sha256, approved: false } }, "rest_v2_reference_not_approved", "rest_v2_reference_received"],
+    ["non-https base url", { baseUrl: "http://api.example.com" }, "base_url_invalid", "production_base_url_allowlisted"],
+    ["empty allowlist", { hostAllowlist: [] }, "host_allowlist_required", "production_base_url_allowlisted"],
+    ["base url off allowlist", { hostAllowlist: ["other.example.com"] }, "base_url_not_allowlisted", "production_base_url_allowlisted"],
+    ["unknown auth mode", { authMode: "basic" }, "auth_mode_unsupported", "rest_auth_contract"],
+    ["unprovisioned secret ref", { secretRefNames: { clinicId: "DOSESPOT_X", userId: "DOSESPOT_PROD_USER_ID_REF", clinicKey: "DOSESPOT_PROD_CLINIC_KEY_REF", subscriptionKey: "DOSESPOT_PROD_SUBSCRIPTION_KEY_REF" } }, "environment_secret_refs_not_provisioned", "environment_secret_refs"],
+    ["missing authentication guide", { authGuide: null }, "auth_contract_required", "rest_auth_contract"],
+    ["missing subscription header", { authGuide: { evidenceRef: "a", approved: true, subscriptionHeaderName: "", tokenMapping: { sub: "userId" } } }, "auth_contract_subscription_header_missing", "rest_auth_contract"],
+    ["empty token mapping", { authGuide: { evidenceRef: "a", approved: true, subscriptionHeaderName: "H", tokenMapping: {} } }, "auth_contract_token_mapping_missing", "rest_auth_contract"],
   ];
 
   for (const [label, over, reason] of cases) {
     it(`runtime rejects ${label} with ${reason}`, () => {
-      const res = partnerConfig(rowWith(over));
-      expect(res).toEqual({ reason });
+      expect(restConfig(restRow(over))).toEqual({ reason });
     });
     it(`SQL gate knows the ${reason} blocker`, () => {
-      expect(blocker).toContain(`'${reason}'`);
+      expect(gate).toContain(`'${reason}'`);
     });
   }
 
-  it("accepts the exact valid production configuration", () => {
-    expect(partnerConfig(rowWith())).toHaveProperty("config");
+  it("accepts only a fully evidenced REST contract", () => {
+    expect(restConfig(restRow())).toHaveProperty("config");
   });
 
-  it("SQL uses type-safe JSON checks rather than raw boolean casts", () => {
-    expect(blocker).toContain("jsonb_typeof");
-    expect(blocker).toContain("public.jsonb_is_true");
+  it("keeps the removed HMAC launch mechanism out of SQL and runtime", () => {
+    expect(sql).toContain("DROP FUNCTION IF EXISTS public.dosespot_partner_config_blocker");
+    expect(read("supabase/functions/_shared/dosespot.ts")).not.toMatch(/crypto\.subtle|searchParams|new URL\(/);
+  });
+
+  it("SQL uses type-safe JSON checks and evaluates every truthful gate", () => {
+    expect(gate).toContain("jsonb_typeof");
+    expect(gate).toContain("public.jsonb_is_true");
     const internal = fn("obesity_launch_readiness_internal");
-    expect(internal).toContain("public.dosespot_partner_config_blocker(pc, coalesce(ds.secret_ref_names");
+    for (const k of ["rest_v2_reference_received", "rest_auth_contract", "jumpstart_launch_contract",
+      "staging_certification", "production_base_url_allowlisted", "environment_secret_refs",
+      "production_connection_test", "identifier_mappings", "prescriber_registration", "epcs_when_in_scope"]) {
+      expect(internal).toContain(k);
+    }
     expect(internal).not.toMatch(/\(ds\.capabilities->>'[a-z_]+'\)::boolean/);
   });
 
   it("never reads or returns a secret value", () => {
-    expect(blocker).not.toMatch(/resolveSecret|current_setting|vault/i);
-    expect(blocker).toContain("secret_refs");
+    expect(gate).not.toMatch(/resolveSecret|current_setting|vault/i);
+    expect(gate).toContain("secret_refs");
   });
 });
+
 
 describe("3. intake template selection is authoritative and shared", () => {
   const sel = fn("obesity_intake_template_for") + fn("obesity_intake_template_scoped");

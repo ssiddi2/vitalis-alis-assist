@@ -7381,13 +7381,13 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
-      dosespot_partner_config_blocker: {
-        Args: { pc: Json; secret_refs: string[] }
-        Returns: string
-      }
       dosespot_prescriber_epcs_ok: {
         Args: { p_hospital_id: string; p_state_code: string; p_user_id: string }
         Returns: boolean
+      }
+      dosespot_rest_blocker: {
+        Args: { caps: Json; gate: string; secret_refs: string[] }
+        Returns: string
       }
       encounter_readiness: { Args: { p_encounter_id: string }; Returns: Json }
       get_user_role: {

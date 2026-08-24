@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildLaunch, partnerConfig } from "../../../supabase/functions/_shared/dosespot";
+import { buildLaunch, JUMPSTART_LAUNCH_BLOCKER } from "../../../supabase/functions/_shared/dosespot";
 import { doseSpotPrescribingGate } from "../../../supabase/functions/_shared/vendorAdapters";
 import type { OnboardingRow } from "../../../supabase/functions/_shared/vendors";
 
@@ -28,22 +28,19 @@ const fn = (name: string) => {
 const base = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   id: "r", hospital_id: "h", vendor_key: "dosespot", environment: "production",
   state: "production_verified",
-  capabilities: { new_rx: true, baa_verified: true, mfa_enforced: true },
+  capabilities: { new_rx: true, baa_verified: true, mfa_enforced: true, dosespot_rest: { recorded: true } },
   secret_ref_names: ["DOSESPOT_PROD_CLIENT_ID_REF", "DOSESPOT_PROD_CLIENT_SECRET_REF", "DOSESPOT_PROD_CLINIC_ID_REF"],
   last_test_result: "production_readiness_passed",
   evidence_expires_at: new Date(Date.now() + 8.64e7).toISOString(),
   ...over,
 });
 
-const cfg = (over: Record<string, unknown> = {}) => ({
-  host: "partner.example.com", launchPath: "/launch/{clinicId}", launchTtlSeconds: 120,
-  paramNames: { clinicId: "c", clinicianId: "u", signature: "sig", timestamp: "ts" },
-  signing: { algorithm: "hmac-sha256", secretRef: "DOSESPOT_PROD_CLIENT_SECRET_REF", encoding: "hex" },
-  evidence_ref: "pkg-2026-01", evidence_approved: true, controlled_substance_mode: "vendor_disabled",
-  ...over,
-});
-const withCfg = (over: Record<string, unknown> = {}, row: Partial<OnboardingRow> = {}) =>
-  base({ ...row, capabilities: { ...base(row).capabilities, partner_config: cfg(over) } });
+/**
+ * The HMAC partner_config launch mechanism was removed — it was never supported
+ * by vendor evidence. Rows here only carry real onboarding capabilities.
+ */
+const withCfg = (_over: Record<string, unknown> = {}, row: Partial<OnboardingRow> = {}) => base(row);
+
 
 describe("1. launch audit uses the encounter event model", () => {
   it("never inserts a null prescription_id and records the encounter/patient/actor", () => {
@@ -135,24 +132,15 @@ describe("4. per-prescriber EPCS is enforced", () => {
     expect(doseSpotPrescribingGate(epcsRow, true, true)).toBeNull();
   });
 
-  it("blocks the launch when the partner package does not state the controlled-substance mode", () => {
-    expect(partnerConfig(withCfg({ controlled_substance_mode: undefined })))
-      .toEqual({ reason: "controlled_substance_mode_unspecified" });
-  });
-
-  it("requires an approved partner package evidence reference and the signature parameter", () => {
-    expect(partnerConfig(withCfg({ evidence_approved: false }))).toEqual({ reason: "partner_package_not_approved" });
-    expect(partnerConfig(withCfg({ paramNames: { clinicId: "c", clinicianId: "u" } })))
-      .toEqual({ reason: "partner_config_param_names_invalid" });
-  });
-
-  it("treats a controlled-enabled account as an EPCS surface on every launch", async () => {
-    const row = withCfg({ controlled_substance_mode: "enabled" });
+  it("never returns a launch URL while the embedded launch/SSO contract is missing", async () => {
     const ctx = { clinicId: "1", clinicianId: "2" };
-    expect(await buildLaunch(row, ctx, { controlled: false, prescriberEpcsVerified: false }))
-      .toMatchObject({ status: "blocked", reason: "individual_epcs_evidence_required" });
-    const disabled = await buildLaunch(withCfg(), ctx, { controlled: false, prescriberEpcsVerified: false });
-    expect(disabled.status).not.toBe("blocked");
+    const res = await buildLaunch(withCfg(), ctx, { controlled: false, prescriberEpcsVerified: false });
+    expect(res).toEqual({ status: "unavailable", reason: JUMPSTART_LAUNCH_BLOCKER });
+  });
+
+  it("still reports the prescribing blocker ahead of the missing launch contract", async () => {
+    const res = await buildLaunch(base({ capabilities: {} }), { clinicId: "1", clinicianId: "2" }, { controlled: false });
+    expect(res).toEqual({ status: "blocked", reason: "capability_not_enabled" });
   });
 
   it("never returns a secret or signing material to the caller", async () => {
@@ -164,19 +152,20 @@ describe("4. per-prescriber EPCS is enforced", () => {
 describe("5. readiness gate mirrors runtime", () => {
   const f = fn("obesity_launch_readiness_internal");
 
-  it("verifies BAA, MFA, secret reference names, partner package and production test result", () => {
-    expect(f).toMatch(/baa_verified/);
-    expect(f).toMatch(/mfa_enforced/);
-    expect(f).toMatch(/secret_ref_names @> REQUIRED_REFS/);
+  it("verifies BAA, MFA, secret references, vendor documents and production test result", () => {
+    expect(fn("dosespot_rest_blocker")).toMatch(/baa_verified/);
+    expect(fn("dosespot_rest_blocker")).toMatch(/mfa_enforced/);
     expect(f).toMatch(/last_test_result = 'production_readiness_passed'/);
-    // Partner-config validation is delegated to the shared blocker so SQL and
+    // Vendor-contract validation is delegated to the shared blocker so SQL and
     // runtime can never disagree; assert the delegation and the codes it owns.
-    expect(f).toMatch(/public\.dosespot_partner_config_blocker/);
-    const blk = fn("dosespot_partner_config_blocker");
-    expect(blk).toContain("controlled_substance_mode_unspecified");
-    expect(blk).toContain("partner_package_not_approved");
+    expect(f).toMatch(/public\.dosespot_rest_blocker/);
+    const blk = fn("dosespot_rest_blocker");
+    expect(blk).toContain("jumpstart_launch_contract_required");
+    expect(blk).toContain("auth_contract_required");
+    expect(blk).toContain("environment_secret_refs_not_provisioned");
     expect(f).toMatch(/evidence_ref/);
   });
+
 
   it("requires an evidence reference on verified attestation gates", () => {
     expect(f).toMatch(/g\.status = 'verified'[\s\S]{0,120}btrim\(g\.evidence_ref\)/);

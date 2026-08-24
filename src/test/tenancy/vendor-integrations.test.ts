@@ -103,13 +103,13 @@ describe("fail-closed vendor gate", () => {
     expect(vendorGate(row({
       vendor_key: "dosespot", capabilities: { new_rx: true },
       secret_ref_names: VENDORS.dosespot.secretRefs.sandbox,
-    }), "new_rx", "sandbox")).toBe("vendor_partner_package_required");
+    }), "new_rx", "sandbox")).toBe("vendor_contract_document_required");
   });
 
   it("DoseSpot separates controlled from non-controlled prescribing", () => {
     const nonControlled = row({ vendor_key: "dosespot", capabilities: { new_rx: true }, secret_ref_names: VENDORS.dosespot.secretRefs.sandbox });
     expect(doseSpotPrescribingGate(nonControlled, true)).not.toBeNull();
-    expect(doseSpotPrescribingGate(nonControlled, false)).toBe("vendor_partner_package_required");
+    expect(doseSpotPrescribingGate(nonControlled, false)).toBe("vendor_contract_document_required");
     expect(doseSpotPrescribingGate(row({ vendor_key: "dosespot", capabilities: { epcs: false } }), true)).not.toBeNull();
   });
 });

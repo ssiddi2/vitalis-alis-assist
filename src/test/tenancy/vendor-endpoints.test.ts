@@ -289,7 +289,7 @@ describe("DoseSpot stays closed", () => {
       vendor_key: "dosespot", capabilities: { new_rx: true },
       secret_ref_names: VENDORS.dosespot.secretRefs.sandbox,
     }), op({ capability: "new_rx", operation: "stedi_eligibility_check" }));
-    expect(res).toEqual({ status: "blocked", reason: "vendor_partner_package_required" });
+    expect(res).toEqual({ status: "blocked", reason: "vendor_contract_document_required" });
     expect(calls).toHaveLength(0);
     expect(Object.keys(VENDOR_OPERATIONS).some((k) => k.startsWith("dosespot"))).toBe(false);
   });
