@@ -166,7 +166,7 @@ export const DOSESPOT_ROUTES = {
   clinician_dea_get: { method: "GET", path: "api/clinicians/{clinicianId}/deanumber", mutating: false },
 
   patient_get: { method: "GET", path: "api/patients/{patientId}", mutating: false },
-  patient_list: { method: "GET", path: "api/patients", mutating: false },
+  patient_search: { method: "GET", path: "api/patients/search", mutating: false },
   patient_create: { method: "POST", path: "api/patients", mutating: true },
   patient_update: { method: "PUT", path: "api/patients/{patientId}", mutating: true },
   patient_clinics: { method: "GET", path: "api/patients/{patientId}/clinics", mutating: false },
@@ -174,17 +174,19 @@ export const DOSESPOT_ROUTES = {
   patient_pharmacies: { method: "GET", path: "api/patients/{patientId}/pharmacies", mutating: false },
 
   patient_allergies_list: { method: "GET", path: "api/patients/{patientId}/allergies", mutating: false },
-  patient_allergy_create: { method: "POST", path: "api/patients/{patientId}/allergies", mutating: true },
-  patient_allergy_update: { method: "PUT", path: "api/patients/{patientId}/allergies/{allergyId}", mutating: true },
+  patient_allergy_create_coded: { method: "POST", path: "api/patients/{patientId}/allergies/coded", mutating: true },
+  patient_allergy_create_freetext: { method: "POST", path: "api/patients/{patientId}/allergies/freetext", mutating: true },
+  patient_allergy_update: { method: "PUT", path: "api/patients/{patientId}/allergies/{patientAllergyId}", mutating: true },
   patient_no_known_allergy: { method: "POST", path: "api/patients/{patientId}/allergies/noKnownAllergy", mutating: true },
 
   patient_medication_history: {
     method: "GET", path: "api/patients/{patientId}/medications/history",
     mutating: false, requires: "accepted_current_med_history_consent",
   },
+  /** Logs consent itself — must NOT require an already-accepted consent. */
   patient_medication_history_consent: {
     method: "POST", path: "api/patients/{patientId}/medications/history/consent",
-    mutating: true, requires: "accepted_current_med_history_consent",
+    mutating: true,
   },
 
   patient_prescriptions: { method: "GET", path: "api/patients/{patientId}/prescriptions", mutating: false },
@@ -194,10 +196,10 @@ export const DOSESPOT_ROUTES = {
   notification_counts: { method: "GET", path: "api/notifications/counts", mutating: false },
   notification_errors: { method: "GET", path: "api/notifications/errors", mutating: false },
 
-  refill_requests: { method: "GET", path: "api/refillRequests", mutating: false },
-  refill_request_get: { method: "GET", path: "api/refillRequests/{refillRequestId}", mutating: false },
-  rxchange_requests: { method: "GET", path: "api/rxChangeRequests", mutating: false },
-  rxchange_request_get: { method: "GET", path: "api/rxChangeRequests/{rxChangeRequestId}", mutating: false },
+  refill_requests_pending: { method: "GET", path: "api/refills/pending", mutating: false },
+  refill_requests_pending_detailed: { method: "GET", path: "api/refills/pending/detailed", mutating: false },
+  rxchange_requests_pending: { method: "GET", path: "api/rxchanges/pending", mutating: false },
+  rxchange_requests_pending_detailed: { method: "GET", path: "api/rxchanges/pending/detailed", mutating: false },
 } as const satisfies Record<string, RestRoute>;
 
 export type DoseSpotRouteKey = keyof typeof DOSESPOT_ROUTES;
