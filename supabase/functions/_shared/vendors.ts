@@ -31,8 +31,11 @@ export interface VendorDef {
   /** Secret REFERENCE names only — never values. Test and production are separate names. */
   secretRefs: { sandbox: string[]; production: string[] };
   capabilities: string[];
-  /** True when the live transport requires a vendor partner package we do not have. */
+  /** True when the live transport requires a vendor contract document we do not have. */
   requiresPartnerPackage: boolean;
+  /** Capability key holding that vendor contract. DoseSpot records the REST V2 contract. */
+  partnerPackageKey?: string;
+
   /** True when the vendor is explicitly NOT an integration. */
   standaloneOnly?: boolean;
 }
