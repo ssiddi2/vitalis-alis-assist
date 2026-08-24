@@ -252,6 +252,16 @@ const REGISTRATION_STATUSES = [
 ] as const;
 export type RegistrationStatus = typeof REGISTRATION_STATUSES[number] | "unknown";
 
+/**
+ * The guide's enumeration contains two literal wire-value typos. They are
+ * documented values, so they are normalized to their canonical spellings.
+ * Anything else still resolves to "unknown".
+ */
+export const REGISTRATION_STATUS_WIRE_ALIASES: Record<string, RegistrationStatus> = {
+  TFAAcitvateInit: "TFAActivateInit",
+  TFADectivatedSuccess: "TFADeactivatedSuccess",
+};
+
 const PRESCRIPTION_STATUSES = [
   "Entered", "Printed", "Sending", "eRxSent", "Error", "Deleted", "Requested",
   "Edited", "EpcsError", "EpcsSigned", "ReadyToSign", "PharmacyVerified",
@@ -261,7 +271,8 @@ export type DoseSpotPrescriptionStatus = typeof PRESCRIPTION_STATUSES[number] | 
 const parse = <T extends readonly string[]>(allowed: T, v: unknown): T[number] | "unknown" =>
   typeof v === "string" && (allowed as readonly string[]).includes(v) ? v as T[number] : "unknown";
 
-export const parseRegistrationStatus = (v: unknown): RegistrationStatus => parse(REGISTRATION_STATUSES, v);
+export const parseRegistrationStatus = (v: unknown): RegistrationStatus =>
+  (typeof v === "string" && REGISTRATION_STATUS_WIRE_ALIASES[v]) || parse(REGISTRATION_STATUSES, v);
 export const parsePrescriptionStatus = (v: unknown): DoseSpotPrescriptionStatus => parse(PRESCRIPTION_STATUSES, v);
 
 /** Pharmacy ServiceLevel is a bitwise sum. */
