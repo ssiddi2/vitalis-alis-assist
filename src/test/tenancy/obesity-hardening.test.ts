@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildLaunch, partnerConfig } from "../../../supabase/functions/_shared/dosespot";
+import { buildLaunch, JUMPSTART_LAUNCH_BLOCKER } from "../../../supabase/functions/_shared/dosespot";
 import { doseSpotPrescribingGate } from "../../../supabase/functions/_shared/vendorAdapters";
 import type { OnboardingRow } from "../../../supabase/functions/_shared/vendors";
 
