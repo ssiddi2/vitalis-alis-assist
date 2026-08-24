@@ -234,8 +234,18 @@ export function buildRestUrl(
     return encodeURIComponent(`${v}`);
   });
 
+  if (typeof config.baseUrl !== "string" || !config.baseUrl.startsWith("https://")) {
+    throw new RestUrlError("base_url_invalid");
+  }
   const base = config.baseUrl.endsWith("/") ? config.baseUrl : `${config.baseUrl}/`;
-  const url = new URL(path, base);
+  let url: URL;
+  try {
+    url = new URL(path, base);
+  } catch {
+    throw new RestUrlError("base_url_invalid");
+  }
+  // Defence in depth: a relative-path escape must never downgrade the scheme.
+  if (url.protocol !== "https:") throw new RestUrlError("base_url_invalid");
   if (!config.hostAllowlist.includes(url.hostname)) throw new RestUrlError("base_url_not_allowlisted");
   for (const [k, v] of Object.entries(opts.query ?? {})) url.searchParams.set(k, `${v}`);
   return url.toString();
