@@ -35,15 +35,12 @@ const base = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   ...over,
 });
 
-const cfg = (over: Record<string, unknown> = {}) => ({
-  host: "partner.example.com", launchPath: "/launch/{clinicId}", launchTtlSeconds: 120,
-  paramNames: { clinicId: "c", clinicianId: "u", signature: "sig", timestamp: "ts" },
-  signing: { algorithm: "hmac-sha256", secretRef: "DOSESPOT_PROD_CLIENT_SECRET_REF", encoding: "hex" },
-  evidence_ref: "pkg-2026-01", evidence_approved: true, controlled_substance_mode: "vendor_disabled",
-  ...over,
-});
-const withCfg = (over: Record<string, unknown> = {}, row: Partial<OnboardingRow> = {}) =>
-  base({ ...row, capabilities: { ...base(row).capabilities, partner_config: cfg(over) } });
+/**
+ * The HMAC partner_config launch mechanism was removed — it was never supported
+ * by vendor evidence. Rows here only carry real onboarding capabilities.
+ */
+const withCfg = (_over: Record<string, unknown> = {}, row: Partial<OnboardingRow> = {}) => base(row);
+
 
 describe("1. launch audit uses the encounter event model", () => {
   it("never inserts a null prescription_id and records the encounter/patient/actor", () => {
