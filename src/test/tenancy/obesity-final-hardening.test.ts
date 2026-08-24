@@ -26,24 +26,40 @@ const fn = (name: string) => {
   return sql.slice(start, next === -1 ? undefined : next);
 };
 
+const REFS = [
+  "DOSESPOT_PROD_CLINIC_ID_REF", "DOSESPOT_PROD_USER_ID_REF",
+  "DOSESPOT_PROD_CLINIC_KEY_REF", "DOSESPOT_PROD_SUBSCRIPTION_KEY_REF",
+];
 const base = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   id: "r", hospital_id: "h", vendor_key: "dosespot", environment: "production",
   state: "production_verified",
   capabilities: { new_rx: true, baa_verified: true, mfa_enforced: true },
-  secret_ref_names: ["DOSESPOT_PROD_CLIENT_ID_REF", "DOSESPOT_PROD_CLIENT_SECRET_REF", "DOSESPOT_PROD_CLINIC_ID_REF"],
+  secret_ref_names: REFS,
   last_test_result: "production_readiness_passed",
   evidence_expires_at: new Date(Date.now() + 8.64e7).toISOString(),
   ...over,
 });
-const cfg = (over: Record<string, unknown> = {}) => ({
-  host: "partner.example.com", launchPath: "/launch/{clinicId}", launchTtlSeconds: 120,
-  paramNames: { clinicId: "c", clinicianId: "u", signature: "sig", timestamp: "ts" },
-  signing: { algorithm: "hmac-sha256", secretRef: "DOSESPOT_PROD_CLIENT_SECRET_REF", encoding: "hex" },
-  evidence_ref: "pkg-2026-01", evidence_approved: true, controlled_substance_mode: "vendor_disabled",
-  ...over,
+/** A fully evidenced REST contract; overrides express one defect at a time. */
+const restRow = (over: Record<string, unknown> = {}) => base({
+  capabilities: {
+    ...base().capabilities,
+    dosespot_rest: {
+      baseUrl: "https://api.example.com/v2",
+      hostAllowlist: ["api.example.com"],
+      authMode: "jwt_bearer_subscription_key",
+      secretRefNames: {
+        clinicId: REFS[0], userId: REFS[1], clinicKey: REFS[2], subscriptionKey: REFS[3],
+      },
+      restGuide: { evidenceRef: "rest-v2-1.4.0", sha256: REST_V2_GUIDE.sha256, approved: true },
+      authGuide: {
+        evidenceRef: "auth-guide", approved: true,
+        subscriptionHeaderName: "Subscription-Key", tokenMapping: { sub: "userId" },
+      },
+      ...over,
+    },
+  },
 });
-const rowWith = (over: Record<string, unknown> = {}) =>
-  base({ capabilities: { ...base().capabilities, partner_config: cfg(over) } });
+
 
 describe("1. readiness wrapper is a safe definer the UI can actually call", () => {
   const wrapper = fn("obesity_launch_readiness");
