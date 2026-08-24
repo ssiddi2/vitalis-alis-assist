@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { partnerConfig } from "../../../supabase/functions/_shared/dosespot";
+import { REST_V2_GUIDE, restConfig } from "../../../supabase/functions/_shared/dosespotRest";
 import type { OnboardingRow } from "../../../supabase/functions/_shared/vendors";
 
 /**
