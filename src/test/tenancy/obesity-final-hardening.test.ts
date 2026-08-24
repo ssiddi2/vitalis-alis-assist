@@ -128,7 +128,7 @@ describe("2. DoseSpot REST contract parity between SQL and runtime", () => {
 
   it("keeps the removed HMAC launch mechanism out of SQL and runtime", () => {
     expect(sql).toContain("DROP FUNCTION IF EXISTS public.dosespot_partner_config_blocker");
-    expect(read("supabase/functions/_shared/dosespot.ts")).not.toMatch(/crypto\.subtle|hmac/i);
+    expect(read("supabase/functions/_shared/dosespot.ts")).not.toMatch(/crypto\.subtle|searchParams|new URL\(/);
   });
 
   it("SQL uses type-safe JSON checks and evaluates every truthful gate", () => {

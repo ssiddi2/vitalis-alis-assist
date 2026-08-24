@@ -153,8 +153,8 @@ describe("5. readiness gate mirrors runtime", () => {
   const f = fn("obesity_launch_readiness_internal");
 
   it("verifies BAA, MFA, secret references, vendor documents and production test result", () => {
-    expect(f).toMatch(/baa_verified/);
-    expect(f).toMatch(/mfa_enforced/);
+    expect(fn("dosespot_rest_blocker")).toMatch(/baa_verified/);
+    expect(fn("dosespot_rest_blocker")).toMatch(/mfa_enforced/);
     expect(f).toMatch(/last_test_result = 'production_readiness_passed'/);
     // Vendor-contract validation is delegated to the shared blocker so SQL and
     // runtime can never disagree; assert the delegation and the codes it owns.
