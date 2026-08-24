@@ -79,15 +79,25 @@ function secretFor(row: OnboardingRow, index = 0): string | null {
 
 /**
  * DoseSpot Jumpstart — embedded, Surescripts-certified ePrescribing.
- * The live transport stays unreachable until the vendor partner package
- * (hosts, launch/SSO rules, endpoint schema, signing rules) is uploaded.
+ *
+ * The REST V2 resource guide documents prescription READS only; it documents no
+ * REST NewRx create/send operation, and no embedded launch/SSO contract exists.
+ * There is therefore no direct transmission path: `new_rx`/`epcs` never resolve
+ * a URL (a fabricated `capabilities.endpoints` entry cannot change this) and
+ * `gatewayFetch` is unreachable for this vendor.
  */
+export const DOSESPOT_NEW_RX_BLOCKER = "rest_new_rx_not_documented_use_jumpstart";
+const DOSESPOT_TRANSMISSION_CAPABILITIES = new Set(["new_rx", "epcs"]);
+
 export const doseSpotAdapter: VendorAdapter = {
   vendor: "dosespot",
   execute: (row, op) => {
     const blocked = vendorGate(row, op.capability, row?.environment ?? "sandbox");
     if (blocked) return Promise.resolve({ status: "blocked", reason: blocked });
-    // Transport paths come from the uploaded partner package only.
+    if (DOSESPOT_TRANSMISSION_CAPABILITIES.has(op.capability)) {
+      return Promise.resolve({ status: "unavailable", reason: DOSESPOT_NEW_RX_BLOCKER });
+    }
+    // Any other capability still has no contracted transport.
     const resolved = resolveUrl(row!, op);
     if ("reason" in resolved) return Promise.resolve({ status: "unavailable", reason: resolved.reason });
     return Promise.resolve({ status: "unavailable", reason: "vendor_transport_not_enabled" });
