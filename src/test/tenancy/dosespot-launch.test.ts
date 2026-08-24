@@ -9,7 +9,7 @@ const row = (over: Partial<OnboardingRow> = {}): OnboardingRow => ({
   id: "r", hospital_id: "h", vendor_key: "dosespot", environment: "production",
   state: "production_verified",
   capabilities: { new_rx: true, baa_verified: true, mfa_enforced: true, dosespot_rest: { any: true } },
-  secret_ref_names: ["DOSESPOT_PROD_CLIENT_ID_REF", "DOSESPOT_PROD_CLIENT_SECRET_REF", "DOSESPOT_PROD_CLINIC_ID_REF"],
+  secret_ref_names: ["DOSESPOT_PROD_CLINIC_ID_REF", "DOSESPOT_PROD_USER_ID_REF", "DOSESPOT_PROD_CLINIC_KEY_REF", "DOSESPOT_PROD_SUBSCRIPTION_KEY_REF"],
   last_test_result: "production_readiness_passed",
   evidence_expires_at: new Date(Date.now() + 8.64e7).toISOString(),
   ...over,

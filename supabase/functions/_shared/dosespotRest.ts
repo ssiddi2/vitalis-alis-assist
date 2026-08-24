@@ -234,8 +234,18 @@ export function buildRestUrl(
     return encodeURIComponent(`${v}`);
   });
 
+  if (typeof config.baseUrl !== "string" || !config.baseUrl.startsWith("https://")) {
+    throw new RestUrlError("base_url_invalid");
+  }
   const base = config.baseUrl.endsWith("/") ? config.baseUrl : `${config.baseUrl}/`;
-  const url = new URL(path, base);
+  let url: URL;
+  try {
+    url = new URL(path, base);
+  } catch {
+    throw new RestUrlError("base_url_invalid");
+  }
+  // Defence in depth: a relative-path escape must never downgrade the scheme.
+  if (url.protocol !== "https:") throw new RestUrlError("base_url_invalid");
   if (!config.hostAllowlist.includes(url.hostname)) throw new RestUrlError("base_url_not_allowlisted");
   for (const [k, v] of Object.entries(opts.query ?? {})) url.searchParams.set(k, `${v}`);
   return url.toString();
@@ -252,6 +262,16 @@ const REGISTRATION_STATUSES = [
 ] as const;
 export type RegistrationStatus = typeof REGISTRATION_STATUSES[number] | "unknown";
 
+/**
+ * The guide's enumeration contains two literal wire-value typos. They are
+ * documented values, so they are normalized to their canonical spellings.
+ * Anything else still resolves to "unknown".
+ */
+export const REGISTRATION_STATUS_WIRE_ALIASES: Record<string, RegistrationStatus> = {
+  TFAAcitvateInit: "TFAActivateInit",
+  TFADectivatedSuccess: "TFADeactivatedSuccess",
+};
+
 const PRESCRIPTION_STATUSES = [
   "Entered", "Printed", "Sending", "eRxSent", "Error", "Deleted", "Requested",
   "Edited", "EpcsError", "EpcsSigned", "ReadyToSign", "PharmacyVerified",
@@ -261,7 +281,8 @@ export type DoseSpotPrescriptionStatus = typeof PRESCRIPTION_STATUSES[number] | 
 const parse = <T extends readonly string[]>(allowed: T, v: unknown): T[number] | "unknown" =>
   typeof v === "string" && (allowed as readonly string[]).includes(v) ? v as T[number] : "unknown";
 
-export const parseRegistrationStatus = (v: unknown): RegistrationStatus => parse(REGISTRATION_STATUSES, v);
+export const parseRegistrationStatus = (v: unknown): RegistrationStatus =>
+  (typeof v === "string" && REGISTRATION_STATUS_WIRE_ALIASES[v]) || parse(REGISTRATION_STATUSES, v);
 export const parsePrescriptionStatus = (v: unknown): DoseSpotPrescriptionStatus => parse(PRESCRIPTION_STATUSES, v);
 
 /** Pharmacy ServiceLevel is a bitwise sum. */
@@ -290,16 +311,43 @@ export interface ClinicianCapabilitySnapshot {
   };
 }
 
-/** Normalize a clinician response without retaining anything else from it. */
-export function clinicianSnapshot(raw: Record<string, unknown> | null): ClinicianCapabilitySnapshot {
+/** Wrapper shapes exactly as documented: both responses carry a single `Item`. */
+export interface ClinicianResponse { Item?: Record<string, unknown> | null }
+export interface RegistrationStatusResponse { Item?: unknown }
+
+/**
+ * Normalize the documented clinician + registration-status responses.
+ *
+ * Capability flags live in `Item.ClinicInfo[]`, never on the clinician root. A
+ * single entry may be used directly; with multiple entries and no exact
+ * `clinicId` match, every clinic capability fails closed. Nothing else from the
+ * vendor response is retained or returned.
+ */
+export function clinicianSnapshot(
+  clinicianResponse: ClinicianResponse | null,
+  registrationResponse: RegistrationStatusResponse | null = null,
+  clinicId?: string | number | null,
+): ClinicianCapabilitySnapshot {
   const b = (v: unknown) => v === true;
-  const c = (raw?.["Clinic"] ?? raw ?? {}) as Record<string, unknown>;
+  const item = (clinicianResponse?.Item ?? null) as Record<string, unknown> | null;
+
+  const infos = Array.isArray(item?.["ClinicInfo"])
+    ? (item!["ClinicInfo"] as unknown[]).filter((e): e is Record<string, unknown> =>
+      !!e && typeof e === "object")
+    : [];
+  let c: Record<string, unknown> = {};
+  if (infos.length === 1) {
+    c = infos[0];
+  } else if (infos.length > 1 && clinicId !== undefined && clinicId !== null && `${clinicId}`.trim() !== "") {
+    c = infos.find((e) => `${e["ClinicId"] ?? ""}` === `${clinicId}`) ?? {};
+  }
+
   return {
-    confirmed: b(raw?.["Confirmed"]),
-    active: b(raw?.["Active"]),
-    accountLocked: b(raw?.["AccountLocked"]),
-    epcsRequested: b(raw?.["EpcsRequested"]),
-    registrationStatus: parseRegistrationStatus(raw?.["RegistrationStatus"]),
+    confirmed: b(item?.["Confirmed"]),
+    active: b(item?.["Active"]),
+    accountLocked: b(item?.["AccountLocked"]),
+    epcsRequested: b(item?.["EpcsRequested"]),
+    registrationStatus: parseRegistrationStatus(registrationResponse?.Item),
     clinic: {
       hasNewRx: b(c["HasNewRx"]), hasRefills: b(c["HasRefills"]), hasRxChange: b(c["HasRxChange"]),
       hasCancel: b(c["HasCancel"]), hasRxFill: b(c["HasRxFill"]), hasEpcs: b(c["HasEpcs"]),

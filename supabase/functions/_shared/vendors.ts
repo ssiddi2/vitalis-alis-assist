@@ -47,9 +47,17 @@ export const VENDORS: Record<VendorKey, VendorDef> = {
     domain: "erx",
     // DoseSpot issues partner-specific hosts; none are assumed.
     hosts: { sandbox: [], production: [] },
+    // The REST V2 resource guide establishes Clinic Id / User Id / Clinic Key /
+    // Subscription Key. It establishes no OAuth client id or client secret.
     secretRefs: {
-      sandbox: ["DOSESPOT_TEST_CLIENT_ID_REF", "DOSESPOT_TEST_CLIENT_SECRET_REF", "DOSESPOT_TEST_CLINIC_ID_REF"],
-      production: ["DOSESPOT_PROD_CLIENT_ID_REF", "DOSESPOT_PROD_CLIENT_SECRET_REF", "DOSESPOT_PROD_CLINIC_ID_REF"],
+      sandbox: [
+        "DOSESPOT_TEST_CLINIC_ID_REF", "DOSESPOT_TEST_USER_ID_REF",
+        "DOSESPOT_TEST_CLINIC_KEY_REF", "DOSESPOT_TEST_SUBSCRIPTION_KEY_REF",
+      ],
+      production: [
+        "DOSESPOT_PROD_CLINIC_ID_REF", "DOSESPOT_PROD_USER_ID_REF",
+        "DOSESPOT_PROD_CLINIC_KEY_REF", "DOSESPOT_PROD_SUBSCRIPTION_KEY_REF",
+      ],
     },
     capabilities: ["new_rx", "cancel_rx", "rx_renewal", "rx_change", "rx_fill", "med_history", "epcs"],
     requiresPartnerPackage: true,
