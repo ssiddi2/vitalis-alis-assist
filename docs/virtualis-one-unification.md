@@ -406,6 +406,30 @@ replayable (proved by test). Outbound dispatch is a separate queue and enqueue
 is not delivery. `createSyntheticStore` is in-process memory and explicitly
 `durable: false` — it emulates the contract, it is not delivery infrastructure.
 
+### Contract corrections (independently reproduced regressions)
+Three further defects were reproduced against the real modules and corrected:
+1. Two separately prepared versions of ONE immutable source event could both
+   commit, because the store checked only the work key. The transactional commit
+   now also rejects an already-seen `sourceEventKey`, and it re-checks the
+   expected cursor inside the commit rather than trusting the prepared plan.
+2. `deliverThroughAdapter` trusted the plan and would deliver against a CHANGED
+   endpoint, disabled/invalid config, a mismatched partition or a capability that
+   is no longer verified. Delivery now revalidates the event and plan against the
+   CURRENT config (`delivery_binding_mismatch`, `delivery_capability_unverified`)
+   before the transport is invoked, and `supports()` is checked against the
+   currently verified capability, not the snapshot.
+3. `Checkpoint.lastSourceEventId` stored the work tuple. The plan now carries
+   `sourceEventId` (and an approved `endpoint` snapshot), and the checkpoint
+   records the real source identifier.
+The plan is now a defensive copy of the partition, capability and sequence, so a
+caller mutating its input cannot retroactively change a validated plan.
+
+TRUST LIMITS UNCHANGED: the cursor's contiguity claim is still ADAPTER-asserted
+and unverifiable by this module; opaque versions are never ordered; there is no
+durable store, no authenticated receiver, no scheduler, no credential handling
+and no real side effects or server authorization here. These are contract fixes
+only, not a runtime.
+
 ### Config, binding and capability
 Config lookup is keyed by hospital + connector + environment, and the RETURNED
 config is re-verified against all three (`config_identity_mismatch`). Invalid

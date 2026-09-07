@@ -132,15 +132,17 @@ export function prepareExchangeEvent(event: ExchangeEvent, deps: RoutingDeps): P
   return {
     status: 'ready',
     plan: {
-      partition: p,
+      partition: { ...p },
       workKey,
       sourceEventKey,
+      sourceEventId: event.sourceEventId,
+      endpoint: { ...config.endpoint },
       streamKey: streamKeyFor(p),
       versionId: event.versionId,
-      capability,
+      capability: { ...capability },
       patientId: patient.patientId,
       encounterId,
-      sequence: event.sequence,
+      sequence: event.sequence ? { ...event.sequence } : undefined,
     },
   };
 }
@@ -166,7 +168,7 @@ export function commitPreparedExchange(
   const checkpoint: Checkpoint = {
     streamKey: plan.streamKey,
     lastVersionId: plan.versionId,
-    lastSourceEventId: plan.workKey,
+    lastSourceEventId: plan.sourceEventId,
     cursor,
     updatedAt: deps.now().toISOString(),
   };
@@ -200,10 +202,34 @@ export async function deliverThroughAdapter(
   event: ExchangeEvent,
   payload: unknown,
 ): Promise<DeliveryResult> {
+  // Revalidate the prepared event against current connector configuration.
+  const p = event.partition;
+  if (
+    validateConnectorConfig(config).length > 0 || !config.enabled ||
+    config.hospitalId !== p.hospitalId || config.connectorId !== p.connectorId ||
+    config.environment !== p.environment ||
+    workKeyFor(event) !== plan.workKey ||
+    workKeyFor({ ...event, partition: plan.partition }) !== plan.workKey ||
+    sourceEventKeyFor(event) !== plan.sourceEventKey ||
+    event.sourceEventId !== plan.sourceEventId ||
+    streamKeyFor(p) !== plan.streamKey ||
+    !sameEndpoint(config.endpoint, event.endpoint) ||
+    !sameEndpoint(plan.endpoint, event.endpoint)
+  ) {
+    return { status: 'failed', classification: 'permanent', reason: 'delivery_binding_mismatch' };
+  }
+  const currentCapability = config.capabilities.find(
+    (c) =>
+      c.resource === p.resourceType && c.direction === p.direction &&
+      c.mode === event.mode && c.verification === 'verified',
+  );
+  if (!currentCapability) {
+    return { status: 'failed', classification: 'permanent', reason: 'delivery_capability_unverified' };
+  }
   if (adapter.profile !== config.profile) {
     return { status: 'failed', classification: 'permanent', reason: 'adapter_profile_mismatch' };
   }
-  if (!adapter.supports(plan.capability, config)) {
+  if (!adapter.supports(currentCapability, config)) {
     return { status: 'failed', classification: 'permanent', reason: 'adapter_capability_unsupported' };
   }
   try {
