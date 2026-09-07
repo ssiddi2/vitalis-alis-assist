@@ -23,11 +23,16 @@ function defer(table: string): Deferred {
   return d;
 }
 
+/** Resolve the OLDEST in-flight query for a table (later ones stay pending). */
 function flush(table: string, data: unknown) {
-  const queue = pending[table] || [];
-  const list = queue.splice(0, queue.length);
-  list.forEach((d) => d.resolve({ data, error: null }));
-  return list.length;
+  const d = (pending[table] || []).shift();
+  d?.resolve({ data, error: null });
+}
+
+/** Wait for a query to be issued, then resolve it. */
+async function settle(table: string, data: unknown) {
+  await waitFor(() => expect(pending[table]?.length).toBeGreaterThan(0));
+  await act(async () => { flush(table, data); });
 }
 
 function builder(table: string) {
@@ -107,13 +112,11 @@ describe('useTeamChat facility isolation', () => {
     const { result, rerender } = renderHook(() => useTeamChat());
     await act(async () => { flush('team_channels', [channelA]); });
 
-    await act(async () => { void result.current.selectChannel(channelA); });
-    await act(async () => {
-      flush('team_messages', [{ id: 'm1', channel_id: 'chan-A', sender_id: 'user-1', content: 'hi', message_type: 'text', reply_to_id: null, read_by: [], created_at: '2026-01-01T00:00:00Z' }]);
-      flush('channel_members', [{ id: 'cm1', channel_id: 'chan-A', user_id: 'user-1', joined_at: '2026-01-01T00:00:00Z' }]);
-      flush('profiles', []);
-      flush('profiles', []);
-    });
+    act(() => { void result.current.selectChannel(channelA); });
+    await settle('team_messages', [{ id: 'm1', channel_id: 'chan-A', sender_id: 'user-1', content: 'hi', message_type: 'text', reply_to_id: null, read_by: [], created_at: '2026-01-01T00:00:00Z' }]);
+    await settle('profiles', []);
+    await settle('channel_members', [{ id: 'cm1', channel_id: 'chan-A', user_id: 'user-1', joined_at: '2026-01-01T00:00:00Z' }]);
+    await settle('profiles', []);
     await waitFor(() => expect(result.current.messages).toHaveLength(1));
     expect(result.current.activeChannel?.id).toBe('chan-A');
 
@@ -142,11 +145,11 @@ describe('useTeamChat facility isolation', () => {
   it('unsubscribes the old realtime channel when the active channel or facility changes', async () => {
     const { result, rerender } = renderHook(() => useTeamChat());
     await act(async () => { flush('team_channels', [channelA]); });
-    await act(async () => { void result.current.selectChannel(channelA); });
-    await act(async () => {
-      flush('team_messages', []); flush('channel_members', []);
-      flush('profiles', []); flush('profiles', []);
-    });
+    act(() => { void result.current.selectChannel(channelA); });
+    await settle('team_messages', []);
+    await settle('profiles', []);
+    await settle('channel_members', []);
+    await settle('profiles', []);
     expect(removedChannels).toHaveLength(0);
 
     currentHospital = { id: 'hosp-B' };
