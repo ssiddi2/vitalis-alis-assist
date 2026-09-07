@@ -16,6 +16,8 @@ const removedChannels: unknown[] = [];
 type RtSub = { name: string; handler: (p: { new: unknown }) => void };
 const realtime: RtSub[] = [];
 const inserts: { table: string; payload: Record<string, unknown> }[] = [];
+/** Tables whose inserts stay in flight until explicitly flushed. */
+const heldInserts = new Set<string>();
 
 function defer(table: string): Deferred {
   let resolve!: (v: unknown) => void;
@@ -45,7 +47,7 @@ function builder(table: string) {
   }
   chain.insert = (payload: Record<string, unknown>) => {
     inserts.push({ table, payload });
-    d.resolve({ data: { id: 'new-row', ...payload }, error: null });
+    if (!heldInserts.has(table)) d.resolve({ data: { id: 'new-row', ...payload }, error: null });
     return chain;
   };
   chain.then = (onOk: (v: unknown) => unknown, onErr?: (e: unknown) => unknown) =>
@@ -107,6 +109,7 @@ beforeEach(() => {
   for (const k of Object.keys(pending)) delete pending[k];
   removedChannels.length = 0;
   realtime.length = 0;
+  heldInserts.clear();
   inserts.length = 0;
   currentUser = { id: 'user-1' };
   currentHospital = { id: 'hosp-A' };
@@ -343,13 +346,21 @@ describe('useTeamChat facility isolation', () => {
     const { result, rerender } = renderHook(() => useTeamChat());
     await act(async () => { flush('team_channels', [channelA]); });
 
+    heldInserts.add('team_channels');
     let created: unknown = 'unset';
-    const call = act(async () => {
-      created = await result.current.createChannel({ hospital_id: 'hosp-A', name: 'late', channel_type: 'department' });
-    });
+    const call = result.current
+      .createChannel({ hospital_id: 'hosp-A', name: 'late', channel_type: 'department' })
+      .then((r) => { created = r; });
+
     currentHospital = { id: 'hosp-B' };
     rerender();
-    await call;
+    await waitFor(() => expect(result.current.channels).toEqual([]));
+
+    // The insert now returns the created row, into a context that moved on.
+    await act(async () => {
+      flush('team_channels', { id: 'new-row', hospital_id: 'hosp-A', name: 'late' });
+      await call;
+    });
 
     expect(created).toBeNull();
     expect(result.current.channels).toEqual([]);
