@@ -56,6 +56,8 @@ export default function Clinic() {
   if (!selectedHospital) return null;
 
   const handleCheckIn = async (appt: typeof appointments[0]) => {
+    // Patient scope must be established before an encounter can be activated.
+    setSelectedPatientId(appt.patient_id);
     try {
       await updateAppointmentStatus(appt.id, 'checked_in');
 
@@ -108,7 +110,6 @@ export default function Clinic() {
       return;
     }
 
-    setSelectedPatientId(appt.patient_id);
     navigate('/dashboard');
   };
 
