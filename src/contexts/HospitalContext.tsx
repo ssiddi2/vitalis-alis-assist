@@ -110,8 +110,16 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [state, setState] = useState<ScopedState>(() => emptyState(0, 0, null, true));
   const [emrConnection, setEmrConnection] = useState<EmrConnection | null>(null);
+  /** synchronous mirror of `state` so decisions never live inside an impure updater. */
+  const stateRef = useRef(state);
+  /** single write path: pure, replay-safe, ref stays consistent with counters. */
+  const apply = (next: ScopedState) => { stateRef.current = next; setState(next); };
 
-  useEffect(() => () => { mountedRef.current = false; reqRef.current += 1; genRef.current += 1; }, []);
+  // StrictMode runs setup → cleanup → setup; the flag MUST be restored on setup.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; reqRef.current += 1; genRef.current += 1; };
+  }, []);
 
   /**
    * Render-time isolation. `authLoading` re-entering for the SAME user hides the
@@ -132,7 +140,7 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
     reqRef.current += 1;
     clearStored();
     setEmrConnection(null);
-    setState(emptyState(genRef.current, scopeRef.current, userId, true));
+    apply(emptyState(genRef.current, scopeRef.current, userId, true));
   }, [userId, authLoading]);
 
   /** Load the authorized facility list. Fail closed on error; discard stale responses. */
