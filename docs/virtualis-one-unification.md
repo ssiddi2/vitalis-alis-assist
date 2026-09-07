@@ -309,3 +309,69 @@ patient-scoped guard. Clinical context integrity is therefore NOT complete:
 facility/identity isolation is enforced here, same-facility patient-change
 races are not.
 
+
+## Optional external-EHR connector foundation (standalone-first)
+
+virtualisONE is a standalone multi-tenant EMR. External EHR connectivity is
+optional and must never gate a native clinical workflow.
+
+### Standalone UI state
+`EmrConnection.status` now includes `standalone` (reason
+`external_ehr_not_configured`). When no approved facility⇄issuer binding exists
+the context resolves to `standalone` synchronously — no artificial "connecting"
+spinner, no error tone. `unavailable` is retained only for a facility that HAS a
+binding but whose session cannot be proven; `error` and the explicitly labelled
+synthetic sandbox (`VITE_EMR_SANDBOX_DEMO=true`) are unchanged.
+
+### Workflow-gate audit (external connectivity only)
+Inspected: `src/lib/orderLifecycle.ts`, `src/lib/ehrWriteback.ts`,
+`src/components/virtualis/{OrderSignatureModal,StagedOrdersPanel,NoteEditorModal}.tsx`,
+`src/hooks/useConsultationThread.ts`, `src/pages/{EMRConnections,SmartLaunch,SmartCallback}.tsx`.
+Result: no clinical action (order signing, note signing/addenda, consult,
+prescribing) is blocked by the absence of a SMART session — write-back is
+best-effort and post-signing. No gate was removed because none existed; auth,
+signing, credentialing and readiness prerequisites are untouched. Order status
+labels remain local-record vs pushed, which is a factual outcome, not a gate.
+
+### Connector domain module (`src/lib/connectors/`)
+- `types.ts` — vendor-neutral typed domain: config (connector id, hospital id,
+  profile, environment, enabled, exact approved `baseUrl`/`issuer`, and a server
+  secret REFERENCE NAME only), capability declarations that separate
+  inbound/outbound, push-subscription vs polling, and per-endpoint
+  `unverified`/`verified`, plus `ConnectorHealth`
+  (`not_configured|pending|ok|degraded|unknown`) with freshness timestamps.
+- `profiles.ts` — extensible templates: Epic, Oracle Health/Cerner, Meditech,
+  generic FHIR R4, HL7 v2 interface engine. Templates only: no vendor host,
+  path, scope or certified capability is asserted, and every template capability
+  is `unverified`. `validateConnectorConfig` rejects non-HTTPS bindings, bad
+  secret-reference names and credential-looking values.
+- `routing.ts` — pure routing/validation with injected authorization, config,
+  mapping, ledger and clock. Client-supplied membership is never accepted. Fail
+  closed on: connector not found, tenant mismatch, environment mismatch,
+  disabled connector, issuer-binding mismatch, unauthorized tenant, unsupported/
+  unverified capability, wrong exchange mode, missing patient/encounter mapping,
+  duplicate idempotency key, stale resource version. Idempotency key is scoped
+  `hospital::connector::environment::sourceEventId::resourceVersion`;
+  checkpoints are per `hospital::connector::environment::resource::externalPatientId`.
+  Adapter outcomes are `delivered` / `failed` with `permanent|retryable|unknown`.
+- `testing.ts` — in-memory ledger (`durable: false`) and synthetic transport.
+  These are test doubles, NOT durable delivery infrastructure.
+
+No route, edge function, migration, credential or network client was added, and
+`fhir-writeback` is deliberately unchanged: this pure module does not secure it.
+Its missing facility/encounter ownership checks remain open.
+
+### Exchange mode
+HL7 FHIR R4 Subscription permits `rest-hook` and describes polling/history as the
+alternative (https://hl7.org/fhir/R4/subscription.html). Mode is a per-connector,
+per-endpoint declaration driven by the hospital's confirmed capability — never
+inferred from a vendor name.
+
+### Honest remaining work
+1. Durable inbox/outbox and persisted checkpoints (tables, RLS, grants) — none exist.
+2. Authenticated inbound receivers (signature/mTLS verification, replay window, rate limits).
+3. Per-hospital connector configuration storage plus an admin surface.
+4. Credential/secret provisioning and rotation, server-side only.
+5. Capability negotiation from a live CapabilityStatement / site interface spec, with per-endpoint verification evidence.
+6. End-to-end runtime: scheduler/worker, retry with backoff, dead-lettering, health/freshness computation.
+7. Hardening the `fhir-writeback` server boundary (facility + encounter ownership).
