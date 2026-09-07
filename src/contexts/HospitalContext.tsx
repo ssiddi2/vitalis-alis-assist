@@ -174,15 +174,16 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
         );
 
         if (!live()) return;
-        setState((prev) => {
-          if (prev.gen !== gen || !live()) return prev;
+        {
+          const prev = stateRef.current;
+          if (prev.gen !== gen) return;
           // Re-validate the current selection against the freshly authorized list.
           const storedId = prev.hospital?.id ?? readStored(HOSPITAL_KEY);
           const hospital = withCounts.find((h) => h.id === storedId) ?? null;
           const keptSelection = !!hospital && !!prev.hospital && prev.hospital.id === hospital.id;
           if (!hospital) clearStored();
           const patientId = keptSelection ? prev.patientId ?? readStored(PATIENT_KEY) : null;
-          return {
+          apply({
             ...prev,
             hospitals: withCounts,
             hospital,
@@ -190,18 +191,19 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
             encounterId: keptSelection && patientId ? prev.encounterId : null,
             loading: false,
             error: null,
-          };
-        });
+          });
+        }
       } catch (err) {
         console.error('Error fetching hospitals:', err);
         if (!live()) return;
+        if (stateRef.current.gen !== gen) return;
         // Fail closed: a failed authorization read must not leave a facility usable.
         clearStored();
         scopeRef.current += 1;
-        setState((prev) => (prev.gen !== gen || !live() ? prev : {
+        apply({
           ...emptyState(gen, scopeRef.current, userId, false),
           error: err instanceof Error ? err.message : 'Failed to load hospitals',
-        }));
+        });
       }
     })();
 
