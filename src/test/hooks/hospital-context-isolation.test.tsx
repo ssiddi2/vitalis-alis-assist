@@ -394,11 +394,12 @@ describe('HospitalContext isolation', () => {
     act(() => { result.current.setActiveEncounterId('e-2'); });
     expect(result.current.activeEncounterId).toBe('e-2');
 
-    // EMR resolution timer for the still-selected facility must still complete.
+    // EMR resolution for the still-selected facility must still complete.
     await act(async () => { vi.advanceTimersByTime(1500); });
-    expect(result.current.emrConnection?.status).toBe('unavailable');
+    expect(result.current.emrConnection?.status).toBe('standalone');
     expect(result.current.emrConnection?.facilityId).toBe('a');
     vi.useRealTimers();
+
   });
 
   it('batched A->B->A still invalidates setters captured at A', async () => {
