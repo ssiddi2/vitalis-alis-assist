@@ -25,8 +25,21 @@ export function useNoteIntegrity(noteId?: string, enabled = true) {
   const [addenda, setAddenda] = useState<NoteAddendum[]>([]);
   const [loading, setLoading] = useState(false);
 
+  /** Scope key: results from a previous note (or disabled state) are discarded. */
+  const scope = `${noteId ?? 'none'}::${enabled ? 'on' : 'off'}`;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+
+  // Clear immediately so a stale note's versions/addenda are never displayed.
+  useEffect(() => {
+    setVersions([]);
+    setAddenda([]);
+    setLoading(false);
+  }, [scope]);
+
   const refresh = useCallback(async () => {
     if (!noteId || !enabled) return;
+    const key = scope;
     setLoading(true);
     const [v, a] = await Promise.all([
       supabase.from('note_versions').select('id, version, content_hash, signed_at, author_id')
@@ -34,12 +47,14 @@ export function useNoteIntegrity(noteId?: string, enabled = true) {
       supabase.from('note_addenda').select('id, sequence, reason, content, content_hash, author_id, created_at')
         .eq('note_id', noteId).order('sequence'),
     ]);
+    if (scopeRef.current !== key) return;
     setVersions((v.data ?? []) as NoteVersion[]);
     setAddenda((a.data ?? []) as NoteAddendum[]);
     setLoading(false);
-  }, [noteId, enabled]);
+  }, [noteId, enabled, scope]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
   return { versions, addenda, loading, refresh };
 }
+
