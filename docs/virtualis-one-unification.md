@@ -121,6 +121,16 @@ and recorded writes:
 - note: immediate clear on switch, late response dropped, A -> B -> A dropped,
   **no previous-note data on any render after the switch**, disable clears.
 
+### 4. Verification defect found and fixed
+
+`package.json` declared `typecheck: tsc --noEmit`, but the root `tsconfig.json`
+has `"files": []` and only project references — so that command compiled **zero
+source files** and always exited 0. Any prior "typecheck clean" claim based on
+it (including the previous revision of this document) was meaningless. The
+script is now `tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p
+tsconfig.node.json`, verified to load 254 files under `src/` and to propagate a
+real exit code.
+
 ## `fhir-writeback` review — findings (endpoint intentionally unchanged)
 
 Files: `supabase/functions/fhir-writeback/index.ts`, `src/lib/ehrWriteback.ts`,
