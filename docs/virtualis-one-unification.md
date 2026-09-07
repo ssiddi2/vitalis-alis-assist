@@ -375,3 +375,80 @@ inferred from a vendor name.
 5. Capability negotiation from a live CapabilityStatement / site interface spec, with per-endpoint verification evidence.
 6. End-to-end runtime: scheduler/worker, retry with backoff, dead-lettering, health/freshness computation.
 7. Hardening the `fhir-writeback` server boundary (facility + encounter ownership).
+
+## Connector foundation — correctness corrections (follow-up pass)
+
+### Versioning and ordering
+FHIR `versionId` is OPAQUE (https://hl7.org/fhir/R4/http.html — vread/versioning),
+so `resourceVersion: number` was wrong. It is now `versionId: string`, compared
+only for equality and never ordered numerically or lexicographically. Ordering,
+when a source offers it, comes from an explicit optional `SourceSequence`
+(`cursor`, optional `previousCursor`, `contiguous`). The ADAPTER owns
+contiguity: a non-contiguous event is committed but never advances the cursor,
+and a claimed continuation from the wrong cursor fails `cursor_discontinuity`.
+The cursor is never set to a "max seen" value, so unseen data cannot be skipped.
+
+### Identity and partitioning
+Work identity is a JSON-array tuple of
+`hospital, connector, environment, direction, resourceType, resourceId,
+operation, versionId`. Stream identity is the same tuple without operation and
+version, and is scoped to the resource INSTANCE — two Observations for one
+patient are now distinct streams. Immutable source-event dedup
+(`hospital, connector, environment, sourceEventId`) is a SEPARATE key. All keys
+use `JSON.stringify` of an array, so an id containing `::` cannot collide.
+
+### Read-only routing, transactional commit
+`prepareExchangeEvent` is read-only validation and writes nothing. Durable state
+moves only through `commitPreparedExchange`, which delegates to a
+`TransactionalStore.commit` that must apply the local effect, the inbox dedup
+records and the checkpoint atomically. A failed commit leaves the event fully
+replayable (proved by test). Outbound dispatch is a separate queue and enqueue
+is not delivery. `createSyntheticStore` is in-process memory and explicitly
+`durable: false` — it emulates the contract, it is not delivery infrastructure.
+
+### Config, binding and capability
+Config lookup is keyed by hospital + connector + environment, and the RETURNED
+config is re-verified against all three (`config_identity_mismatch`). Invalid
+config is rejected before any other work. BOTH `baseUrl` and `issuer` must match
+the presented endpoint. URL validation now rejects userinfo, query and fragment,
+not only non-HTTPS. Profile lookup uses an own-property check. The
+secret-reference regex is a developer lint, NOT a browser-safety guarantee — the
+guarantee is that credential values never leave the server. Capability matching
+includes mode, so one resource may hold both a verified push and a verified
+polling capability. Adapters are checked against the config profile and must
+report `supports(capability, config)`.
+
+### Delivery outcomes
+`delivered` now requires an authoritative `DeliveryReceipt`. A missing receipt, a
+throw or an ambiguous timeout is `unknown`: never delivered, and never
+auto-resent by this module. A failed or unknown delivery cannot become committed
+work.
+
+### New profile templates
+`athenahealth` and `eclinicalworks` added as UNVERIFIED templates with public
+documentation references only
+(https://docs.athenahealth.com/api/fhir-r4/document-reference,
+https://www.eclinicalworks.com/products-services/interoperability/). No
+connection, endpoint, enabled resource or certification is claimed for either.
+
+### Standalone client write-back (fail closed)
+`src/lib/ehrWriteback.ts` previously sent data whenever ANY SMART session existed
+in browser storage. It now resolves an authoritative facility/endpoint binding
+via `resolveWritebackBinding()`, which returns `null` because no such
+authoritative record exists yet; every write returns
+`not_configured / no_authoritative_facility_endpoint_binding` with zero function
+invocations. This is not a browser-flippable boolean: lifting it requires the
+server-verified per-facility endpoint binding described above.
+Callers corrected: `NoteEditorModal` no longer audits `pushed_to_ehr` from the
+mere presence of a SMART patient id — local signing records `local_record` plus
+an explicit `external_delivery: not_configured`; `orderLifecycle` audits
+`order.signed_local` and returns `signed`; `useConsultationThread` skips
+write-back. The `fhir-writeback` edge function itself is UNCHANGED and still
+lacks facility and encounter ownership checks; any future direct caller of that
+endpoint still requires that server-side fix. This client change reduces
+accidental egress; it does not secure the endpoint.
+
+### Scope of these claims
+This is an offline domain foundation with synthetic doubles. No durable store, no
+authenticated receiver, no scheduler, no vendor credential and no live traffic
+exists. Nothing here should be read as runtime integration readiness.

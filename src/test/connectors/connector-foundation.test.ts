@@ -3,14 +3,33 @@ import {
   CONNECTOR_PROFILES,
   listProfiles,
   validateConnectorConfig,
-  routeExchangeEvent,
-  idempotencyKeyFor,
+  prepareExchangeEvent,
+  commitPreparedExchange,
+  enqueueOutboundDispatch,
   deliverThroughAdapter,
+  workKeyFor,
+  sourceEventKeyFor,
+  streamKeyFor,
   type ConnectorConfig,
   type ExchangeEvent,
+  type ExchangePartition,
   type RoutingDeps,
 } from '@/lib/connectors';
-import { createInMemoryLedger, createSyntheticTransport, fixedClock } from '@/lib/connectors/testing';
+import { createSyntheticStore, createSyntheticTransport, fixedClock } from '@/lib/connectors/testing';
+
+const partition = (over: Partial<ExchangePartition> = {}): ExchangePartition => ({
+  hospitalId: 'hosp-a',
+  connectorId: 'conn-a',
+  environment: 'production',
+  direction: 'inbound',
+  resourceType: 'Observation',
+  resourceId: 'obs-1',
+  operation: 'update',
+  ...over,
+});
+
+const endpointA = { baseUrl: 'https://fhir.a.example/r4', issuer: 'https://auth.a.example' };
+const endpointB = { baseUrl: 'https://fhir.b.example/r4', issuer: 'https://auth.b.example' };
 
 const config = (over: Partial<ConnectorConfig> = {}): ConnectorConfig => ({
   connectorId: 'conn-a',
@@ -18,10 +37,11 @@ const config = (over: Partial<ConnectorConfig> = {}): ConnectorConfig => ({
   profile: 'generic_fhir_r4',
   environment: 'production',
   enabled: true,
-  endpoint: { baseUrl: 'https://fhir.a.example/r4', issuer: 'https://fhir.a.example' },
+  endpoint: endpointA,
   secretRef: 'HOSP_A_FHIR_CLIENT_SECRET_REF',
   capabilities: [
-    { resource: 'Encounter', direction: 'inbound', mode: 'polling', verification: 'verified' },
+    { resource: 'Observation', direction: 'inbound', mode: 'polling', verification: 'verified' },
+    { resource: 'Observation', direction: 'inbound', mode: 'push_subscription', verification: 'verified' },
     { resource: 'Patient', direction: 'inbound', mode: 'polling', verification: 'unverified' },
   ],
   health: { state: 'pending', checkedAt: null, lastEventAt: null },
@@ -29,139 +49,284 @@ const config = (over: Partial<ConnectorConfig> = {}): ConnectorConfig => ({
 });
 
 const event = (over: Partial<ExchangeEvent> = {}): ExchangeEvent => ({
-  hospitalId: 'hosp-a',
-  connectorId: 'conn-a',
-  environment: 'production',
+  partition: partition(),
   sourceEventId: 'evt-1',
-  resourceVersion: 2,
-  resource: 'Encounter',
-  direction: 'inbound',
+  versionId: 'W/"9a3f-opaque"',
   mode: 'polling',
   externalPatientId: 'ext-p1',
-  issuer: 'https://fhir.a.example',
+  endpoint: endpointA,
   occurredAt: '2026-09-07T00:00:00.000Z',
   ...over,
 });
 
 const deps = (configs: ConnectorConfig[], over: Partial<RoutingDeps> = {}): RoutingDeps => ({
   authorization: { isConnectorAuthorized: (h, c) => configs.some((x) => x.hospitalId === h && x.connectorId === c) },
-  config: { getConnector: (id) => configs.find((c) => c.connectorId === id) ?? null },
-  mapping: {
-    resolvePatient: (connectorId, ext) => (connectorId === 'conn-a' && ext === 'ext-p1' ? 'internal-p1' : null),
-    resolveEncounter: (connectorId, ext) => (connectorId === 'conn-a' && ext === 'ext-e1' ? 'internal-e1' : null),
+  config: {
+    getConnector: (hospitalId, connectorId, environment) =>
+      configs.find(
+        (c) => c.hospitalId === hospitalId && c.connectorId === connectorId && c.environment === environment,
+      ) ?? null,
   },
-  ledger: createInMemoryLedger(),
+  mapping: {
+    resolvePatient: (p, ext) =>
+      p.connectorId === 'conn-a' && ext === 'ext-p1' ? { patientId: 'internal-p1', hospitalId: p.hospitalId } : null,
+    resolveEncounter: (p, ext) =>
+      p.connectorId === 'conn-a' && ext === 'ext-e1'
+        ? { encounterId: 'internal-e1', hospitalId: p.hospitalId, patientId: 'internal-p1' }
+        : null,
+  },
+  store: createSyntheticStore(),
   now: fixedClock('2026-09-07T01:00:00.000Z'),
   ...over,
 });
 
-describe('connector profiles are templates, not certified implementations', () => {
-  it('ships the five extensible profiles with only unverified template capabilities', () => {
-    expect(listProfiles().map((p) => p.id).sort()).toEqual(
-      ['epic', 'generic_fhir_r4', 'hl7v2_interface_engine', 'meditech', 'oracle_health'],
-    );
+const ready = (outcome: ReturnType<typeof prepareExchangeEvent>) => {
+  if (outcome.status !== 'ready') throw new Error(`expected ready, got ${JSON.stringify(outcome)}`);
+  return outcome.plan;
+};
+
+describe('profiles are unverified templates', () => {
+  it('includes athenahealth and eClinicalWorks with docs references and no endpoints', () => {
+    expect(listProfiles().map((p) => p.id).sort()).toEqual([
+      'athenahealth', 'eclinicalworks', 'epic', 'generic_fhir_r4',
+      'hl7v2_interface_engine', 'meditech', 'oracle_health',
+    ]);
     for (const p of listProfiles()) {
       expect(p.templateCapabilities.every((c) => c.verification === 'unverified')).toBe(true);
-      expect(JSON.stringify(p)).not.toMatch(/https?:\/\//);
+      const { docsRef, ...rest } = p;
+      expect(JSON.stringify(rest)).not.toMatch(/https?:\/\//);
+      expect(docsRef === undefined || docsRef.startsWith('https://')).toBe(true);
     }
-    expect(CONNECTOR_PROFILES.hl7v2_interface_engine.standard).toBe('hl7v2');
+    expect(CONNECTOR_PROFILES.athenahealth.docsRef).toBe('https://docs.athenahealth.com/api/fhir-r4/document-reference');
+    expect(CONNECTOR_PROFILES.eclinicalworks.docsRef).toBe('https://www.eclinicalworks.com/products-services/interoperability/');
   });
 
-  it('rejects configuration that carries a credential value or a non-https binding', () => {
+  it('rejects credential-bearing, query/fragment or inherited-key configuration', () => {
     expect(validateConnectorConfig(config())).toEqual([]);
-    expect(
-      validateConnectorConfig(config({ secretRef: 'eyJhbGciOiJIUzI1NiJ9.abcdefghijklmno' as string })),
-    ).toContain('invalid_secret_ref');
-    expect(
-      validateConnectorConfig(config({ endpoint: { baseUrl: 'http://fhir.a.example', issuer: 'https://fhir.a.example' } })),
-    ).toContain('invalid_endpoint');
-    expect(
-      validateConnectorConfig(config({ profile: 'made_up_vendor' as never })),
-    ).toContain('unknown_profile');
+    expect(validateConnectorConfig(config({ endpoint: { baseUrl: 'https://user:pw@fhir.a.example/r4', issuer: endpointA.issuer } })))
+      .toContain('invalid_endpoint');
+    expect(validateConnectorConfig(config({ endpoint: { baseUrl: 'https://fhir.a.example/r4?token=abc', issuer: endpointA.issuer } })))
+      .toContain('invalid_endpoint');
+    expect(validateConnectorConfig(config({ endpoint: { baseUrl: endpointA.baseUrl, issuer: 'https://auth.a.example/#t=1' } })))
+      .toContain('invalid_issuer');
+    expect(validateConnectorConfig(config({ profile: 'constructor' as never }))).toContain('unknown_profile');
+    expect(validateConnectorConfig(config({ profile: 'toString' as never }))).toContain('unknown_profile');
   });
 });
 
-describe('routing fails closed', () => {
-  it('isolates two hospitals running the same vendor profile', () => {
+describe('keys are collision-safe and instance-scoped', () => {
+  it('separates two Observations for the same patient', () => {
+    const a = streamKeyFor(partition({ resourceId: 'obs-1' }));
+    const b = streamKeyFor(partition({ resourceId: 'obs-2' }));
+    expect(a).not.toBe(b);
+    expect(JSON.parse(a)).toContain('obs-1');
+  });
+
+  it('does not collide when an id itself contains the old delimiter', () => {
+    const x = workKeyFor(event({ partition: partition({ connectorId: 'conn-a::production', resourceId: 'r1' }) }));
+    const y = workKeyFor(event({ partition: partition({ connectorId: 'conn-a', resourceId: 'production::r1' }) }));
+    expect(x).not.toBe(y);
+  });
+
+  it('keeps work identity separate from immutable source-event identity', () => {
+    const base = event();
+    expect(workKeyFor(base)).not.toBe(sourceEventKeyFor(base));
+    // Same source event, different operation => different work identity.
+    expect(workKeyFor(base)).not.toBe(workKeyFor(event({ partition: partition({ operation: 'delete' }) })));
+    // Opaque versions are compared only for equality.
+    expect(workKeyFor(base)).not.toBe(workKeyFor(event({ versionId: 'W/"zz-other"' })));
+    expect(sourceEventKeyFor(base)).toBe(sourceEventKeyFor(event({ versionId: 'W/"zz-other"' })));
+  });
+});
+
+describe('prepare is read-only and fails closed', () => {
+  it('writes nothing to the store', () => {
+    const store = createSyntheticStore();
+    const d = deps([config()], { store });
+    const plan = ready(prepareExchangeEvent(event(), d));
+    expect(store.effects).toEqual([]);
+    expect(store.outbound).toEqual([]);
+    expect(store.hasCommittedWork(plan.workKey)).toBe(false);
+    expect(store.hasSeenSourceEvent(plan.sourceEventKey)).toBe(false);
+    expect(store.getCheckpoint(plan.streamKey)).toBeNull();
+  });
+
+  it('isolates two hospitals on the same vendor profile and rejects a conflicting returned config', () => {
     const a = config();
-    const b = config({ connectorId: 'conn-b', hospitalId: 'hosp-b', endpoint: { baseUrl: 'https://fhir.b.example/r4', issuer: 'https://fhir.b.example' } });
-    const d = deps([a, b]);
-    expect(routeExchangeEvent(event({ hospitalId: 'hosp-b' }), d)).toMatchObject({ status: 'rejected', reason: 'tenant_mismatch' });
-    expect(routeExchangeEvent(event({ connectorId: 'conn-b', hospitalId: 'hosp-b' }), d)).toMatchObject({ status: 'rejected', reason: 'issuer_binding_mismatch' });
+    const b = config({ connectorId: 'conn-b', hospitalId: 'hosp-b', endpoint: endpointB });
+    expect(prepareExchangeEvent(event({ partition: partition({ hospitalId: 'hosp-b' }) }), deps([a, b])))
+      .toMatchObject({ status: 'rejected', reason: 'connector_not_found' });
+
+    // Provider hands back a config for a different tenant/connector.
+    const liar = deps([a], { config: { getConnector: () => b } });
+    expect(prepareExchangeEvent(event(), liar)).toMatchObject({ reason: 'config_identity_mismatch', classification: 'permanent' });
   });
 
-  it('rejects wrong connector, environment, disabled connector and unauthorized tenant', () => {
-    expect(routeExchangeEvent(event({ connectorId: 'nope' }), deps([config()]))).toMatchObject({ reason: 'connector_not_found', classification: 'permanent' });
-    expect(routeExchangeEvent(event({ environment: 'sandbox' }), deps([config()]))).toMatchObject({ reason: 'environment_mismatch' });
-    expect(routeExchangeEvent(event(), deps([config({ enabled: false })]))).toMatchObject({ reason: 'connector_disabled' });
-    const unauth = deps([config()], { authorization: { isConnectorAuthorized: () => false } });
-    expect(routeExchangeEvent(event(), unauth)).toMatchObject({ reason: 'not_authorized' });
-  });
-
-  it('rejects unsupported, unverified and wrong-mode capabilities', () => {
+  it('requires BOTH base URL and issuer to match the approved binding', () => {
     const d = deps([config()]);
-    expect(routeExchangeEvent(event({ resource: 'Observation' }), d)).toMatchObject({ reason: 'capability_unsupported' });
-    expect(routeExchangeEvent(event({ resource: 'Patient' }), d)).toMatchObject({ reason: 'capability_unverified' });
-    expect(routeExchangeEvent(event({ mode: 'push_subscription' }), d)).toMatchObject({ reason: 'exchange_mode_not_supported' });
+    expect(prepareExchangeEvent(event({ endpoint: { baseUrl: endpointA.baseUrl, issuer: endpointB.issuer } }), d))
+      .toMatchObject({ reason: 'endpoint_binding_mismatch' });
+    expect(prepareExchangeEvent(event({ endpoint: { baseUrl: endpointB.baseUrl, issuer: endpointA.issuer } }), d))
+      .toMatchObject({ reason: 'endpoint_binding_mismatch' });
   });
 
-  it('rejects missing patient and encounter mappings as retryable', () => {
-    const d = deps([config()]);
-    expect(routeExchangeEvent(event({ externalPatientId: 'unknown' }), d)).toEqual({ status: 'rejected', reason: 'patient_mapping_missing', classification: 'retryable' });
-    expect(routeExchangeEvent(event({ externalEncounterId: 'unknown' }), d)).toMatchObject({ reason: 'encounter_mapping_missing', classification: 'retryable' });
+  it('rejects invalid config, disabled connector and unauthorized tenant early', () => {
+    expect(prepareExchangeEvent(event(), deps([config({ secretRef: 'not a ref' })]))).toMatchObject({ reason: 'invalid_connector_config' });
+    expect(prepareExchangeEvent(event(), deps([config({ enabled: false })]))).toMatchObject({ reason: 'connector_disabled' });
+    expect(prepareExchangeEvent(event(), deps([config()], { authorization: { isConnectorAuthorized: () => false } })))
+      .toMatchObject({ reason: 'not_authorized' });
   });
-});
 
-describe('idempotency, versions and checkpoints', () => {
-  it('accepts once, treats the identical event as duplicate and advances the checkpoint', () => {
+  it('supports two verified modes for the same resource and rejects an unsupported one', () => {
     const d = deps([config()]);
-    const first = routeExchangeEvent(event(), d);
-    expect(first).toMatchObject({ status: 'accepted', patientId: 'internal-p1', encounterId: null });
-    if (first.status !== 'accepted') throw new Error('expected accepted');
-    expect(first.checkpoint).toEqual({
-      streamKey: 'hosp-a::conn-a::production::Encounter::ext-p1',
-      lastVersion: 2,
-      lastSourceEventId: 'evt-1',
-      updatedAt: '2026-09-07T01:00:00.000Z',
+    expect(prepareExchangeEvent(event({ mode: 'polling' }), d).status).toBe('ready');
+    expect(prepareExchangeEvent(event({ mode: 'push_subscription' }), d).status).toBe('ready');
+    const pollOnly = deps([config({ capabilities: [config().capabilities[0]] })]);
+    expect(prepareExchangeEvent(event({ mode: 'push_subscription' }), pollOnly)).toMatchObject({ reason: 'exchange_mode_not_supported' });
+    expect(prepareExchangeEvent(event({ partition: partition({ resourceType: 'DocumentReference' }) }), d))
+      .toMatchObject({ reason: 'capability_unsupported' });
+    expect(prepareExchangeEvent(event({ partition: partition({ resourceType: 'Patient' }) }), d))
+      .toMatchObject({ reason: 'capability_unverified' });
+  });
+
+  it('rejects mapping misses and cross-tenant / cross-patient mappings', () => {
+    const d = deps([config()]);
+    expect(prepareExchangeEvent(event({ externalPatientId: 'nope' }), d))
+      .toEqual({ status: 'rejected', reason: 'patient_mapping_missing', classification: 'retryable' });
+    expect(prepareExchangeEvent(event({ externalEncounterId: 'nope' }), d))
+      .toMatchObject({ reason: 'encounter_mapping_missing', classification: 'retryable' });
+
+    const wrongTenant = deps([config()], {
+      mapping: {
+        resolvePatient: () => ({ patientId: 'internal-p1', hospitalId: 'hosp-b' }),
+        resolveEncounter: () => null,
+      },
     });
-    expect(routeExchangeEvent(event(), d)).toEqual({ status: 'duplicate', idempotencyKey: first.idempotencyKey, reason: 'already_processed' });
-  });
+    expect(prepareExchangeEvent(event(), wrongTenant)).toMatchObject({ reason: 'patient_tenant_mismatch', classification: 'permanent' });
 
-  it('treats a distinct resource version as a new event and rejects stale/out-of-order ones', () => {
-    const d = deps([config()]);
-    routeExchangeEvent(event(), d);
-    expect(routeExchangeEvent(event({ sourceEventId: 'evt-2', resourceVersion: 3 }), d)).toMatchObject({ status: 'accepted' });
-    expect(routeExchangeEvent(event({ sourceEventId: 'evt-0', resourceVersion: 1 }), d)).toMatchObject({ reason: 'stale_resource_version', classification: 'permanent' });
-    expect(idempotencyKeyFor(event())).not.toEqual(idempotencyKeyFor(event({ resourceVersion: 3 })));
-  });
-
-  it('scopes the idempotency key to tenant, connector and environment', () => {
-    const key = idempotencyKeyFor(event());
-    expect(key).toBe('hosp-a::conn-a::production::evt-1::2');
-    expect(idempotencyKeyFor(event({ hospitalId: 'hosp-b' }))).not.toBe(key);
-  });
-
-  it('the shipped ledger is explicitly non-durable', () => {
-    expect(createInMemoryLedger().durable).toBe(false);
+    const wrongPatient = deps([config()], {
+      mapping: {
+        resolvePatient: (p) => ({ patientId: 'internal-p1', hospitalId: p.hospitalId }),
+        resolveEncounter: (p) => ({ encounterId: 'internal-e9', hospitalId: p.hospitalId, patientId: 'internal-p9' }),
+      },
+    });
+    expect(prepareExchangeEvent(event({ externalEncounterId: 'ext-e1' }), wrongPatient))
+      .toMatchObject({ reason: 'encounter_patient_mismatch', classification: 'permanent' });
   });
 });
 
-describe('adapter transport is synthetic and classifies failures', () => {
-  const adapter = (result: Parameters<typeof createSyntheticTransport>[1]) =>
-    createSyntheticTransport({ profile: 'generic_fhir_r4', supports: (c) => c.verification === 'verified' }, result);
+describe('commit is transactional and dedup cannot be poisoned', () => {
+  it('commits effect, dedup and checkpoint together, then reports the duplicate', () => {
+    const store = createSyntheticStore();
+    const d = deps([config()], { store });
+    const plan = ready(prepareExchangeEvent(event(), d));
+    const outcome = commitPreparedExchange(plan, { kind: 'observation.upsert', payload: { v: 1 } }, d);
 
-  it('returns retryable, unknown and delivered outcomes without any network call', async () => {
-    const ok = adapter(() => ({ status: 'delivered' }));
-    await expect(deliverThroughAdapter(ok, event(), { a: 1 })).resolves.toEqual({ status: 'delivered' });
+    expect(outcome).toMatchObject({ status: 'committed' });
+    expect(store.effects).toHaveLength(1);
+    expect(store.getCheckpoint(plan.streamKey)).toMatchObject({
+      lastVersionId: 'W/"9a3f-opaque"', cursor: null, updatedAt: '2026-09-07T01:00:00.000Z',
+    });
+    expect(prepareExchangeEvent(event(), d)).toMatchObject({ status: 'duplicate', reason: 'work_already_committed' });
+    // A different opaque version of the same source event is still deduped by source identity.
+    expect(prepareExchangeEvent(event({ versionId: 'W/"other"' }), d))
+      .toMatchObject({ status: 'duplicate', reason: 'source_event_already_seen' });
+  });
+
+  it('a failed commit leaves the event replayable — no dedup, no checkpoint, no effect', () => {
+    const store = createSyntheticStore();
+    const d = deps([config()], { store });
+    const plan = ready(prepareExchangeEvent(event(), d));
+    store.failNextCommit('effect_write_failed');
+
+    expect(commitPreparedExchange(plan, { kind: 'observation.upsert', payload: {} }, d))
+      .toEqual({ status: 'failed', classification: 'retryable', reason: 'effect_write_failed' });
+    expect(store.effects).toEqual([]);
+    expect(store.getCheckpoint(plan.streamKey)).toBeNull();
+    expect(prepareExchangeEvent(event(), d).status).toBe('ready');
+  });
+
+  it('never advances the cursor past unseen data', () => {
+    const store = createSyntheticStore();
+    const d = deps([config()], { store });
+    const first = ready(prepareExchangeEvent(event({ sequence: { cursor: 'c1', contiguous: true } }), d));
+    commitPreparedExchange(first, { kind: 'x', payload: {} }, d);
+    expect(store.getCheckpoint(first.streamKey)?.cursor).toBe('c1');
+
+    // Out-of-order arrival: adapter cannot prove contiguity, so the cursor holds.
+    const gap = ready(prepareExchangeEvent(
+      event({ sourceEventId: 'evt-9', versionId: 'W/"v9"', sequence: { cursor: 'c9', contiguous: false } }), d,
+    ));
+    commitPreparedExchange(gap, { kind: 'x', payload: {} }, d);
+    expect(store.getCheckpoint(first.streamKey)?.cursor).toBe('c1');
+
+    // A claimed continuation from the wrong cursor is refused, not silently applied.
+    const wrong = ready(prepareExchangeEvent(
+      event({ sourceEventId: 'evt-10', versionId: 'W/"v10"', sequence: { cursor: 'c5', previousCursor: 'c4', contiguous: true } }), d,
+    ));
+    expect(commitPreparedExchange(wrong, { kind: 'x', payload: {} }, d))
+      .toMatchObject({ status: 'failed', reason: 'cursor_discontinuity' });
+  });
+
+  it('outbound dispatch is a separate queue, not a commit', () => {
+    const store = createSyntheticStore();
+    const d = deps([config()], { store });
+    const plan = ready(prepareExchangeEvent(event(), d));
+    enqueueOutboundDispatch(plan, { body: 1 }, d);
+    expect(store.outbound).toHaveLength(1);
+    expect(store.hasCommittedWork(plan.workKey)).toBe(false);
+    expect(store.durable).toBe(false);
+  });
+});
+
+describe('delivery requires an authoritative receipt', () => {
+  const cfg = config();
+  const plan = () => ready(prepareExchangeEvent(event(), deps([cfg])));
+  const transport = (
+    respond: Parameters<typeof createSyntheticTransport>[1],
+    over: Partial<Pick<Parameters<typeof createSyntheticTransport>[0], 'profile' | 'supports'>> = {},
+  ) => createSyntheticTransport({ profile: 'generic_fhir_r4', supports: (c) => c.verification === 'verified', ...over }, respond);
+
+  it('delivered only with a receipt; missing receipt, failure and throw are classified', async () => {
+    const p = plan();
+    const ok = transport(() => ({ status: 'delivered', receipt: { receiptId: 'r-1', acknowledgedAt: '2026-09-07T01:00:01Z' } }));
+    await expect(deliverThroughAdapter(ok, cfg, p, event(), {})).resolves.toMatchObject({ status: 'delivered' });
     expect(ok.calls).toHaveLength(1);
 
-    const retry = adapter(() => ({ status: 'failed', classification: 'retryable', reason: 'timeout' }));
-    await expect(deliverThroughAdapter(retry, event(), {})).resolves.toMatchObject({ classification: 'retryable' });
+    const noReceipt = transport(() => ({ status: 'delivered', receipt: undefined as never }));
+    await expect(deliverThroughAdapter(noReceipt, cfg, p, event(), {}))
+      .resolves.toEqual({ status: 'failed', classification: 'unknown', reason: 'delivery_receipt_missing' });
 
-    const vague = adapter(() => ({ status: 'failed' }));
-    await expect(deliverThroughAdapter(vague, event(), {})).resolves.toMatchObject({ classification: 'unknown' });
+    const timeout = transport(() => ({ status: 'failed', classification: 'unknown', reason: 'ambiguous_timeout' }));
+    await expect(deliverThroughAdapter(timeout, cfg, p, event(), {})).resolves.toMatchObject({ classification: 'unknown' });
 
-    const boom = adapter(() => { throw new Error('nope'); });
-    await expect(deliverThroughAdapter(boom, event(), {})).resolves.toEqual({ status: 'failed', classification: 'unknown', reason: 'adapter_threw' });
+    const retry = transport(() => ({ status: 'failed', classification: 'retryable', reason: 'connection_reset' }));
+    await expect(deliverThroughAdapter(retry, cfg, p, event(), {})).resolves.toMatchObject({ classification: 'retryable' });
+
+    const boom = transport(() => { throw new Error('nope'); });
+    await expect(deliverThroughAdapter(boom, cfg, p, event(), {}))
+      .resolves.toEqual({ status: 'failed', classification: 'unknown', reason: 'adapter_threw' });
+  });
+
+  it('refuses the wrong adapter and an adapter that does not support the capability', async () => {
+    const p = plan();
+    const wrongProfile = transport(() => ({ status: 'delivered', receipt: { receiptId: 'r', acknowledgedAt: 'now' } }), { profile: 'epic' });
+    await expect(deliverThroughAdapter(wrongProfile, cfg, p, event(), {}))
+      .resolves.toEqual({ status: 'failed', classification: 'permanent', reason: 'adapter_profile_mismatch' });
+    expect(wrongProfile.calls).toHaveLength(0);
+
+    const unsupported = transport(() => ({ status: 'delivered', receipt: { receiptId: 'r', acknowledgedAt: 'now' } }), { supports: () => false });
+    await expect(deliverThroughAdapter(unsupported, cfg, p, event(), {}))
+      .resolves.toEqual({ status: 'failed', classification: 'permanent', reason: 'adapter_capability_unsupported' });
+    expect(unsupported.calls).toHaveLength(0);
+  });
+
+  it('an unknown or failed delivery never becomes a commit', () => {
+    const store = createSyntheticStore();
+    const d = deps([cfg], { store });
+    const p = ready(prepareExchangeEvent(event(), d));
+    // Nothing in this module turns a failed/unknown delivery into committed work.
+    expect(store.hasCommittedWork(p.workKey)).toBe(false);
+    expect(store.effects).toEqual([]);
   });
 });

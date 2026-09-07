@@ -130,9 +130,9 @@ export function useConsultationThread(threadId?: string) {
       // Best-effort EHR write-back when launched from SMART
       try {
         const { loadSmartSession } = await import('@/lib/smart');
-        const { writeCommunicationToEhr, writeNoteToEhr } = await import('@/lib/ehrWriteback');
+        const { writeCommunicationToEhr, writeNoteToEhr, isExternalWritebackConfigured } = await import('@/lib/ehrWriteback');
         const smart = loadSmartSession();
-        if (smart?.patient_id) {
+        if (isExternalWritebackConfigured() && smart?.patient_id) {
           const summary = [
             `Question: ${generated.consultation_question}`,
             `Summary: ${generated.clinical_summary}`,

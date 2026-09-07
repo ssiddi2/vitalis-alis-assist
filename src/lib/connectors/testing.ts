@@ -1,21 +1,69 @@
-import type { Checkpoint, ConnectorAdapter, DeliveryResult, ExchangeEvent, LedgerStore } from './types';
+import type {
+  Checkpoint,
+  CommitEntry,
+  CommitOutcome,
+  ConnectorAdapter,
+  ConnectorConfig,
+  DeliveryResult,
+  ExchangeEvent,
+  LocalEffect,
+  OutboundEntry,
+  TransactionalStore,
+} from './types';
 
 /**
  * Offline doubles for tests and local development.
  *
- * NOT PRODUCTION INFRASTRUCTURE. The in-memory ledger is volatile: it provides
- * no durability, no transactionality and no delivery guarantee. A runtime needs
- * a durable inbox/outbox with persisted checkpoints.
+ * NOT PRODUCTION INFRASTRUCTURE. This store is volatile in-process memory: it
+ * provides no durability and no crash safety. It only emulates the required
+ * ALL-OR-NOTHING commit semantics so the contract can be tested offline. A
+ * runtime needs a durable, transactional inbox/outbox with persisted checkpoints.
  */
-export function createInMemoryLedger(): LedgerStore & { readonly durable: false } {
-  const processed = new Set<string>();
+export interface SyntheticStore extends TransactionalStore {
+  readonly durable: false;
+  readonly effects: Array<{ workKey: string; effect: LocalEffect }>;
+  readonly outbound: OutboundEntry[];
+  /** Forces the next commit to fail, emulating a store/effect failure. */
+  failNextCommit(reason: string, classification?: 'permanent' | 'retryable' | 'unknown'): void;
+}
+
+export function createSyntheticStore(): SyntheticStore {
+  const committedWork = new Set<string>();
+  const seenSourceEvents = new Set<string>();
   const checkpoints = new Map<string, Checkpoint>();
+  const effects: Array<{ workKey: string; effect: LocalEffect }> = [];
+  const outbound: OutboundEntry[] = [];
+  let forcedFailure: { reason: string; classification: 'permanent' | 'retryable' | 'unknown' } | null = null;
+
   return {
     durable: false,
-    hasProcessed: (key) => processed.has(key),
-    markProcessed: (key) => { processed.add(key); },
+    effects,
+    outbound,
+    failNextCommit(reason, classification = 'retryable') {
+      forcedFailure = { reason, classification };
+    },
+    hasCommittedWork: (key) => committedWork.has(key),
+    hasSeenSourceEvent: (key) => seenSourceEvents.has(key),
     getCheckpoint: (streamKey) => checkpoints.get(streamKey) ?? null,
-    putCheckpoint: (checkpoint) => { checkpoints.set(checkpoint.streamKey, checkpoint); },
+    commit(entry: CommitEntry): CommitOutcome {
+      if (committedWork.has(entry.plan.workKey)) {
+        return { status: 'duplicate', workKey: entry.plan.workKey };
+      }
+      if (forcedFailure) {
+        const failure = forcedFailure;
+        forcedFailure = null;
+        // All-or-nothing: no effect, no dedup record, no checkpoint advance.
+        return { status: 'failed', classification: failure.classification, reason: failure.reason };
+      }
+      effects.push({ workKey: entry.plan.workKey, effect: entry.effect });
+      committedWork.add(entry.plan.workKey);
+      seenSourceEvents.add(entry.plan.sourceEventKey);
+      checkpoints.set(entry.checkpoint.streamKey, entry.checkpoint);
+      return { status: 'committed', workKey: entry.plan.workKey, checkpoint: entry.checkpoint };
+    },
+    enqueueOutbound(entry) {
+      outbound.push(entry);
+    },
   };
 }
 
@@ -27,7 +75,7 @@ export function createSyntheticTransport(
   const calls: Array<{ event: ExchangeEvent; payload: unknown }> = [];
   return {
     profile: adapter.profile,
-    supports: adapter.supports,
+    supports: (capability, config: ConnectorConfig) => adapter.supports(capability, config),
     calls,
     async deliver(event, payload) {
       calls.push({ event, payload });

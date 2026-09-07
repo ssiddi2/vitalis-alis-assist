@@ -11,7 +11,7 @@ import { useHospital } from '@/contexts/HospitalContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { loadSmartSession } from '@/lib/smart';
-import { writeNoteToEhr } from '@/lib/ehrWriteback';
+import { writeNoteToEhr, isExternalWritebackConfigured } from '@/lib/ehrWriteback';
 import { cn } from '@/lib/utils';
 import { DsiInfo } from '@/components/virtualis/DsiInfo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -183,7 +183,9 @@ export function NoteEditorModal({
       });
     }
 
-    // Always record the EMR push attempt, even when only stored locally.
+    // Local signing NEVER claims external delivery: only an authoritative
+    // facility/endpoint binding can produce a push, and none exists today.
+    const externalConfigured = isExternalWritebackConfigured();
     logAction(
       'export',
       'note.push_to_ehr',
@@ -191,12 +193,13 @@ export function NoteEditorModal({
       patientId,
       {
         note_type: note.note_type,
-        status: smart?.patient_id ? 'pushed_to_ehr' : 'local_record',
+        status: 'local_record',
+        external_delivery: externalConfigured ? 'attempted' : 'not_configured',
         iss: issHost,
       },
     );
 
-    if (smart?.patient_id) {
+    if (externalConfigured && smart?.patient_id) {
       void writeNoteToEhr(smart.patient_id, NOTE_TYPE_LABELS[note.note_type] || 'Clinical Note', buildBody());
     }
 
