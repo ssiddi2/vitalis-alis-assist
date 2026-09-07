@@ -124,7 +124,8 @@ describe('HospitalContext isolation', () => {
 
   it('discards a late hospital-list response from a superseded generation (A→B→A)', async () => {
     const { result, rerender } = renderHook(() => useHospital(), { wrapper });
-    const first = pendingHospitals[0] ?? (await waitFor(() => pendingHospitals[0]));
+    await waitFor(() => expect(pendingHospitals.length).toBeGreaterThan(0));
+    const first = pendingHospitals.shift()!;
 
     authState = { user: { id: 'u2' }, loading: false };
     await act(async () => { rerender(); });
@@ -140,9 +141,7 @@ describe('HospitalContext isolation', () => {
     expect(result.current.hospitals).toEqual([]);
 
     // Only the current generation's response is honoured.
-    console.log('PENDING', pendingHospitals.length);
     await settleHospitals([H('a', 'Alpha')]);
-    console.log('STATE', JSON.stringify(result.current.hospitals), result.current.loading);
     expect(result.current.hospitals.map(h => h.id)).toEqual(['a']);
   });
 
