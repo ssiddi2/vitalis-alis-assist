@@ -467,12 +467,33 @@ Callers corrected: `NoteEditorModal` no longer audits `pushed_to_ehr` from the
 mere presence of a SMART patient id — local signing records `local_record` plus
 an explicit `external_delivery: not_configured`; `orderLifecycle` audits
 `order.signed_local` and returns `signed`; `useConsultationThread` skips
-write-back. The `fhir-writeback` edge function itself is UNCHANGED and still
-lacks facility and encounter ownership checks; any future direct caller of that
-endpoint still requires that server-side fix. This client change reduces
-accidental egress; it does not secure the endpoint.
+write-back. The `fhir-writeback` edge function source now also fails closed (see
+the 2026-09-07 closure section below), but that change is source-only and NOT
+deployed; the live function still lacks facility and encounter ownership checks
+until a reviewed redeploy. This client change reduces accidental egress.
 
 ### Scope of these claims
 This is an offline domain foundation with synthetic doubles. No durable store, no
 authenticated receiver, no scheduler, no vendor credential and no live traffic
 exists. Nothing here should be read as runtime integration readiness.
+
+## Source-only closure of direct `fhir-writeback` client-token proxy (2026-09-07)
+
+The `fhir-writeback` edge function source now fails closed: it preserves the
+shared `guard()` (CORS/preflight, authentication, per-user rate limit) and then
+responds `503 { status: "rejected", reason: "facility_authorization_not_configured" }`
+for every authenticated call, without parsing the client payload, touching
+clinical storage, or forwarding client-supplied tokens
+(`supabase/functions/fhir-writeback/index.ts`, `respond.ts`). Local signing in
+`orderLifecycle` / `NoteEditorModal` remains independent and never claims
+external delivery. This is SOURCE-ONLY: the function has not been redeployed, no
+migration was applied, and nothing is published or connected. Re-enabling
+external delivery requires a separate reviewed change implementing the
+authoritative per-facility endpoint binding, record ownership checks, signing
+integrity and durable replay controls.
+
+**Remaining backend tenancy blocker:** the deployed function is still the old
+proxy until a reviewed redeploy; the deeper blocker is unchanged — there is no
+per-facility EMR endpoint record or server-verified issuer binding, and
+workforce scope (provisioning + credential validity) is not modelled, so
+`hospital_users` membership alone still governs RLS.
