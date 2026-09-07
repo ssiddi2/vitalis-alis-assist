@@ -18,10 +18,12 @@ export interface Hospital {
 
 export interface EmrConnection {
   /**
-   * `unavailable` = we have no authoritative binding proving this facility's EMR
-   * session; it is NOT an error and NEVER implies a live connection.
+   * `standalone` = the ordinary state: virtualisONE runs as a standalone EMR and
+   * no external EHR connector is configured for this facility. It is NOT an
+   * error and never blocks a clinical workflow.
+   * `unavailable` = a session/binding exists but cannot be proven for this facility.
    */
-  status: 'connecting' | 'connected' | 'unavailable' | 'error';
+  status: 'connecting' | 'connected' | 'standalone' | 'unavailable' | 'error';
   emr: string;
   facilityId: string;
   /** true when resolved through a synthetic sandbox issuer rather than a live EHR session. */
@@ -29,6 +31,7 @@ export interface EmrConnection {
   /** machine-readable explanation when not connected. */
   reason?: string;
 }
+
 
 interface HospitalContextType {
   hospitals: Hospital[];
