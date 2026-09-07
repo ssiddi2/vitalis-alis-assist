@@ -17,7 +17,9 @@ export function EmrConnectionPill({ className }: { className?: string }) {
       ? 'border-success/25 bg-success/10 text-success'
       : status === 'error'
         ? 'border-critical/25 bg-critical/10 text-critical'
-        : 'border-primary/25 bg-primary/5 text-primary';
+        : status === 'unavailable'
+          ? 'border-border bg-muted/40 text-muted-foreground'
+          : 'border-primary/25 bg-primary/5 text-primary';
 
   return (
     <div
@@ -26,18 +28,27 @@ export function EmrConnectionPill({ className }: { className?: string }) {
         tone,
         className,
       )}
-      title={emrConnection.sandbox ? 'Synthetic sandbox issuer (non-production)' : undefined}
+      title={
+        emrConnection.sandbox
+          ? 'Synthetic sandbox issuer (non-production)'
+          : emrConnection.reason === 'smart_session_not_bound_to_facility'
+            ? 'A SMART session exists but is not bound to this facility'
+            : emrConnection.status === 'unavailable'
+              ? 'No verified EMR connection is configured for this facility'
+              : undefined
+      }
     >
       {status === 'connecting' ? (
         <Loader2 className="h-3 w-3 flex-shrink-0 animate-spin" />
-      ) : status === 'error' ? (
+      ) : status === 'error' || status === 'unavailable' ? (
         <AlertTriangle className="h-3 w-3 flex-shrink-0" />
       ) : (
         <PlugZap className="h-3 w-3 flex-shrink-0" />
       )}
       <span className="truncate">
         {status === 'connecting' && `Connecting to ${emr}…`}
-        {status === 'error' && `${emr} unavailable`}
+        {status === 'error' && `${emr} error`}
+        {status === 'unavailable' && `${emr} not connected`}
         {status === 'connected' && (
           <>
             Connected · {emr}
