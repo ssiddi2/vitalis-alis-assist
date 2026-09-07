@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { StagedOrder, OrderStatus } from '@/types/hospital';
 import { loadSmartSession } from '@/lib/smart';
-import { writeMedicationOrderToEhr, writeServiceRequestToEhr } from '@/lib/ehrWriteback';
+import { writeMedicationOrderToEhr, writeServiceRequestToEhr, isExternalWritebackConfigured } from '@/lib/ehrWriteback';
 
 export type OrderLifecycleStatus = OrderStatus;
 
@@ -61,15 +61,18 @@ export async function signAndPushOrder(
   };
 
   const smart = loadSmartSession();
+  // A stored SMART session is not authorization to transmit: an authoritative
+  // facility/endpoint binding is required, and none exists today.
+  const externalConfigured = isExternalWritebackConfigured();
   await persist(order.id, 'signed', data);
-  logAudit(smart?.patient_id ? 'order.signed' : 'order.signed_local', 'staged_order', order.id, order.patient_id, {
+  logAudit(externalConfigured && smart?.patient_id ? 'order.signed' : 'order.signed_local', 'staged_order', order.id, order.patient_id, {
     order_type: order.order_type,
     order_name: name,
     ai_generated: aiGenerated,
     priority: order.order_data?.priority ?? 'Routine',
   });
 
-  if (!smart?.patient_id) return { status: 'signed', orderData: data };
+  if (!externalConfigured || !smart?.patient_id) return { status: 'signed', orderData: data };
 
   const write = order.order_type === 'medication'
     ? writeMedicationOrderToEhr
