@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useMemo, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { loadSmartSession } from '@/lib/smart';
@@ -37,10 +37,13 @@ interface HospitalContextType {
   selectedPatientId: string | null;
   setSelectedPatientId: (id: string | null) => void;
   activeEncounterId: string | null;
+  /** Requires a selected patient in the current facility scope; otherwise rejected. */
   setActiveEncounterId: (id: string | null) => void;
   emrConnection: EmrConnection | null;
   loading: boolean;
   error: string | null;
+  /** Re-fetch the authorized facility list, invalidating any request in flight. */
+  refresh: () => void;
 }
 
 const HospitalContext = createContext<HospitalContextType | undefined>(undefined);
@@ -70,30 +73,28 @@ const sandboxDemoEnabled = () =>
 /**
  * Authoritative facility ⇄ FHIR issuer binding.
  *
- * No such binding exists in the current schema or client configuration (the
- * `hospitals` row carries no issuer/tenant column, and a SMART session only
- * records the issuer it was launched from). We therefore FAIL CLOSED: a stored
- * SMART access token is never treated as a connection to the selected facility.
- * See docs/virtualis-one-unification.md for the config/schema required to lift this.
+ * No such binding exists in the current schema or client configuration, so we
+ * FAIL CLOSED: a stored SMART access token is never treated as a connection to
+ * the selected facility. See docs/virtualis-one-unification.md.
  */
 const facilityIssuerBinding = (_hospital: Hospital): string | null => null;
 
 interface ScopedState {
-  /** monotonic context generation — bumped on every user/identity change. */
+  /** monotonic identity/context generation — bumped on user change and on every auth-loading edge. */
   gen: number;
+  /** monotonic facility-selection generation — bumped on EVERY switch, including A→B→A. */
+  scope: number;
   userId: string | null;
   hospitals: Hospital[];
   hospital: Hospital | null;
   patientId: string | null;
-  /** facility the patient/encounter selection belongs to. */
-  patientScopeId: string | null;
   encounterId: string | null;
   loading: boolean;
   error: string | null;
 }
 
-const emptyState = (gen: number, userId: string | null, loading: boolean): ScopedState => ({
-  gen, userId, hospitals: [], hospital: null, patientId: null, patientScopeId: null,
+const emptyState = (gen: number, scope: number, userId: string | null, loading: boolean): ScopedState => ({
+  gen, scope, userId, hospitals: [], hospital: null, patientId: null,
   encounterId: null, loading, error: null,
 });
 
@@ -102,29 +103,47 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
   const userId = user?.id ?? null;
 
   const genRef = useRef(0);
-  const [state, setState] = useState<ScopedState>(() => emptyState(0, null, true));
+  const scopeRef = useRef(0);
+  /** every list request gets a unique id; only the newest may write state. */
+  const reqRef = useRef(0);
+  const mountedRef = useRef(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [state, setState] = useState<ScopedState>(() => emptyState(0, 0, null, true));
   const [emrConnection, setEmrConnection] = useState<EmrConnection | null>(null);
 
-  // Render-time isolation: while the identity has changed but the reset effect
-  // has not yet run, expose NOTHING from the previous user's context.
-  const stale = state.userId !== userId;
-  const view: ScopedState = stale ? emptyState(state.gen, userId, true) : state;
+  useEffect(() => () => { mountedRef.current = false; reqRef.current += 1; genRef.current += 1; }, []);
 
-  /** Identity change (sign-in, user switch, sign-out) invalidates everything. */
+  /**
+   * Render-time isolation. `authLoading` re-entering for the SAME user hides the
+   * whole context immediately — a re-authenticating session may no longer carry
+   * the same facility provisioning, so nothing from before may remain visible.
+   */
+  const hidden = authLoading || state.userId !== userId;
+  const view: ScopedState = hidden ? emptyState(state.gen, state.scope, userId, true) : state;
+
+  /**
+   * Any identity edge (sign-in, user switch, sign-out, entering OR leaving
+   * auth-loading) invalidates the generation, all outstanding requests and every
+   * previously handed-out setter callback.
+   */
   useEffect(() => {
     genRef.current += 1;
+    scopeRef.current += 1;
+    reqRef.current += 1;
     clearStored();
     setEmrConnection(null);
-    setState(emptyState(genRef.current, userId, true));
-  }, [userId]);
+    setState(emptyState(genRef.current, scopeRef.current, userId, true));
+  }, [userId, authLoading]);
 
-  /** Load the authorized facility list; discard responses from older generations. */
+  /** Load the authorized facility list. Fail closed on error; discard stale responses. */
   useEffect(() => {
     if (authLoading) return;
     const gen = genRef.current;
+    const req = ++reqRef.current;
+    const live = () => mountedRef.current && genRef.current === gen && reqRef.current === req;
 
     if (!userId) {
-      setState(emptyState(gen, null, false));
+      setState(emptyState(gen, scopeRef.current, null, false));
       return;
     }
 
@@ -146,119 +165,164 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
           })
         );
 
+        if (!live()) return;
         setState((prev) => {
-          if (prev.gen !== gen || genRef.current !== gen) return prev; // late response
+          if (prev.gen !== gen || !live()) return prev;
           // Re-validate the current selection against the freshly authorized list.
           const storedId = prev.hospital?.id ?? readStored(HOSPITAL_KEY);
           const hospital = withCounts.find((h) => h.id === storedId) ?? null;
+          const keptSelection = !!hospital && !!prev.hospital && prev.hospital.id === hospital.id;
           if (!hospital) clearStored();
-          const keepPatient = !!hospital && prev.patientScopeId === hospital.id;
+          const patientId = keptSelection ? prev.patientId ?? readStored(PATIENT_KEY) : null;
           return {
             ...prev,
             hospitals: withCounts,
             hospital,
-            patientId: keepPatient ? prev.patientId ?? readStored(PATIENT_KEY) : null,
-            patientScopeId: hospital && keepPatient ? hospital.id : null,
-            encounterId: keepPatient ? prev.encounterId : null,
+            patientId,
+            encounterId: keptSelection && patientId ? prev.encounterId : null,
             loading: false,
             error: null,
           };
         });
       } catch (err) {
         console.error('Error fetching hospitals:', err);
-        setState((prev) => (prev.gen !== gen || genRef.current !== gen ? prev : {
-          ...prev, loading: false, error: err instanceof Error ? err.message : 'Failed to load hospitals',
+        if (!live()) return;
+        // Fail closed: a failed authorization read must not leave a facility usable.
+        clearStored();
+        scopeRef.current += 1;
+        setState((prev) => (prev.gen !== gen || !live() ? prev : {
+          ...emptyState(gen, scopeRef.current, userId, false),
+          error: err instanceof Error ? err.message : 'Failed to load hospitals',
         }));
       }
     })();
-  }, [userId, authLoading]);
 
-  /** Only a facility from the freshly authorized list may be selected. */
-  const setSelectedHospital = useCallback((hospital: Hospital | null) => {
-    const gen = genRef.current;
-    setState((prev) => {
-      if (prev.gen !== gen) return prev;
-      const authorized = hospital ? prev.hospitals.find((h) => h.id === hospital.id) ?? null : null;
-      if (hospital && !authorized) {
-        console.warn('Rejected facility selection outside the authorized list');
-        return prev;
-      }
-      // Switching facilities always clears patient + encounter context.
-      writeStored(HOSPITAL_KEY, authorized?.id ?? null);
-      writeStored(PATIENT_KEY, null);
-      return { ...prev, hospital: authorized, patientId: null, patientScopeId: null, encounterId: null };
-    });
-    setEmrConnection(null);
-  }, []);
-
-  const setSelectedPatientId = useCallback((id: string | null) => {
-    const gen = genRef.current;
-    setState((prev) => {
-      if (prev.gen !== gen || !prev.hospital) return prev;
-      writeStored(PATIENT_KEY, id);
-      return { ...prev, patientId: id, patientScopeId: id ? prev.hospital.id : null, encounterId: null };
-    });
-  }, []);
-
-  const setActiveEncounterId = useCallback((id: string | null) => {
-    const gen = genRef.current;
-    setState((prev) => (prev.gen !== gen || !prev.hospital ? prev : { ...prev, encounterId: id }));
-  }, []);
+    // Leaving this effect invalidates the request it started.
+    return () => { reqRef.current += 1; };
+  }, [userId, authLoading, refreshKey]);
 
   /**
-   * Selecting a facility resets and re-resolves its EMR connection. A SMART
-   * session only counts when its issuer matches an authoritative binding for
-   * THIS facility — otherwise the pill reports unavailable (or an explicitly
-   * enabled, clearly-labelled sandbox).
+   * Setters are bound to the identity + facility-selection generation that was
+   * current when they were handed out. A callback retained from facility A does
+   * nothing after a switch to B — including A→B→A, because every switch advances
+   * the monotonic scope counter.
+   */
+  const boundGen = view.gen;
+  const boundScope = view.scope;
+  const boundHospitalId = view.hospital?.id ?? null;
+
+  const setters = useMemo(() => {
+    const identityValid = () => mountedRef.current && genRef.current === boundGen;
+    const scopeValid = () => identityValid() && scopeRef.current === boundScope;
+
+    return {
+      setSelectedHospital: (hospital: Hospital | null) => {
+        if (!identityValid()) return;
+        // Advance scope for EVERY switch attempt so batched A→B→A cannot alias.
+        setState((prev) => {
+          if (prev.gen !== boundGen || !identityValid()) return prev;
+          const authorized = hospital ? prev.hospitals.find((h) => h.id === hospital.id) ?? null : null;
+          if (hospital && !authorized) {
+            console.warn('Rejected facility selection outside the authorized list');
+            return prev;
+          }
+          writeStored(HOSPITAL_KEY, authorized?.id ?? null);
+          writeStored(PATIENT_KEY, null);
+          return {
+            ...prev, scope: prev.scope + 1, hospital: authorized,
+            patientId: null, encounterId: null,
+          };
+        });
+        scopeRef.current += 1;
+        setEmrConnection(null);
+      },
+
+      setSelectedPatientId: (id: string | null) => {
+        if (!scopeValid() || !boundHospitalId) return;
+        setState((prev) => {
+          if (prev.gen !== boundGen || prev.scope !== boundScope) return prev;
+          if (prev.hospital?.id !== boundHospitalId) return prev;
+          writeStored(PATIENT_KEY, id);
+          return { ...prev, patientId: id, encounterId: null };
+        });
+      },
+
+      setActiveEncounterId: (id: string | null) => {
+        if (!scopeValid() || !boundHospitalId) return;
+        setState((prev) => {
+          if (prev.gen !== boundGen || prev.scope !== boundScope) return prev;
+          if (prev.hospital?.id !== boundHospitalId) return prev;
+          // An encounter is only meaningful under a selected patient in this scope.
+          if (id && !prev.patientId) {
+            console.warn('Rejected encounter selection without a selected patient');
+            return prev;
+          }
+          return { ...prev, encounterId: id };
+        });
+      },
+
+      refresh: () => {
+        if (!identityValid()) return;
+        reqRef.current += 1;
+        setRefreshKey((k) => k + 1);
+      },
+    };
+  }, [boundGen, boundScope, boundHospitalId]);
+
+  /**
+   * Facility EMR resolution. A SMART session only counts when its issuer matches
+   * an authoritative binding for THIS facility — otherwise unavailable, or an
+   * explicitly enabled and clearly labelled sandbox.
    */
   const facilityId = view.hospital?.id;
   const emr = view.hospital?.emr_system;
-  const gen = view.gen;
+  const hospital = view.hospital;
   useEffect(() => {
     if (!facilityId || !emr) {
       setEmrConnection(null);
       return;
     }
+    const gen = boundGen;
+    const scope = boundScope;
     setEmrConnection({ status: 'connecting', emr, facilityId, sandbox: false });
 
     let cancelled = false;
     const t = setTimeout(() => {
-      if (cancelled || genRef.current !== gen) return;
-      const live = loadSmartSession();
-      const binding = view.hospital ? facilityIssuerBinding(view.hospital) : null;
-      const boundToFacility = !!live?.access_token && !!binding && live.iss === binding;
+      if (cancelled || genRef.current !== gen || scopeRef.current !== scope) return;
+      const session = loadSmartSession();
+      const binding = hospital ? facilityIssuerBinding(hospital) : null;
+      const bound = !!session?.access_token && !!binding && session.iss === binding;
 
-      if (boundToFacility) {
+      if (bound) {
         setEmrConnection({ status: 'connected', emr, facilityId, sandbox: false });
       } else if (sandboxDemoEnabled() && sandboxForEmr(emr)) {
         setEmrConnection({ status: 'connected', emr, facilityId, sandbox: true, reason: 'synthetic_sandbox' });
       } else {
         setEmrConnection({
           status: 'unavailable', emr, facilityId, sandbox: false,
-          reason: live?.access_token ? 'smart_session_not_bound_to_facility' : 'no_facility_emr_binding',
+          reason: session?.access_token ? 'smart_session_not_bound_to_facility' : 'no_facility_emr_binding',
         });
       }
     }, 900);
 
     return () => { cancelled = true; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facilityId, emr, gen]);
+  }, [facilityId, emr, boundGen, boundScope]);
 
-  const scopedEmr = emrConnection && emrConnection.facilityId === facilityId ? emrConnection : null;
+  const scopedEmr =
+    !hidden && emrConnection && emrConnection.facilityId === facilityId ? emrConnection : null;
 
   return (
     <HospitalContext.Provider
       value={{
         hospitals: view.hospitals,
         selectedHospital: view.hospital,
-        setSelectedHospital,
         selectedPatientId: view.hospital ? view.patientId : null,
-        setSelectedPatientId,
-        activeEncounterId: view.hospital ? view.encounterId : null,
-        setActiveEncounterId,
+        activeEncounterId: view.hospital && view.patientId ? view.encounterId : null,
         emrConnection: scopedEmr,
         loading: view.loading || authLoading,
         error: view.error,
+        ...setters,
       }}
     >
       {children}

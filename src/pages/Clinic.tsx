@@ -77,6 +77,8 @@ export default function Clinic() {
   };
 
   const handleStartVisit = async (appt: typeof appointments[0]) => {
+    // Patient scope must be established before an encounter can be activated.
+    setSelectedPatientId(appt.patient_id);
     // Move the visit through the enforced lifecycle (server owns every prerequisite).
     try {
       const { data: encounter } = await supabase
@@ -108,7 +110,6 @@ export default function Clinic() {
       return;
     }
 
-    setSelectedPatientId(appt.patient_id);
     navigate('/dashboard');
   };
 
