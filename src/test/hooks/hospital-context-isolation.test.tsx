@@ -369,10 +369,9 @@ describe('HospitalContext isolation', () => {
   });
 
   it('a rejected unauthorized selection leaves the current scope fully usable', async () => {
-    vi.useFakeTimers();
     const { result } = renderHook(() => useHospital(), { wrapper });
-    const d = await nextRequest();
-    await act(async () => { d.resolve({ data: [H('a', 'Alpha'), H('b', 'Beta')], error: null }); });
+    await settleHospitals([H('a', 'Alpha'), H('b', 'Beta')]);
+    vi.useFakeTimers();
 
     act(() => { result.current.setSelectedHospital(result.current.hospitals[0]); });
     act(() => { result.current.setSelectedPatientId('p-1'); });
