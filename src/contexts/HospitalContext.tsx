@@ -228,47 +228,45 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
     return {
       setSelectedHospital: (hospital: Hospital | null) => {
         if (!identityValid()) return;
-        // Advance scope for EVERY switch attempt so batched A→B→A cannot alias.
-        setState((prev) => {
-          if (prev.gen !== boundGen || !identityValid()) return prev;
-          const authorized = hospital ? prev.hospitals.find((h) => h.id === hospital.id) ?? null : null;
-          if (hospital && !authorized) {
-            console.warn('Rejected facility selection outside the authorized list');
-            return prev;
-          }
-          writeStored(HOSPITAL_KEY, authorized?.id ?? null);
-          writeStored(PATIENT_KEY, null);
-          return {
-            ...prev, scope: prev.scope + 1, hospital: authorized,
-            patientId: null, encounterId: null,
-          };
-        });
+        const prev = stateRef.current;
+        if (prev.gen !== boundGen) return;
+        const authorized = hospital ? prev.hospitals.find((h) => h.id === hospital.id) ?? null : null;
+        if (hospital && !authorized) {
+          // Rejected: NO counter moves, so the current scope stays fully usable.
+          console.warn('Rejected facility selection outside the authorized list');
+          return;
+        }
+        writeStored(HOSPITAL_KEY, authorized?.id ?? null);
+        writeStored(PATIENT_KEY, null);
+        // Advance scope for EVERY accepted switch so batched A→B→A cannot alias.
         scopeRef.current += 1;
+        apply({
+          ...prev, scope: scopeRef.current, hospital: authorized,
+          patientId: null, encounterId: null,
+        });
         setEmrConnection(null);
       },
 
       setSelectedPatientId: (id: string | null) => {
         if (!scopeValid() || !boundHospitalId) return;
-        setState((prev) => {
-          if (prev.gen !== boundGen || prev.scope !== boundScope) return prev;
-          if (prev.hospital?.id !== boundHospitalId) return prev;
-          writeStored(PATIENT_KEY, id);
-          return { ...prev, patientId: id, encounterId: null };
-        });
+        const prev = stateRef.current;
+        if (prev.gen !== boundGen || prev.scope !== boundScope) return;
+        if (prev.hospital?.id !== boundHospitalId) return;
+        writeStored(PATIENT_KEY, id);
+        apply({ ...prev, patientId: id, encounterId: null });
       },
 
       setActiveEncounterId: (id: string | null) => {
         if (!scopeValid() || !boundHospitalId) return;
-        setState((prev) => {
-          if (prev.gen !== boundGen || prev.scope !== boundScope) return prev;
-          if (prev.hospital?.id !== boundHospitalId) return prev;
-          // An encounter is only meaningful under a selected patient in this scope.
-          if (id && !prev.patientId) {
-            console.warn('Rejected encounter selection without a selected patient');
-            return prev;
-          }
-          return { ...prev, encounterId: id };
-        });
+        const prev = stateRef.current;
+        if (prev.gen !== boundGen || prev.scope !== boundScope) return;
+        if (prev.hospital?.id !== boundHospitalId) return;
+        // An encounter is only meaningful under a selected patient in this scope.
+        if (id && !prev.patientId) {
+          console.warn('Rejected encounter selection without a selected patient');
+          return;
+        }
+        apply({ ...prev, encounterId: id });
       },
 
       refresh: () => {
