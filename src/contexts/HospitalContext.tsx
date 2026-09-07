@@ -281,9 +281,12 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
   }, [boundGen, boundScope, boundHospitalId]);
 
   /**
-   * Facility EMR resolution. A SMART session only counts when its issuer matches
-   * an authoritative binding for THIS facility — otherwise unavailable, or an
-   * explicitly enabled and clearly labelled sandbox.
+   * Facility EMR resolution.
+   *
+   * External EHR connectivity is OPTIONAL. When no connector is configured for
+   * the facility we report the neutral `standalone` state immediately — no
+   * pretend "connecting" spinner and no error. A SMART session only counts when
+   * its issuer matches an authoritative binding for THIS facility.
    */
   const facilityId = view.hospital?.id;
   const emr = view.hospital?.emr_system;
@@ -293,32 +296,32 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
       setEmrConnection(null);
       return;
     }
-    const gen = boundGen;
-    const scope = boundScope;
-    setEmrConnection({ status: 'connecting', emr, facilityId, sandbox: false });
+    const binding = hospital ? facilityIssuerBinding(hospital) : null;
+    const session = loadSmartSession();
 
-    let cancelled = false;
-    const t = setTimeout(() => {
-      if (cancelled || genRef.current !== gen || scopeRef.current !== scope) return;
-      const session = loadSmartSession();
-      const binding = hospital ? facilityIssuerBinding(hospital) : null;
-      const bound = !!session?.access_token && !!binding && session.iss === binding;
-
-      if (bound) {
-        setEmrConnection({ status: 'connected', emr, facilityId, sandbox: false });
-      } else if (sandboxDemoEnabled() && sandboxForEmr(emr)) {
+    if (!binding) {
+      if (sandboxDemoEnabled() && sandboxForEmr(emr)) {
         setEmrConnection({ status: 'connected', emr, facilityId, sandbox: true, reason: 'synthetic_sandbox' });
       } else {
         setEmrConnection({
-          status: 'unavailable', emr, facilityId, sandbox: false,
-          reason: session?.access_token ? 'smart_session_not_bound_to_facility' : 'no_facility_emr_binding',
+          status: 'standalone', emr, facilityId, sandbox: false, reason: 'external_ehr_not_configured',
         });
       }
-    }, 900);
+      return;
+    }
 
-    return () => { cancelled = true; clearTimeout(t); };
+    // A connector IS configured for this facility: resolve the real session.
+    if (session?.access_token && session.iss === binding) {
+      setEmrConnection({ status: 'connected', emr, facilityId, sandbox: false });
+    } else {
+      setEmrConnection({
+        status: 'unavailable', emr, facilityId, sandbox: false,
+        reason: session?.access_token ? 'smart_session_not_bound_to_facility' : 'no_facility_emr_binding',
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [facilityId, emr, boundGen, boundScope]);
+
 
   const scopedEmr =
     !hidden && emrConnection && emrConnection.facilityId === facilityId ? emrConnection : null;
