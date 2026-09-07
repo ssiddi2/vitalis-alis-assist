@@ -467,10 +467,10 @@ Callers corrected: `NoteEditorModal` no longer audits `pushed_to_ehr` from the
 mere presence of a SMART patient id — local signing records `local_record` plus
 an explicit `external_delivery: not_configured`; `orderLifecycle` audits
 `order.signed_local` and returns `signed`; `useConsultationThread` skips
-write-back. The `fhir-writeback` edge function itself is UNCHANGED and still
-lacks facility and encounter ownership checks; any future direct caller of that
-endpoint still requires that server-side fix. This client change reduces
-accidental egress; it does not secure the endpoint.
+write-back. The `fhir-writeback` edge function source now also fails closed (see
+the 2026-09-07 closure section below), but that change is source-only and NOT
+deployed; the live function still lacks facility and encounter ownership checks
+until a reviewed redeploy. This client change reduces accidental egress.
 
 ### Scope of these claims
 This is an offline domain foundation with synthetic doubles. No durable store, no
