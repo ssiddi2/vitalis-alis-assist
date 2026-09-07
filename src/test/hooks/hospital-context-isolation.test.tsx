@@ -140,7 +140,9 @@ describe('HospitalContext isolation', () => {
     expect(result.current.hospitals).toEqual([]);
 
     // Only the current generation's response is honoured.
+    console.log('PENDING', pendingHospitals.length);
     await settleHospitals([H('a', 'Alpha')]);
+    console.log('STATE', JSON.stringify(result.current.hospitals), result.current.loading);
     expect(result.current.hospitals.map(h => h.id)).toEqual(['a']);
   });
 
