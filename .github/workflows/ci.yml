@@ -25,6 +25,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Context isolation gate (facility / identity / note)
+        run: npx vitest run src/test/hooks
+
       - name: Multi-tenant RLS tenancy gate
         run: npm run test:tenancy
         env:
