@@ -135,7 +135,11 @@ describe('HospitalContext isolation', () => {
     await act(async () => { first.resolve({ data: [H('ghost', 'Ghost Facility')], error: null }); });
     expect(result.current.hospitals.map(h => h.id)).not.toContain('ghost');
 
-    // The current generation's response is honoured.
+    // The u2 generation's response is likewise superseded.
+    await settleHospitals([H('u2-only', 'Other Tenant')]);
+    expect(result.current.hospitals).toEqual([]);
+
+    // Only the current generation's response is honoured.
     await settleHospitals([H('a', 'Alpha')]);
     expect(result.current.hospitals.map(h => h.id)).toEqual(['a']);
   });
