@@ -151,7 +151,7 @@ export function HospitalProvider({ children }: { children: ReactNode }) {
     const live = () => mountedRef.current && genRef.current === gen && reqRef.current === req;
 
     if (!userId) {
-      setState(emptyState(gen, scopeRef.current, null, false));
+      apply(emptyState(gen, scopeRef.current, null, false));
       return;
     }
 
