@@ -13,6 +13,8 @@ type Deferred = { resolve: (v: unknown) => void; promise: Promise<unknown> };
 
 const pending: Record<string, Deferred[]> = {};
 const removedChannels: unknown[] = [];
+type RtSub = { name: string; handler: (p: { new: unknown }) => void };
+const realtime: RtSub[] = [];
 const inserts: { table: string; payload: Record<string, unknown> }[] = [];
 
 function defer(table: string): Deferred {
@@ -54,9 +56,12 @@ function builder(table: string) {
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: (table: string) => builder(table),
-    channel: () => {
+    channel: (name: string) => {
       const ch: Record<string, unknown> = { id: Math.random() };
-      ch.on = () => ch;
+      ch.on = (_evt: unknown, _cfg: unknown, handler: (p: { new: unknown }) => void) => {
+        realtime.push({ name, handler });
+        return ch;
+      };
       ch.subscribe = () => ch;
       return ch;
     },
@@ -80,11 +85,28 @@ const channelA = {
   channel_type: 'department' as const, created_by: 'user-1',
   created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
 };
+const channelA2 = { ...channelA, id: 'chan-A2', name: 'A2' };
 const channelB = { ...channelA, id: 'chan-B', hospital_id: 'hosp-B', name: 'B' };
+
+const msg = (id: string, channelId: string) => ({
+  id, channel_id: channelId, sender_id: 'user-1', content: id, message_type: 'text',
+  reply_to_id: null, read_by: [], created_at: '2026-01-01T00:00:00Z',
+});
+
+/** Load channel A into the active conversation with empty messages/members. */
+async function openChannel(result: { current: ReturnType<typeof useTeamChat> }, channel = channelA) {
+  act(() => { void result.current.selectChannel(channel); });
+  await settle('team_messages', []);
+  await settle('profiles', []);
+  await settle('channel_members', []);
+  await settle('profiles', []);
+  await waitFor(() => expect(result.current.activeChannel?.id).toBe(channel.id));
+}
 
 beforeEach(() => {
   for (const k of Object.keys(pending)) delete pending[k];
   removedChannels.length = 0;
+  realtime.length = 0;
   inserts.length = 0;
   currentUser = { id: 'user-1' };
   currentHospital = { id: 'hosp-A' };
@@ -195,6 +217,143 @@ describe('useTeamChat facility isolation', () => {
     const insert = inserts.find((i) => i.table === 'team_channels');
     expect(insert?.payload.hospital_id).toBe('hosp-A');
   });
+
+  it('drops a same-facility channel A response that lands after switching to channel B', async () => {
+    const { result } = renderHook(() => useTeamChat());
+    await act(async () => { flush('team_channels', [channelA, channelA2]); });
+
+    // Open A but leave its message query in flight.
+    act(() => { void result.current.selectChannel(channelA); });
+    await waitFor(() => expect(pending.team_messages?.length).toBeGreaterThan(0));
+
+    // Switch to A2 (same facility, different channel) before A resolves.
+    act(() => { void result.current.selectChannel(channelA2); });
+    await waitFor(() => expect(pending.team_messages?.length).toBe(2));
+
+    await act(async () => { flush('team_messages', [msg('from-A', 'chan-A')]); });
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.activeChannel?.id).toBe('chan-A2');
+
+    await act(async () => { flush('team_messages', [msg('from-A2', 'chan-A2')]); });
+    await settle('profiles', []);
+    await waitFor(() => expect(result.current.messages.map((m) => m.id)).toEqual(['from-A2']));
+  });
+
+  it('drops a facility A response after an A -> B -> A round trip', async () => {
+    const { result, rerender } = renderHook(() => useTeamChat());
+    await waitFor(() => expect(pending.team_channels?.length).toBe(1));
+
+    currentHospital = { id: 'hosp-B' };
+    rerender();
+    await waitFor(() => expect(pending.team_channels?.length).toBe(2));
+    currentHospital = { id: 'hosp-A' };
+    rerender();
+    await waitFor(() => expect(pending.team_channels?.length).toBe(3));
+
+    // The FIRST hosp-A request resolves last: same facility, superseded generation.
+    await act(async () => { flush('team_channels', [channelA]); });
+    expect(result.current.channels).toEqual([]);
+
+    await act(async () => { flush('team_channels', [channelB]); }); // stale hosp-B
+    expect(result.current.channels).toEqual([]);
+
+    await act(async () => { flush('team_channels', [channelA2]); }); // current generation
+    await waitFor(() => expect(result.current.channels).toEqual([channelA2]));
+  });
+
+  it('drops a note-style A -> B -> A conversation response for the first A selection', async () => {
+    const { result } = renderHook(() => useTeamChat());
+    await act(async () => { flush('team_channels', [channelA, channelA2]); });
+
+    act(() => { void result.current.selectChannel(channelA); });
+    await waitFor(() => expect(pending.team_messages?.length).toBe(1));
+    act(() => { void result.current.selectChannel(channelA2); });
+    await waitFor(() => expect(pending.team_messages?.length).toBe(2));
+    act(() => { void result.current.selectChannel(channelA); });
+    await waitFor(() => expect(pending.team_messages?.length).toBe(3));
+
+    await act(async () => { flush('team_messages', [msg('stale-A', 'chan-A')]); });
+    expect(result.current.messages).toEqual([]);
+  });
+
+  it('ignores a realtime callback retained from a previous channel selection', async () => {
+    const { result } = renderHook(() => useTeamChat());
+    await act(async () => { flush('team_channels', [channelA, channelA2]); });
+    await openChannel(result, channelA);
+    await waitFor(() => expect(realtime.length).toBe(1));
+    const staleHandler = realtime[0].handler;
+
+    await openChannel(result, channelA2);
+    await waitFor(() => expect(removedChannels).toHaveLength(1));
+
+    await act(async () => { staleHandler({ new: msg('leaked', 'chan-A') }); });
+    expect(result.current.messages).toEqual([]);
+
+    const liveHandler = realtime[realtime.length - 1].handler;
+    await act(async () => { liveHandler({ new: msg('live', 'chan-A2') }); });
+    await waitFor(() => expect(result.current.messages.map((m) => m.id)).toEqual(['live']));
+  });
+
+  it('rejects a mutation callback retained from a superseded facility', async () => {
+    const { result, rerender } = renderHook(() => useTeamChat());
+    await act(async () => { flush('team_channels', [channelA]); });
+    await openChannel(result, channelA);
+
+    const staleCreate = result.current.createChannel;
+    const staleSend = result.current.sendMessage;
+    const staleAdd = result.current.addMember;
+
+    currentHospital = { id: 'hosp-B' };
+    rerender();
+    await waitFor(() => expect(result.current.channels).toEqual([]));
+    const writesBefore = inserts.length;
+
+    let created: unknown = 'unset';
+    let sent: unknown = 'unset';
+    await act(async () => {
+      created = await staleCreate({ hospital_id: 'hosp-A', name: 'stale', channel_type: 'department' });
+      sent = await staleSend({ channel_id: 'chan-A', content: 'stale' });
+      await staleAdd('chan-A', 'user-9');
+    });
+
+    expect(created).toBeNull();
+    expect(sent).toBeNull();
+    expect(inserts).toHaveLength(writesBefore);
+    expect(result.current.activeChannel).toBeNull();
+  });
+
+  it('addMember refuses a channel that is not the active selection', async () => {
+    const { result } = renderHook(() => useTeamChat());
+    await act(async () => { flush('team_channels', [channelA, channelA2]); });
+    await openChannel(result, channelA);
+    const writesBefore = inserts.length;
+
+    await act(async () => { await result.current.addMember('chan-A2', 'user-9'); });
+    expect(inserts).toHaveLength(writesBefore);
+
+    await act(async () => { await result.current.addMember('chan-B', 'user-9'); });
+    expect(inserts).toHaveLength(writesBefore);
+
+    // The active channel is accepted and does write.
+    act(() => { void result.current.addMember('chan-A', 'user-9'); });
+    await waitFor(() => expect(inserts.filter((i) => i.table === 'channel_members')).toHaveLength(1));
+  });
+
+  it('a create that resolves after a facility switch neither returns nor writes into the new context', async () => {
+    const { result, rerender } = renderHook(() => useTeamChat());
+    await act(async () => { flush('team_channels', [channelA]); });
+
+    let created: unknown = 'unset';
+    const call = act(async () => {
+      created = await result.current.createChannel({ hospital_id: 'hosp-A', name: 'late', channel_type: 'department' });
+    });
+    currentHospital = { id: 'hosp-B' };
+    rerender();
+    await call;
+
+    expect(created).toBeNull();
+    expect(result.current.channels).toEqual([]);
+  });
 });
 
 describe('useNoteIntegrity note isolation', () => {
@@ -226,6 +385,43 @@ describe('useNoteIntegrity note isolation', () => {
     await waitFor(() => expect(pending.note_versions?.length).toBeGreaterThan(0));
     await act(async () => { flush('note_versions', version('2')); flush('note_addenda', []); });
     await waitFor(() => expect(result.current.versions[0].id).toBe('v-2'));
+  });
+
+  it('drops a note A response after an A -> B -> A round trip', async () => {
+    const { result, rerender } = renderHook(({ id }: { id: string }) => useNoteIntegrity(id), {
+      initialProps: { id: 'note-1' },
+    });
+    await waitFor(() => expect(pending.note_versions?.length).toBe(1));
+    rerender({ id: 'note-2' });
+    await waitFor(() => expect(pending.note_versions?.length).toBe(2));
+    rerender({ id: 'note-1' });
+    await waitFor(() => expect(pending.note_versions?.length).toBe(3));
+
+    // First note-1 request resolves last — same note id, superseded generation.
+    await act(async () => { flush('note_versions', version('stale')); flush('note_addenda', []); });
+    expect(result.current.versions).toEqual([]);
+
+    await act(async () => { flush('note_versions', version('b')); flush('note_addenda', []); });
+    expect(result.current.versions).toEqual([]);
+
+    await act(async () => { flush('note_versions', version('current')); flush('note_addenda', []); });
+    await waitFor(() => expect(result.current.versions[0].id).toBe('v-current'));
+  });
+
+  it('exposes nothing from the previous note on the transition render', async () => {
+    const seen: string[][] = [];
+    const { rerender } = renderHook(({ id }: { id: string }) => {
+      const r = useNoteIntegrity(id);
+      seen.push(r.versions.map((v) => v.id));
+      return r;
+    }, { initialProps: { id: 'note-1' } });
+    await act(async () => { flush('note_versions', version('1')); flush('note_addenda', []); });
+    await waitFor(() => expect(seen[seen.length - 1]).toEqual(['v-1']));
+
+    const before = seen.length;
+    rerender({ id: 'note-2' });
+    // Every render after the switch must be empty — including the first one.
+    expect(seen.slice(before).every((v) => v.length === 0)).toBe(true);
   });
 
   it('clears state when the hook is disabled', async () => {
