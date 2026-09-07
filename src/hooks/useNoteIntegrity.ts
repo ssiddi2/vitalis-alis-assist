@@ -19,42 +19,68 @@ export interface NoteAddendum {
   created_at: string;
 }
 
-/** Immutable signed snapshots + append-only addenda for one note. */
+interface IntegrityState {
+  gen: number;
+  versions: NoteVersion[];
+  addenda: NoteAddendum[];
+  loading: boolean;
+}
+
+/**
+ * Immutable signed snapshots + append-only addenda for one note.
+ *
+ * A monotonically increasing generation guards every read, so a response for a
+ * previously selected note is discarded even when the caller switches
+ * note A -> note B -> note A. The render filters by generation, so a previous
+ * note's data is never exposed, not even for one transition render.
+ */
 export function useNoteIntegrity(noteId?: string, enabled = true) {
-  const [versions, setVersions] = useState<NoteVersion[]>([]);
-  const [addenda, setAddenda] = useState<NoteAddendum[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  /** Scope key: results from a previous note (or disabled state) are discarded. */
+  const genRef = useRef(0);
+  const lastScopeRef = useRef<string | null>(null);
   const scope = `${noteId ?? 'none'}::${enabled ? 'on' : 'off'}`;
-  const scopeRef = useRef(scope);
-  scopeRef.current = scope;
+  if (lastScopeRef.current !== scope) {
+    lastScopeRef.current = scope;
+    genRef.current += 1;
+  }
+  const gen = genRef.current;
 
-  // Clear immediately so a stale note's versions/addenda are never displayed.
+  const aliveRef = useRef(true);
   useEffect(() => {
-    setVersions([]);
-    setAddenda([]);
-    setLoading(false);
-  }, [scope]);
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; };
+  }, []);
+
+  const [state, setState] = useState<IntegrityState>({ gen, versions: [], addenda: [], loading: false });
+
+  const current = state.gen === gen;
+  const versions = current ? state.versions : [];
+  const addenda = current ? state.addenda : [];
+  const loading = current ? state.loading : false;
+
+  useEffect(() => {
+    setState({ gen: genRef.current, versions: [], addenda: [], loading: false });
+  }, [gen]);
 
   const refresh = useCallback(async () => {
     if (!noteId || !enabled) return;
-    const key = scope;
-    setLoading(true);
+    const g = gen;
+    if (!aliveRef.current || g !== genRef.current) return;
+    setState((s) => (s.gen === g ? { ...s, loading: true } : s));
     const [v, a] = await Promise.all([
       supabase.from('note_versions').select('id, version, content_hash, signed_at, author_id')
         .eq('note_id', noteId).order('version'),
       supabase.from('note_addenda').select('id, sequence, reason, content, content_hash, author_id, created_at')
         .eq('note_id', noteId).order('sequence'),
     ]);
-    if (scopeRef.current !== key) return;
-    setVersions((v.data ?? []) as NoteVersion[]);
-    setAddenda((a.data ?? []) as NoteAddendum[]);
-    setLoading(false);
-  }, [noteId, enabled, scope]);
+    if (!aliveRef.current || g !== genRef.current) return;
+    setState((s) =>
+      s.gen === g
+        ? { gen: g, versions: (v.data ?? []) as NoteVersion[], addenda: (a.data ?? []) as NoteAddendum[], loading: false }
+        : s,
+    );
+  }, [noteId, enabled, gen]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
   return { versions, addenda, loading, refresh };
 }
-
