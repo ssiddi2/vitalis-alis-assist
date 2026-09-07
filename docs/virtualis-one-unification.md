@@ -243,8 +243,17 @@ Required to lift the fail-closed state (not implemented here):
 
 1. A per-facility EMR endpoint record — e.g. `hospital_emr_endpoints`
    (`hospital_id`, `iss`, `fhir_base_url`, `environment` production|sandbox,
-   `client_id_ref`, `active`, `verified_at`) with RLS scoped to
-   `hospital_users`, readable by members of that hospital only.
+   `client_id_ref`, `active`, `verified_at`). Its RLS MUST use the full
+   workforce-access policy, not `hospital_users` membership alone: read requires
+   (a) an explicit, currently-active provisioning row for this user at this
+   hospital, (b) a workforce access scope that permits this hospital (onsite
+   staff = their single assigned facility; virtual providers = only the
+   hospitals they are explicitly provisioned for), and (c) a currently valid,
+   unexpired, unrevoked credential/privilege for the acting clinical role at
+   that hospital. Missing, ambiguous or expired assignments deny access. Writes
+   are administrative and additionally require an admin role at that hospital.
+   That policy (provisioning + workforce scope + credential validity) does not
+   exist in the database yet.
 2. Server-side verification that a SMART token's issuer (and audience/tenant)
    matches the selected facility's active production record before any
    read/write is attributed to that facility.
@@ -256,3 +265,27 @@ Unresolved server-side authorization gaps remain: workforce access scope
 database, `hospital_users` membership does not encode current credentialing or
 provisioning validity, and `fhir-writeback` still performs no facility or
 encounter ownership check. This pass changed client isolation only.
+
+
+## Facility-list revalidation and revocation latency (honest statement)
+
+`HospitalContext` now attaches a unique request id to every facility-list read
+and invalidates outstanding requests on any identity edge, on effect teardown
+and on unmount, so a response issued before a sign-out, user switch or
+auth-loading window can never restore a revoked facility. A `refresh()` method
+is exposed on the context for explicit revalidation; overlapping refreshes are
+last-writer-only.
+
+Revocation is NOT live-wired. There is no realtime subscription, no push signal
+and no polling on provisioning or credential changes. A revocation currently
+takes effect only when one of these occurs:
+
+- the user signs out or the session re-authenticates (auth-loading edge), or
+- something calls `refresh()`, or
+- the provider remounts (page load / navigation that re-creates the tree).
+
+Until one of those happens, the client may keep showing a facility the server
+would now refuse. That is acceptable only because the server is the authority:
+every read/write is still RLS-scoped, so a revoked user's queries fail. Closing
+the client-side gap requires the workforce-access schema above plus a realtime
+or short-interval revalidation channel; neither is implemented.
