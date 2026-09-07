@@ -285,7 +285,27 @@ takes effect only when one of these occurs:
 - the provider remounts (page load / navigation that re-creates the tree).
 
 Until one of those happens, the client may keep showing a facility the server
-would now refuse. That is acceptable only because the server is the authority:
-every read/write is still RLS-scoped, so a revoked user's queries fail. Closing
-the client-side gap requires the workforce-access schema above plus a realtime
-or short-interval revalidation channel; neither is implemented.
+would now refuse.
+
+Correction to an earlier claim: it is NOT true that "a revoked user's queries
+fail". Existing RLS policies key on `hospital_users` membership alone. Removing
+a membership row is therefore reflected by RLS on the next query, but
+credential-only revocation — an expired, suspended or withdrawn licence,
+privilege or telehealth authorization while the membership row remains — is
+**not enforced by any current backend policy**. There is no server-side
+enforcement of workforce access scope or credential validity today. Closing both
+the client-side latency gap and the credential-enforcement gap requires the
+workforce-access schema above plus a realtime or short-interval revalidation
+channel; neither is implemented.
+
+## Known remaining race (outside this bounded fix)
+
+Within a single facility scope, changing the selected patient does not cancel
+in-flight async work started by callers for the previous patient. The context
+counters advance only on identity and facility-selection edges, so a caller that
+fetched data for patient P1 and resolves after a switch to P2 can still write
+P1-derived data into its own component state. Callers must carry their own
+patient-scoped guard. Clinical context integrity is therefore NOT complete:
+facility/identity isolation is enforced here, same-facility patient-change
+races are not.
+

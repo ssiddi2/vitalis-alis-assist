@@ -343,4 +343,66 @@ describe('HospitalContext isolation', () => {
     expect(result.current.selectedHospital).toBeNull();
     expect(pendingHospitals.length).toBe(0);
   });
+
+  it('works under React StrictMode (mount flag restored on re-setup)', async () => {
+    const { StrictMode } = await import('react');
+    const strictWrapper = ({ children }: { children: ReactNode }) => (
+      <StrictMode><HospitalProvider>{children}</HospitalProvider></StrictMode>
+    );
+    const { result } = renderHook(() => useHospital(), { wrapper: strictWrapper });
+    // StrictMode double-invokes effects; drain every issued request with the same rows.
+    await waitFor(() => expect(pendingHospitals.length).toBeGreaterThan(0));
+    await act(async () => {
+      while (pendingHospitals.length) {
+        pendingHospitals.shift()!.resolve({ data: [H('a', 'Alpha'), H('b', 'Beta')], error: null });
+        await Promise.resolve();
+      }
+    });
+    await waitFor(() => expect(result.current.hospitals.length).toBe(2));
+
+    act(() => { result.current.setSelectedHospital(result.current.hospitals[0]); });
+    expect(result.current.selectedHospital?.id).toBe('a');
+    act(() => { result.current.setSelectedPatientId('p-1'); });
+    expect(result.current.selectedPatientId).toBe('p-1');
+    act(() => { result.current.setActiveEncounterId('e-1'); });
+    expect(result.current.activeEncounterId).toBe('e-1');
+  });
+
+  it('a rejected unauthorized selection leaves the current scope fully usable', async () => {
+    const { result } = renderHook(() => useHospital(), { wrapper });
+    await settleHospitals([H('a', 'Alpha'), H('b', 'Beta')]);
+    vi.useFakeTimers();
+
+    act(() => { result.current.setSelectedHospital(result.current.hospitals[0]); });
+    act(() => { result.current.setSelectedPatientId('p-1'); });
+    act(() => { result.current.setSelectedHospital({ id: 'evil', name: 'Not Mine' } as Hospital); });
+
+    // Rejected object must not move any counter: fresh updates still land.
+    expect(result.current.selectedHospital?.id).toBe('a');
+    act(() => { result.current.setSelectedPatientId('p-2'); });
+    expect(result.current.selectedPatientId).toBe('p-2');
+    act(() => { result.current.setActiveEncounterId('e-2'); });
+    expect(result.current.activeEncounterId).toBe('e-2');
+
+    // EMR resolution timer for the still-selected facility must still complete.
+    await act(async () => { vi.advanceTimersByTime(1500); });
+    expect(result.current.emrConnection?.status).toBe('unavailable');
+    expect(result.current.emrConnection?.facilityId).toBe('a');
+    vi.useRealTimers();
+  });
+
+  it('batched A->B->A still invalidates setters captured at A', async () => {
+    const { result } = renderHook(() => useHospital(), { wrapper });
+    await settleHospitals([H('a', 'Alpha'), H('b', 'Beta')]);
+    act(() => { result.current.setSelectedHospital(result.current.hospitals[0]); });
+    const heldPatient = result.current.setSelectedPatientId;
+
+    act(() => {
+      result.current.setSelectedHospital(result.current.hospitals[1]);
+      result.current.setSelectedHospital(result.current.hospitals[0]);
+    });
+    act(() => { heldPatient('p-stale'); });
+    expect(result.current.selectedHospital?.id).toBe('a');
+    expect(result.current.selectedPatientId).toBeNull();
+  });
 });
