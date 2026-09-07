@@ -159,6 +159,10 @@ export interface ExchangePlan {
   workKey: string;
   /** JSON-array immutable source-event identity, independent of work identity. */
   sourceEventKey: string;
+  /** Original immutable source event identifier, not the work tuple. */
+  sourceEventId: string;
+  /** Approved endpoint snapshot; delivery revalidates it against current config. */
+  endpoint: { baseUrl: string; issuer: string };
   streamKey: string;
   versionId: string;
   capability: CapabilityDeclaration;

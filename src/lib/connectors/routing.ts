@@ -132,15 +132,17 @@ export function prepareExchangeEvent(event: ExchangeEvent, deps: RoutingDeps): P
   return {
     status: 'ready',
     plan: {
-      partition: p,
+      partition: { ...p },
       workKey,
       sourceEventKey,
+      sourceEventId: event.sourceEventId,
+      endpoint: { ...config.endpoint },
       streamKey: streamKeyFor(p),
       versionId: event.versionId,
-      capability,
+      capability: { ...capability },
       patientId: patient.patientId,
       encounterId,
-      sequence: event.sequence,
+      sequence: event.sequence ? { ...event.sequence } : undefined,
     },
   };
 }
