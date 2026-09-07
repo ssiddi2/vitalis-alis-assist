@@ -213,3 +213,46 @@ an authenticated entry point on that host.
 - The `fhir-writeback` authorization work above is planned but unimplemented.
 - No database, credential, publishing or external-service change has been made,
   per the scope of this pass.
+
+## Facility ⇄ EMR binding: fail-closed (client pass, no DB change)
+
+`HospitalContext` previously treated ANY stored SMART session as proof that the
+currently selected facility's EMR was connected, and otherwise fell back to a
+synthetic sandbox issuer that rendered as "Connected". Both are unsound in a
+multi-tenant deployment: a session launched from facility A would display as a
+live connection while working inside facility B.
+
+Checked for a safe existing binding: none exists.
+
+- `public.hospitals` has no issuer/tenant/endpoint column
+  (`id, name, code, emr_system, address, logo_url, connection_status, timestamps`).
+- `SmartSession` (`src/lib/smart.ts`) records only `iss`, tokens and patient
+  context; it carries no facility identifier.
+- `VITE_SMART_ISS_ALLOWLIST` and the server's `ALLOWED_FHIR_ISS` are
+  deployment-wide allowlists, not per-facility bindings.
+- `src/data/emrSandboxes.ts` maps an EMR *flavour* to a synthetic sandbox — that
+  is a demo preset, never evidence of a facility connection.
+
+Therefore `facilityIssuerBinding()` returns `null` and the context reports
+`status: 'unavailable'` with `reason: 'no_facility_emr_binding'`, or
+`'smart_session_not_bound_to_facility'` when a session exists but cannot be
+matched. Sandbox is surfaced only when `VITE_EMR_SANDBOX_DEMO=true`, and then
+always as `sandbox: true` with a visible sandbox label.
+
+Required to lift the fail-closed state (not implemented here):
+
+1. A per-facility EMR endpoint record — e.g. `hospital_emr_endpoints`
+   (`hospital_id`, `iss`, `fhir_base_url`, `environment` production|sandbox,
+   `client_id_ref`, `active`, `verified_at`) with RLS scoped to
+   `hospital_users`, readable by members of that hospital only.
+2. Server-side verification that a SMART token's issuer (and audience/tenant)
+   matches the selected facility's active production record before any
+   read/write is attributed to that facility.
+3. `smart-token` / `fhir-sync` / `fhir-writeback` enforcing the same binding, so
+   the client badge reflects a server-verified fact rather than local state.
+
+Unresolved server-side authorization gaps remain: workforce access scope
+(virtual multi-facility vs onsite single-facility) is still not modelled in the
+database, `hospital_users` membership does not encode current credentialing or
+provisioning validity, and `fhir-writeback` still performs no facility or
+encounter ownership check. This pass changed client isolation only.
