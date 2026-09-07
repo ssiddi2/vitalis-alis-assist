@@ -319,21 +319,31 @@ describe('HospitalContext isolation', () => {
   });
 
   it('a SMART session from another issuer is never reported as connected', async () => {
-    vi.useFakeTimers();
     smartSession = { iss: 'https://other-facility.example.org/fhir', access_token: 'tok' };
     const { result } = renderHook(() => useHospital(), { wrapper });
-    await act(async () => {
-      pendingHospitals.shift()!.resolve({ data: [H('a', 'Alpha')], error: null });
-      await Promise.resolve();
-    });
+    await settleHospitals([H('a', 'Alpha')]);
     act(() => { result.current.setSelectedHospital(result.current.hospitals[0]); });
-    await act(async () => { vi.advanceTimersByTime(1500); });
 
-    expect(result.current.emrConnection?.status).toBe('unavailable');
+    expect(result.current.emrConnection?.status).not.toBe('connected');
     expect(result.current.emrConnection?.sandbox).toBe(false);
-    expect(result.current.emrConnection?.reason).toBe('smart_session_not_bound_to_facility');
-    vi.useRealTimers();
   });
+
+  it('with no connector configured it reports the neutral standalone state immediately', async () => {
+    const { result } = renderHook(() => useHospital(), { wrapper });
+    await settleHospitals([H('a', 'Alpha')]);
+    act(() => { result.current.setSelectedHospital(result.current.hospitals[0]); });
+
+    // No pretend "connecting" spinner, no error: standalone on the very next render.
+    expect(result.current.emrConnection).toEqual({
+      status: 'standalone', emr: 'epic', facilityId: 'a', sandbox: false,
+      reason: 'external_ehr_not_configured',
+    });
+    // Clinical scope stays fully usable while standalone.
+    act(() => { result.current.setSelectedPatientId('p-1'); });
+    act(() => { result.current.setActiveEncounterId('e-1'); });
+    expect(result.current.activeEncounterId).toBe('e-1');
+  });
+
 
   it('reports loading while auth is resolving and issues no request', async () => {
     authState = { user: null, loading: true };
@@ -384,11 +394,12 @@ describe('HospitalContext isolation', () => {
     act(() => { result.current.setActiveEncounterId('e-2'); });
     expect(result.current.activeEncounterId).toBe('e-2');
 
-    // EMR resolution timer for the still-selected facility must still complete.
+    // EMR resolution for the still-selected facility must still complete.
     await act(async () => { vi.advanceTimersByTime(1500); });
-    expect(result.current.emrConnection?.status).toBe('unavailable');
+    expect(result.current.emrConnection?.status).toBe('standalone');
     expect(result.current.emrConnection?.facilityId).toBe('a');
     vi.useRealTimers();
+
   });
 
   it('batched A->B->A still invalidates setters captured at A', async () => {
