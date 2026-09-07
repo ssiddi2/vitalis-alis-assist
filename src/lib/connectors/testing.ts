@@ -46,8 +46,17 @@ export function createSyntheticStore(): SyntheticStore {
     hasSeenSourceEvent: (key) => seenSourceEvents.has(key),
     getCheckpoint: (streamKey) => checkpoints.get(streamKey) ?? null,
     commit(entry: CommitEntry): CommitOutcome {
-      if (committedWork.has(entry.plan.workKey)) {
+      if (committedWork.has(entry.plan.workKey) || seenSourceEvents.has(entry.plan.sourceEventKey)) {
         return { status: 'duplicate', workKey: entry.plan.workKey };
+      }
+      const current = checkpoints.get(entry.plan.streamKey);
+      const sequence = entry.plan.sequence;
+      // Recheck the expected cursor within the atomic commit.
+      if (
+        sequence?.contiguous && sequence.previousCursor !== undefined &&
+        sequence.previousCursor !== (current?.cursor ?? null)
+      ) {
+        return { status: 'failed', classification: 'retryable', reason: 'cursor_discontinuity' };
       }
       if (forcedFailure) {
         const failure = forcedFailure;
@@ -62,7 +71,7 @@ export function createSyntheticStore(): SyntheticStore {
       return { status: 'committed', workKey: entry.plan.workKey, checkpoint: entry.checkpoint };
     },
     enqueueOutbound(entry) {
-      outbound.push(entry);
+      if (!outbound.some((item) => item.workKey === entry.workKey)) outbound.push(entry);
     },
   };
 }
